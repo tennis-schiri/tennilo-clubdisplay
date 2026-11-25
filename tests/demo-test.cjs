@@ -17,3 +17,8 @@ assert.equal(run('demoOccupancy(hours).slots.find(s=>s.area==="outdoor"&&s.court
 assert.ok(run('demoOccupancy(hours).slots.find(s=>s.area==="outdoor"&&s.court===1).bookings[0].displayLabel.includes("Heimspiel")'));
 assert.equal(run('demoOccupancy(hours).slots.filter(s=>s.area==="indoor").length'),6);
 console.log('TENNILO demo tests OK');
+
+// Kiosk visitors must never be able to open the administration portal from the display footer.
+const displayHtml=fs.readFileSync('public/index.html','utf8');
+assert.doesNotMatch(displayHtml, /id="admin-link"|class="admin-link"|href="[^"]*\/admin\/\?portal=club/);
+assert.doesNotMatch(source, /admin-link|\/admin\/\?portal=club/);
