@@ -188,3 +188,6 @@ Ersetzt die Speicherpfad-Anleitung aus 0.5.0: Das Admin-Backend ermittelt den Pf
 
 ## 0.5.4 – Redaktionelle Medien
 Je Nachricht, Termin, Sponsor oder Gastronomieeintrag ein Bild hochladen, ersetzen, ansehen oder entfernen. PNG/JPEG/WebP bis 2 MB und 3000 × 3000 Pixel, serverseitig PNG-Neukodierung, 50 MB redaktionelle Medien pro Verein. Bilder als BLOB im geschützten SQLite-Speicher, ausschließlich authentifizierte Vorschau mit Vereins- und Modulprüfung. Beim Löschen eines Eintrags wird das Bild ebenfalls gelöscht. Keine öffentliche Medienauslieferung, Display-Anbindung folgt. PHP GD erforderlich; Live-Tests ausstehend.
+
+## 0.4.35 – Admin-Link in der Entwicklungsdemo
+Kleiner Admin-Link im Footer von clubdisplay.tennilo.de öffnet /admin/ in einem neuen Tab. Auf dem NTC-Host und im Vollbild ausgeblendet. Keine Änderung am Passwortschutz.
