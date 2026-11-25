@@ -10,7 +10,7 @@ jobs:
   deploy:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,6 +27,11 @@ jobs:
           php -r 'if(!extension_loaded("gd")){fwrite(STDERR,"GD required for media tests\n");exit(1);}'
           php tests/admin-test.php
           bash tests/admin-http-test.sh
+      - name: Browserprüfung vor Live-Upload
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.51.1
+          npx playwright install --with-deps chromium
+          CD_BROWSER_TEST=1 bash tests/admin-http-test.sh
       - name: Nur Admin-Dateien per FTPS übertragen
         env:
           FTP_HOST: ${{ secrets.TENNILO_FTP_HOST }}
