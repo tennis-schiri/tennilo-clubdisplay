@@ -11,6 +11,7 @@ function cd_db(string $path): PDO {
         $q->execute($row);
     }
     $db->exec('CREATE TABLE IF NOT EXISTS displays (club TEXT NOT NULL REFERENCES clubs(slug), slug TEXT NOT NULL, name TEXT NOT NULL, mode TEXT NOT NULL, language TEXT NOT NULL, dwell INTEGER NOT NULL, modules TEXT NOT NULL, enabled INTEGER NOT NULL, updated TEXT NOT NULL, PRIMARY KEY(club,slug)); CREATE TABLE IF NOT EXISTS club_accounts (club TEXT PRIMARY KEY REFERENCES clubs(slug), password_hash TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1)');
+    $db->exec('CREATE TABLE IF NOT EXISTS club_brand (club TEXT PRIMARY KEY REFERENCES clubs(slug), logo BLOB, mime TEXT, welcome TEXT NOT NULL DEFAULT \'\'); CREATE TABLE IF NOT EXISTS club_content (id INTEGER PRIMARY KEY AUTOINCREMENT, club TEXT NOT NULL REFERENCES clubs(slug), kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, starts TEXT NOT NULL, ends TEXT NOT NULL, url TEXT NOT NULL, enabled INTEGER NOT NULL, updated TEXT NOT NULL)');
     return $db;
 }
 function cd_validate(array $in): array {
@@ -66,4 +67,68 @@ function cd_account_row(PDO $db,string $club):?array{
 function cd_login_hash(PDO $db,string $club,string $adminHash):string{
     if($club==='')return $adminHash;
     $a=cd_account_row($db,$club);return $a&&$a['enabled']?$a['password_hash']:'';
+}
+
+const CD_CONTENT=['news'=>'Vereinsnachrichten','calendar'=>'Termine','partner'=>'Sponsoren','restaurant'=>'Gastronomie'];
+function cd_text(mixed $v,int $max,bool $required=false):string{
+    if(!is_string($v))throw new InvalidArgumentException('Ungültiger Text.');
+    $v=trim($v);
+    if(($required&&$v==='')||strlen($v)>$max||!preg_match('//u',$v)||preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/',$v))throw new InvalidArgumentException('Text fehlt oder ist zu lang.');
+    return $v;
+}
+function cd_brand(PDO $db,string $club):array{
+    $q=$db->prepare('SELECT welcome,mime,length(logo) AS logo_size FROM club_brand WHERE club=?');$q->execute([$club]);return $q->fetch()?:['welcome'=>'','mime'=>null,'logo_size'=>0];
+}
+function cd_save_brand(PDO $db,array $in,array $file,?string $scope):void{
+    $club=cd_text($in['club']??'',50,true);cd_scope($scope,$club);cd_club($db,$club);
+    $welcome=cd_text($in['welcome']??'',1000);
+    $color=cd_text($in['color']??'',7,true);
+    if(!preg_match('/^#[0-9a-f]{6}$/iD',$color))throw new InvalidArgumentException('Ungültige Akzentfarbe.');
+    $logo=null;$mime=null;$replace=isset($in['remove_logo']);
+    if(($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE){
+        if(($file['error']??null)!==UPLOAD_ERR_OK||!is_uploaded_file($file['tmp_name'])||filesize($file['tmp_name'])>2000000)throw new InvalidArgumentException('Logo: maximal 2 MB.');
+        $info=@getimagesize($file['tmp_name']);
+        if(!$info||!in_array($info['mime'],['image/png','image/jpeg','image/webp'],true)||$info[0]>3000||$info[1]>3000)throw new InvalidArgumentException('Nur PNG, JPEG oder WebP bis 3000 × 3000 Pixel.');
+        // Re-encode, so uploaded metadata and trailing bytes are never served.
+        if(!function_exists('imagecreatefromstring'))throw new InvalidArgumentException('PHP GD fehlt beim Hosting.');
+        $im=@imagecreatefromstring(file_get_contents($file['tmp_name']));
+        if(!$im)throw new InvalidArgumentException('Ungültige Bilddatei.');
+        imagesavealpha($im,true);ob_start();imagepng($im);$logo=ob_get_clean();imagedestroy($im);
+        if(!is_string($logo)||strlen($logo)>6000000)throw new InvalidArgumentException('Logo nach Verarbeitung zu groß.');
+        $mime='image/png';$replace=true;
+    }
+    $db->beginTransaction();
+    try{
+        $q=$db->prepare('INSERT INTO club_brand(club,welcome) VALUES (?,?) ON CONFLICT(club) DO UPDATE SET welcome=excluded.welcome');$q->execute([$club,$welcome]);
+        if($replace){$q=$db->prepare('UPDATE club_brand SET logo=?,mime=? WHERE club=?');$q->bindValue(1,$logo,$logo===null?PDO::PARAM_NULL:PDO::PARAM_LOB);$q->bindValue(2,$mime);$q->bindValue(3,$club);$q->execute();}
+        $q=$db->prepare('UPDATE clubs SET color=?,updated=? WHERE slug=?');$q->execute([$color,gmdate('c'),$club]);
+        $db->commit();
+    }catch(Throwable $e){$db->rollBack();throw $e;}
+}
+function cd_content_rows(PDO $db,string $club,string $kind):array{
+    $q=$db->prepare('SELECT * FROM club_content WHERE club=? AND kind=? ORDER BY starts,title,id');$q->execute([$club,$kind]);return $q->fetchAll();
+}
+function cd_date(mixed $v):string{
+    $v=cd_text($v,10);if($v==='')return '';
+    $d=DateTimeImmutable::createFromFormat('!Y-m-d',$v);
+    if(!$d||$d->format('Y-m-d')!==$v)throw new InvalidArgumentException('Ungültiges Datum.');
+    return $v;
+}
+function cd_save_content(PDO $db,array $in,?string $scope):void{
+    $club=cd_text($in['club']??'',50,true);cd_scope($scope,$club);$c=cd_club($db,$club);
+    $kind=cd_text($in['kind']??'',20,true);
+    if(!isset(CD_CONTENT[$kind])||!in_array($kind,json_decode($c['modules'],true)?:[],true))throw new InvalidArgumentException('Inhaltsmodul nicht freigeschaltet.');
+    $id=filter_var($in['id']??0,FILTER_VALIDATE_INT);if($id===false||$id<0)throw new InvalidArgumentException('Ungültige Kennung.');
+    if(($in['intent']??'')==='delete'){
+        if(!$id)throw new InvalidArgumentException('Ungültige Kennung.');
+        $q=$db->prepare('DELETE FROM club_content WHERE id=? AND club=? AND kind=?');$q->execute([$id,$club,$kind]);return;
+    }
+    $title=cd_text($in['title']??'',200,true);$body=cd_text($in['body']??'',4000);
+    $starts=cd_date($in['starts']??'');$ends=cd_date($in['ends']??'');
+    if($starts!==''&&$ends!==''&&$ends<$starts)throw new InvalidArgumentException('Enddatum liegt vor dem Startdatum.');
+    $url=cd_text($in['url']??'',500);
+    if($url!==''&&(!filter_var($url,FILTER_VALIDATE_URL)||strtolower((string)parse_url($url,PHP_URL_SCHEME))!=='https'||parse_url($url,PHP_URL_USER)!==null))throw new InvalidArgumentException('Nur gültige HTTPS-Links.');
+    $v=[$title,$body,$starts,$ends,$url,isset($in['enabled'])?1:0,gmdate('c')];
+    if($id){$q=$db->prepare('UPDATE club_content SET title=?,body=?,starts=?,ends=?,url=?,enabled=?,updated=? WHERE id=? AND club=? AND kind=?');$q->execute([...$v,$id,$club,$kind]);}
+    else{$q=$db->prepare('INSERT INTO club_content(club,kind,title,body,starts,ends,url,enabled,updated) VALUES (?,?,?,?,?,?,?,?,?)');$q->execute([$club,$kind,...$v]);}
 }
