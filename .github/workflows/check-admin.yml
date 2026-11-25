@@ -17,7 +17,7 @@ concurrency:
 jobs:
   tests:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,10 +30,14 @@ jobs:
           node --check public/assets/app.js
           node --check public/admin/player.js
           bash -n scripts/deploy.sh tests/admin-http-test.sh
+      - name: Chromium für Browserprüfung
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.51.1
+          npx playwright install --with-deps chromium
       - name: Admin und Geräte
         run: |
           php tests/admin-test.php
-          bash tests/admin-http-test.sh
+          CD_BROWSER_TEST=1 bash tests/admin-http-test.sh
       - name: Bestehende Displays
         run: |
           node tests/info-countdown-test.cjs
@@ -44,3 +48,11 @@ jobs:
           php tests/events-test.php
           php tests/news-test.php
           php tests/weather-test.php
+      - name: Browser-Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clubdisplay-browser-tests
+          path: artifacts/*.png
+          if-no-files-found: ignore
+          retention-days: 7
