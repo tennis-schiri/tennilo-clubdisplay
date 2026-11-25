@@ -60,3 +60,6 @@ html[data-club="ntc"] .match-teams .own-team,html[data-club="ntc"] .match-meta .
 #admin-form .actions{justify-content:flex-end;margin:0}
 #admin-form button{min-height:54px}
 .booking-frame{height:max(580px,calc(100dvh - 280px))}
+
+/* Two NTC court views: outdoor terminal and non-interactive indoor display. */
+.court-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin:1rem 0}.court-switch button{min-height:64px;font-size:clamp(1rem,2vw,1.5rem);font-weight:750}.hall-frame-wrap{position:relative}.hall-frame{pointer-events:none;user-select:none}.hall-input-shield{position:absolute;inset:0;z-index:1;touch-action:pan-y}.hall-readonly p{font-weight:700}.court-switch button[aria-pressed=true]{background:var(--cyan);color:var(--bg)}

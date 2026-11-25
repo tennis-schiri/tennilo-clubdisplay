@@ -47,3 +47,6 @@ Offizieller vom Betreiber angegebener Pfad /court-module/3076 mit ebusy-client-P
 
 ## 0.3.4 – Freiplatzterminal
 Korrigierter Betreiberpfad /lite-module/1731 mit ebusy-client-Parameter (Außenplätze). Bestehendes NTC_EBUSY_CLIENT_ID Secret und einmalige Admin-Freigabe unverändert; keine Weiterleitung aus dem eingebetteten Frame in einen neuen Tab. Funktion der Einbettung vor Ort weiterhin zu prüfen.
+
+## 0.3.5 – Zwei Platzansichten
+NTC: Außenplätze bleiben interaktives PIN-Buchungsterminal (1731). Halle (3076) nutzt versuchsweise den öffentlichen Embed-Pfad ohne Client-ID, getrennt von der geschützten Terminalfreigabe, mit deaktivierten Formularen, Popups, Top-Navigation und Touch-/Tastaturinteraktionen (inert, pointer-events, Overlay, credentialless sofern unterstützt). Nur Anzeige des eBuSy-Standardplans; die Ansichtsinteraktionen und Datumswahl sind bewusst gesperrt. Eigener Aktualisieren-Button, Hallenansicht kehrt nach Inaktivität zurück. Kein serverseitig bestätigter eBuSy-Read-only-Modus; browserseitige Anzeigesperre ist keine Zugriffskontrolle in eBuSy selbst. Echte Einbettung und Darstellung vor Ort prüfen. Nach API-Freischaltung bevorzugt native, datensparsame Hallenbelegung. TENNILO-Demo unverändert.

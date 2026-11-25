@@ -103,7 +103,7 @@ function button(label,action,cls=''){return '<button type="button" class="'+cls+
 function line(a,b){return '<div class="line"><strong>'+a+'</strong><span class="muted">'+b+'</span></div>'}
 function panel(title,names,details){return '<div class="panel"><h2>'+title+'</h2>'+names.map((n,i)=>line(n,details[i])).join('')+'</div>'}
 function hero(title,description,extra=''){return '<div class="hero"><div><h1>'+title+'</h1><p>'+description+'</p><div class="actions">'+button(t().start,'home','primary large')+'</div></div>'+extra+'</div>'}
-let terminalStatus=null,terminalChecking=false,adminAction='exit';
+let terminalStatus=null,terminalChecking=false,adminAction='exit',courtMode='outdoor';
 async function checkTerminal(){
   if(!pilot||terminalChecking)return;
   terminalChecking=true;
@@ -111,10 +111,11 @@ async function checkTerminal(){
     const r=await fetch('terminal.php?status=1',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(8000)});
     const d=await r.json();terminalStatus=r.ok&&d.ready?'ready':d.configured?'locked':'unconfigured';
   }catch{terminalStatus='unavailable';}
-  finally{terminalChecking=false;if(view==='courts')render();}
+  finally{terminalChecking=false;if(view==='courts'&&courtMode==='outdoor')render();}
 }
 function ebusyView(){
-  const head='<div class="booking-head"><h1>'+tr('Außenplätze buchen','Book outdoor courts')+'</h1>'+button(tr('Zurück','Back'),'home','primary')+'</div>';
+  const head='<div class="booking-head"><h1>'+tr('Plätze','Courts')+'</h1>'+button(tr('Zurück','Back'),'home','primary')+'</div><div class="court-switch" role="group" aria-label="'+tr('Platzbereich','Court area')+'"><button data-action="court-mode:outdoor" aria-pressed="'+(courtMode==='outdoor')+'">'+tr('Außenplätze · Buchen','Outdoor courts · Book')+'</button><button data-action="court-mode:indoor" aria-pressed="'+(courtMode==='indoor')+'">'+tr('Hallenplätze · Belegung','Indoor courts · Availability')+'</button></div>';
+  if(courtMode==='indoor')return head+'<div class="hall-readonly"><p>'+tr('Hallenbelegung · Nur Ansicht','Indoor court occupancy · View only')+'</p><div class="hall-frame-wrap"><iframe class="booking-frame hall-frame" title="'+tr('Hallenbelegungsplan von eBuSy (nur Ansicht)','eBuSy indoor court schedule (view only)')+'" src="https://ntc93v8.ebusy.de/embed/court-module/3076" sandbox="allow-scripts allow-same-origin" credentialless inert tabindex="-1" referrerpolicy="no-referrer"></iframe><div class="hall-input-shield" aria-hidden="true"></div></div><div class="actions"><button data-action="hall-refresh">'+tr('Belegungsplan aktualisieren','Refresh schedule')+'</button></div></div>';
   if(terminalStatus==='ready')return head+'<iframe class="booking-frame" title="'+tr('eBuSy Buchungsterminal','eBuSy booking terminal')+'" src="terminal.php" sandbox="allow-scripts allow-forms allow-same-origin" referrerpolicy="no-referrer"></iframe>';
   const label=terminalStatus==='locked'?tr('Terminal muss einmalig durch einen Administrator freigeschaltet werden.','An administrator must enable this terminal once.'):terminalStatus==='unconfigured'?tr('Terminal noch nicht eingerichtet.','Terminal not configured.'):terminalStatus==='unavailable'?tr('Terminal vorübergehend nicht verfügbar.','Terminal temporarily unavailable.'):tr('Terminal wird geprüft …','Checking terminal …');
   return head+'<div class="panel"><p>'+label+'</p>'+(terminalStatus==='locked'?button(tr('Terminal freischalten','Enable terminal'),'terminal-unlock','primary'):terminalStatus==='unavailable'?button(tr('Erneut prüfen','Retry'),'terminal-retry'):'')+'</div>';
@@ -132,12 +133,12 @@ case 'teams':html=matchView();break;
 case 'news':html='<h1>'+l.announcements+'</h1><div class="grid">'+l.newsItems.map(n=>'<article class="panel"><h2>'+n+'</h2><p>'+l.newsText+'</p></article>').join('')+'</div>';break;
 case 'partner':html=hero(l.partner,l.partnerText);break;
 }
-$('language').disabled=pilot&&view==='courts';$('screen').innerHTML=html;clock();}
+$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';$('screen').innerHTML=html;clock();}
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
-function go(next){if(pilot&&next==='courts'&&view!=='courts'){terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
-document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='terminal-unlock'&&pilot&&view==='courts'){openAdmin('terminal');}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news'].includes(a))go(a);});
+function go(next){if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
+document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-unlock'&&pilot&&view==='courts'&&courtMode==='outdoor'){openAdmin('terminal');}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{last=Date.now();});
-$('language').addEventListener('click',()=>{if(pilot&&view==='courts')return;lang=lang==='de'?'en':'de';message='';render();});
+$('language').addEventListener('click',()=>{if(pilot&&view==='courts'&&courtMode==='outdoor')return;lang=lang==='de'?'en':'de';message='';render();});
 const adminDialog=$('admin-dialog'), adminForm=$('admin-form'), adminPin=$('admin-pin'), adminStatus=$('admin-status');
 function syncFullscreen(){
   const active=!!document.fullscreenElement;
@@ -180,5 +181,5 @@ adminForm.addEventListener('submit',async e=>{
   finally{$('admin-submit').disabled=false;if(adminDialog.open)adminPin.focus();}
 });
 syncFullscreen();
-setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view==='info'){if(now-started>=dwell){slide=(slide+1)%screens.length;started=now;render();}$('progress').style.setProperty('--progress',Math.min(100,(now-started)/dwell*100)+'%');}else{if(!(pilot&&view==='courts')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view==='info'){if(now-started>=dwell){slide=(slide+1)%screens.length;started=now;render();}$('progress').style.setProperty('--progress',Math.min(100,(now-started)/dwell*100)+'%');}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 render();refreshLeague();refreshEvents();
