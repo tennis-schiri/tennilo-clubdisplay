@@ -6,7 +6,7 @@ on:
     paths:
       - 'public/admin/**'
       - 'tests/**'
-      - 'deploy/admin-storage.htaccess'
+      - 'deploy/**'
       - '.github/workflows/check-admin.yml'
       - '.github/workflows/deploy-admin.yml'
 permissions:
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   tests:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,18 +26,14 @@ jobs:
         run: |
           php -v
           php -r 'foreach(["pdo_sqlite","gd","dom","curl"] as $e){if(!extension_loaded($e)){fwrite(STDERR,"Missing ".$e."\n");exit(1);}}'
-          find public -name '*.php' -print0 | xargs -0 -n 1 php -l
+          find public deploy -name '*.php' -print0 | xargs -0 -n 1 php -l
           node --check public/assets/app.js
           node --check public/admin/player.js
           bash -n scripts/deploy.sh tests/admin-http-test.sh
-      - name: Chromium für Browserprüfung
-        run: |
-          npm install --no-save --ignore-scripts playwright@1.51.1
-          npx playwright install --with-deps chromium
       - name: Admin und Geräte
         run: |
           php tests/admin-test.php
-          CD_BROWSER_TEST=1 bash tests/admin-http-test.sh
+          bash tests/admin-http-test.sh
       - name: Bestehende Displays
         run: |
           node tests/info-countdown-test.cjs
@@ -48,6 +44,19 @@ jobs:
           php tests/events-test.php
           php tests/news-test.php
           php tests/weather-test.php
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Chromium für Browserprüfung
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.51.1
+          npx playwright install --with-deps chromium
+      - name: Anmeldung, Player und mobile Darstellung
+        run: CD_BROWSER_TEST=1 bash tests/admin-http-test.sh
       - name: Browser-Screenshots
         if: always()
         uses: actions/upload-artifact@v4
