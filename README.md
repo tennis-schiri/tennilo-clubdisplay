@@ -134,3 +134,6 @@ Statt Tabellen neun gestaltete Court-Karten mit abstrahierten Tennisplatzlinien 
 
 ## 0.4.21 – Wer spielt wo?
 Namenorientierte Belegungsansicht: neun flache Court-Zeilen mit kleinen Platzgrafiken und drei breiten Buchungsfeldern, Außen/Halle getrennt; Belegungsname statt Statussymbol im Mittelpunkt. Die künftige normalisierte Slot-Struktur kann `bookings:[{displayLabel,start,end}]` mit freigegebenen Spielerpaaren, Mannschaften, Trainingsgruppen oder Sperrtexten liefern. Mehrere Teilbuchungen mit Zeitangaben darstellbar. Keine Namen aus fehlenden/veralteten Daten, keine erfundenen Angaben. Personenbezogene Namen erst nach freigegebener eBuSy-Anbindung und geeigneter Zugriffsbeschränkung des NTC-Displays; öffentlich erreichbare Demo enthält keine personenbezogenen Belegungsdaten. Visualisierung und echte Datenanbindung noch zu prüfen.
+
+## 0.4.22 – Hallenplatzgrafiken
+Hallenplätze ebenfalls sandfarben wie die Außenplätze; Gruppenüberschriften bleiben getrennt.
