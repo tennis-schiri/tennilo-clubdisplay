@@ -86,9 +86,9 @@ html[data-club="ntc"] .fixture-date-block{background:#f7dc14;color:#073538}
 .fixture-top{display:flex;align-items:center;justify-content:space-between;gap:.45rem}
 .fixture-identity{font-size:clamp(1.05rem,1.55vw,1.6rem);font-weight:780;line-height:1.15;color:var(--ink)}
 .fixture-league{font-size:clamp(.95rem,1.25vw,1.25rem);font-weight:750;color:var(--cyan);white-space:nowrap}
-.fixture-pair{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(.35rem,1vw,1rem);font-size:clamp(1.2rem,2vw,2.2rem);font-weight:800;line-height:1.13;letter-spacing:-.02em;min-width:0}
+.fixture-pair{display:flex;justify-content:flex-start;align-items:baseline;gap:clamp(.35rem,1vw,1rem);font-size:clamp(1.2rem,2vw,2.2rem);font-weight:800;line-height:1.13;letter-spacing:-.02em;min-width:0}
 .fixture-team{min-width:0;overflow-wrap:anywhere;hyphens:auto;color:var(--ink)}
-.fixture-team:first-child{text-align:right}
+.fixture-team:first-child{text-align:left}
 .fixture-team:last-child{text-align:left}
 .fixture-own{color:var(--cyan)}
 .fixture-versus{color:var(--muted)}
@@ -104,3 +104,14 @@ html[data-club="ntc"] .fixture-date-block{background:#f7dc14;color:#073538}
 .match-screen .match-source{margin:.15rem 0;font-size:.72rem}
 .match-screen nav{padding:.5rem 3vw}
 @media(max-width:699px){.match-screen header{padding:.65rem 1rem}.match-screen main{padding:.7rem 1rem}.match-screen nav{padding:.5rem 1rem}.match-heading h1{font-size:1.8rem}.fixture-card{grid-template-columns:clamp(64px,21vw,105px) minmax(0,1fr) clamp(55px,16vw,80px)}.fixture-date-block{padding:.45rem .15rem}.fixture-weekday{font-size:clamp(.5rem,2.25vw,.75rem)}.fixture-day{font-size:clamp(1.05rem,4.7vw,1.8rem)}.fixture-time{font-size:clamp(.68rem,2.8vw,1rem)}.fixture-content{padding:.5rem .4rem;gap:.35rem}.fixture-identity{font-size:.95rem}.fixture-league{font-size:.75rem}.fixture-pair{font-size:clamp(.85rem,3.4vw,1.25rem);gap:.25rem}.fixture-details{font-size:.7rem;justify-content:flex-start}.fixture-result{padding:.25rem;gap:.2rem}.fixture-result span{font-size:.65rem}.fixture-result strong{font-size:clamp(.9rem,3.5vw,1.35rem)}}
+
+/* 0.3.10: left aligned team pair; high-visibility court assignment. */
+.fixture-team{flex:0 1 auto;text-align:left}
+.fixture-versus{flex:none}
+.fixture-details{align-items:center;justify-content:flex-start;column-gap:clamp(.5rem,1.2vw,1.4rem)}
+.fixture-courts{margin-left:auto;display:inline-flex;align-items:center;gap:.5rem;padding:.25rem .65rem;border-radius:7px;background:var(--cyan);color:#052b35;font-weight:750;line-height:1.2}
+.fixture-courts>span{font-size:clamp(.8rem,1.05vw,1.05rem)}
+.fixture-details .fixture-courts>strong{font-size:clamp(1.15rem,1.7vw,1.7rem);font-weight:850;color:inherit}
+.fixture-courts-pending{background:transparent;border:1px solid var(--cyan);color:var(--cyan)}
+html[data-club="ntc"] .fixture-courts:not(.fixture-courts-pending){background:#f7dc14;color:#073538}
+@media(max-width:699px){.fixture-courts{margin-left:0;padding:.2rem .35rem;gap:.3rem}.fixture-courts>span{font-size:.7rem}.fixture-details .fixture-courts>strong{font-size:.95rem}}

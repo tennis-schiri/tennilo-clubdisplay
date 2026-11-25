@@ -62,3 +62,6 @@ Ab 1200 CSS-Pixeln zwei Spielkarten nebeneinander in chronologischer Reihenfolge
 
 ## 0.3.9 – CD-M04
 Freigegebener Entwurf: jede Begegnung über die gesamte Breite, gelber Datumsblock beim NTC (TENNILO in Cyan), Mannschaft/Liga und horizontale Paarung mittig, Ergebnis in einer festen rechten Spalte. Platzanlage und Platznummern in der unteren Infozeile; bei Heimspielen ohne bestätigte Platznummern „noch offen“. Ergebnis ohne nuLiga-Matchpunkte als „– : –“. 3–5 Karten je Seite nach Fensterhöhe. Keine Änderung an der Datenquelle.
+
+## 0.3.10 – CD-M04 Detailkorrektur
+Beide Mannschaftsnamen direkt nebeneinander, linksbündig, ohne zentrierten Zwischenraum. Platznummern in einem kontrastreichen eigenen Feld rechts in der Infozeile; noch nicht zugeordnete Heimspielplätze als gelb/cyan umrandetes Feld. Datum, Ergebnisfeld und volle Kartenbreite bleiben unverändert.
