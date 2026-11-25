@@ -59,3 +59,6 @@ Datum/Uhrzeit, Mannschaft, Liga und Heim/Auswärts in einer gemeinsamen Kopfzeil
 
 ## 0.3.8 – Zweispaltige Begegnungsübersicht
 Ab 1200 CSS-Pixeln zwei Spielkarten nebeneinander in chronologischer Reihenfolge, 4/6/8 Begegnungen pro Seite nach Fensterhöhe. Einzelne verbleibende Karte behält die halbe Breite. Datum/Mannschaft und Liga/Heimstatus bilden eine kompakte Kopfzeile, Begegnungen bleiben horizontal mit zentriertem Trenner/Ergebnis. Lange Mannschaftsnamen dürfen innerhalb ihrer Spalte umbrechen. Schmale Displays bleiben einspaltig. Keine Änderungen an Datenquellen oder Buchungen.
+
+## 0.3.9 – CD-M04
+Freigegebener Entwurf: jede Begegnung über die gesamte Breite, gelber Datumsblock beim NTC (TENNILO in Cyan), Mannschaft/Liga und horizontale Paarung mittig, Ergebnis in einer festen rechten Spalte. Platzanlage und Platznummern in der unteren Infozeile; bei Heimspielen ohne bestätigte Platznummern „noch offen“. Ergebnis ohne nuLiga-Matchpunkte als „– : –“. 3–5 Karten je Seite nach Fensterhöhe. Keine Änderung an der Datenquelle.

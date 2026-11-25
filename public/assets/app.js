@@ -31,10 +31,10 @@ function teamAndLeague(m){
   return {team:team+(suffix?' '+suffix:''),league:match[2]||full};
 }
 function matchPageSize(){
-  if(innerWidth<1200)return innerHeight<850?3:4;
-  if(innerHeight<760)return 4;
-  if(innerHeight<1020)return 6;
-  return 8;
+  if(innerWidth<700)return 3;
+  if(innerHeight<760)return 3;
+  if(innerHeight<1020)return 4;
+  return 5;
 }
 function matchView(){
   const d=leagueData, info=view==='info', filter=info?'home':matchFilter;
@@ -55,16 +55,17 @@ function matchView(){
   if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine passenden Begegnungen im von nuLiga gelieferten Zeitraum.','No matching fixtures in the period supplied by nuLiga.')+'</p>'+(d.range?'<p>'+esc(d.range.from)+' – '+esc(d.range.to)+'</p>':'')+'</div>'+source;
   const cards=rows.slice(page*size,(page+1)*size).map(m=>{
     const when=new Date(m.date),locale=lang==='de'?'de-DE':'en-GB',zone='Europe/Berlin';
-    const dayLabel=when.toLocaleDateString(locale,{timeZone:zone,weekday:'short',day:'2-digit',month:'2-digit'});
+    const weekday=when.toLocaleDateString(locale,{timeZone:zone,weekday:'long'});
+    const dayLabel=when.toLocaleDateString(locale,{timeZone:zone,day:'2-digit',month:'2-digit'});
     const timeLabel=when.toLocaleTimeString(locale,{timeZone:zone,hour:'2-digit',minute:'2-digit'});
     const identity=teamAndLeague(m);
     const venueLabel=typeof m.venue==='string'?m.venue.trim():'';
     const courtLabel=Array.isArray(m.courts)&&m.courts.length?m.courts.join(', '):typeof m.courts==='string'?m.courts.trim():'';
-    const meta=[venueLabel?'<span>'+tr('Platzanlage','Venue')+': <strong>'+esc(venueLabel)+'</strong></span>':'',m.isHome&&courtLabel?'<span>'+tr('Plätze','Courts')+': <strong>'+esc(courtLabel)+'</strong></span>':''].filter(Boolean).join('');
-    return '<article class="fixture-card"><div class="fixture-top"><div class="fixture-date"><time datetime="'+esc(m.date)+'">'+esc(dayLabel)+' <span class="fixture-dot">·</span> '+esc(timeLabel)+(lang==='de'?' Uhr':'')+'</time></div><span class="fixture-identity">'+esc(identity.team)+'</span><div class="fixture-tags">'+(identity.league?'<span class="fixture-tag fixture-league">'+esc(identity.league)+'</span>':'')+'<span class="fixture-tag">'+(m.isHome?tr('Heim','Home'):tr('Auswärts','Away'))+'</span></div></div><div class="fixture-bottom"><div class="fixture-pair"><strong class="fixture-team '+(m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.home))+'</strong><span class="fixture-versus">'+(m.score?esc(m.score):'–')+'</span><strong class="fixture-team '+(!m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.away))+'</strong></div>'+(meta?'<div class="fixture-details">'+meta+'</div>':'')+'</div></article>';
+    const meta='<span class="fixture-side">'+(m.isHome?tr('Heimspiel','Home match'):tr('Auswärtsspiel','Away match'))+'</span>'+(venueLabel?'<span>'+tr('Platzanlage','Venue')+': <strong>'+esc(venueLabel)+'</strong></span>':'')+(m.isHome?'<span>'+tr('Plätze','Courts')+': <strong>'+esc(courtLabel||tr('noch offen','Pending'))+'</strong></span>':'');
+    return '<article class="fixture-card"><time class="fixture-date-block" datetime="'+esc(m.date)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(dayLabel)+'</strong><span class="fixture-time">'+esc(timeLabel)+(lang==='de'?' Uhr':'')+'</span></time><div class="fixture-content"><div class="fixture-top"><span class="fixture-identity">'+esc(identity.team)+'</span>'+(identity.league?'<span class="fixture-league">'+esc(identity.league)+'</span>':'')+'</div><div class="fixture-pair"><strong class="fixture-team '+(m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.home))+'</strong><span class="fixture-versus">–</span><strong class="fixture-team '+(!m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.away))+'</strong></div><div class="fixture-details">'+meta+'</div></div><div class="fixture-result"><span>'+tr('Ergebnis','Result')+'</span><strong class="'+(m.score?'fixture-result-value':'fixture-result-pending')+'">'+(m.score?esc(m.score):'– : –')+'</strong></div></article>';
   }).join('');
   const pagination=!info&&pages>1?'<div class="actions match-pages"><button data-action="match-prev" '+(page===0?'disabled':'')+'>‹</button><span>'+(page+1)+' / '+pages+'</span><button data-action="match-next" '+(page===pages-1?'disabled':'')+'>›</button></div>':'';
-  return title+warning+'<div class="fixture-list'+(rows.slice(page*size,(page+1)*size).length===1?' fixture-single':'')+'">'+cards+'</div>'+pagination+source;
+  return title+warning+'<div class="fixture-list">'+cards+'</div>'+pagination+source;
 }
 async function refreshLeague(){
   if(fetching)return;fetching=true;
