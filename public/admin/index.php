@@ -59,11 +59,12 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             catch(InvalidArgumentException $e){$error=$e->getMessage();}
             catch(Throwable $e){$error='Speichern fehlgeschlagen. Ist die Vereinskennung bereits vergeben?';}
         }
-        if(in_array($action,['display-create','display-save','account','brand','content'],true)){
+        if(in_array($action,['display-create','display-save','account','brand','content','media'],true)){
             try{
                 if($action==='account'){if($scope!==null)throw new InvalidArgumentException('Keine Berechtigung.');cd_account($db,(string)($_POST['club']??''),(string)($_POST['new_password']??''),isset($_POST['enabled']));}
                 elseif($action==='brand')cd_save_brand($db,$_POST,$_FILES['logo']??[],$scope);
                 elseif($action==='content')cd_save_content($db,$_POST,$scope);
+                elseif($action==='media')cd_media_save($db,$_POST,$_FILES['image']??[],$scope);
                 else cd_save_display($db,$_POST,$action==='display-create',$scope);
                 $_SESSION['flash']='Änderungen gespeichert.';header('Location: ./',true,303);exit;
             }catch(InvalidArgumentException $e){$error=$e->getMessage();}
@@ -72,6 +73,11 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }
 }
 $auth=!empty($_SESSION['auth']);if($auth)$_SESSION['last']=time();
+if(isset($_GET['media'])){
+    if(!$auth){http_response_code(404);exit;}
+    try{$club=cd_text($_GET['club']??'',50,true);$id=filter_var($_GET['media'],FILTER_VALIDATE_INT);if(!$id||$id<1)throw new RuntimeException('Bild fehlt.');$png=cd_media_get($db,$club,$id,$scope);if($png===null)throw new RuntimeException('Bild fehlt.');header('Content-Type: image/png');echo $png;exit;}
+    catch(Throwable $e){http_response_code(404);exit;}
+}
 if(isset($_GET['logo'])){
     if(!$auth){http_response_code(404);exit;}
     try{$club=cd_text($_GET['logo'],50,true);cd_scope($scope,$club);$q=$db->prepare('SELECT logo FROM club_brand WHERE club=?');$q->execute([$club]);$logo=$q->fetchColumn();if(!is_string($logo)||$logo==='')throw new RuntimeException('Logo fehlt.');header('Content-Type: image/png');echo $logo;exit;}
@@ -124,6 +130,15 @@ function brandField(array $c,array $b,string $csrf):void{
     <label class="full">Begrüßungstext<textarea name="welcome" maxlength="1000" rows="3"><?=cd_h($b['welcome'])?></textarea></label>
     <button>Design speichern</button></form><?php
 }
+function mediaField(array $c,array $row,string $csrf):void{
+    ?><form method="post" enctype="multipart/form-data" class="profile media-form">
+    <input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="media"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>"><input type="hidden" name="id" value="<?=(int)$row['id']?>">
+    <?php if($row['has_image']):?><img class="media-preview" src="?media=<?=(int)$row['id']?>&amp;club=<?=rawurlencode($c['slug'])?>" alt="Bild zu <?=cd_h($row['title'])?>" loading="lazy"><?php endif?>
+    <label class="full">Bild oder Logo (PNG, JPEG, WebP; max. 2 MB)<input type="file" name="image" accept="image/png,image/jpeg,image/webp" required></label>
+    <button name="intent" value="save"><?=$row['has_image']?'Bild ersetzen':'Bild hochladen'?></button>
+    <?php if($row['has_image']):?><button class="danger" name="intent" value="remove" formnovalidate>Bild entfernen</button><?php endif?>
+    </form><?php
+}
 function contentField(array $c,string $kind,array $row,string $csrf):void{
     $existing=isset($row['id']);
     ?><form method="post" class="profile">
@@ -138,7 +153,7 @@ function contentField(array $c,string $kind,array $row,string $csrf):void{
     <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
     </form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=052"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong>ADMINISTRATION</strong></header><main>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=054"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong>ADMINISTRATION</strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
 <?php if(!$auth):?><section class="login"><h1>Administrator-Anmeldung</h1><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="login"><label>Vereinskennung (für TENNILO leer lassen) <input name="club_login" autocomplete="username"></label><label>Passwort <input type="password" name="password" autocomplete="current-password" required></label><button>Anmelden</button></form></section>
@@ -152,7 +167,7 @@ function contentField(array $c,string $kind,array $row,string $csrf):void{
 <details class="subpanel"><summary>Logo, Farben & Begrüßung</summary><?php brandField($club,cd_brand($db,$club['slug']),$csrf)?></details>
 <?php foreach(CD_CONTENT as $kind=>$label):if(!in_array($kind,json_decode($club['modules'],true)?:[],true))continue;$rows=cd_content_rows($db,$club['slug'],$kind);?><details class="subpanel"><summary><?=cd_h($label)?> <small><?=count($rows)?> Einträge</small></summary>
 <details class="entry"><summary>+ Eintrag anlegen</summary><?php contentField($club,$kind,[],$csrf)?></details>
-<?php foreach($rows as $row):?><details class="entry"><summary><?=cd_h($row['title'])?> <small><?=$row['enabled']?'Freigegeben':'Entwurf'?></small></summary><?php contentField($club,$kind,$row,$csrf)?></details><?php endforeach?></details><?php endforeach?>
+<?php foreach($rows as $row):?><details class="entry"><summary><?=cd_h($row['title'])?> <small><?=$row['enabled']?'Freigegeben':'Entwurf'?></small></summary><?php contentField($club,$kind,$row,$csrf);mediaField($club,$row,$csrf)?></details><?php endforeach?></details><?php endforeach?>
 <h2>Bildschirme</h2><p>Jeder Bildschirm erhält eigene Module, Betriebsart, Sprache und Wechselzeit. Noch keine Verbindung zum Live-Gerät.</p>
 <details class="subpanel"><summary>+ Bildschirm anlegen</summary><?php displayField($club,[],true,$csrf)?></details>
 <?php foreach($displays as $d):?><details class="subpanel"><summary><?=cd_h($d['name'])?> <small><?=cd_h($d['mode'])?> · <?=$d['enabled']?'Aktiv':'Deaktiviert'?> · Entwurf</small></summary><?php displayField($club,$d,false,$csrf)?></details><?php endforeach?>
