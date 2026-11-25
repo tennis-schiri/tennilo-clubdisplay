@@ -27,6 +27,7 @@ jobs:
           FTP_USER: ${{ secrets.NTC_FTP_USER }}
           FTP_PASSWORD: ${{ secrets.NTC_FTP_PASSWORD }}
           ADMIN_PIN: ${{ secrets.NTC_ADMIN_PIN }}
+          EBUSY_CLIENT_ID: ${{ secrets.NTC_EBUSY_CLIENT_ID }}
           DOMAIN: clubdisplay.ntc93.de
           RELEASE_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: bash scripts/deploy.sh

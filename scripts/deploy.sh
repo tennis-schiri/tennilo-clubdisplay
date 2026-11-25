@@ -9,6 +9,7 @@ php -l public/nuliga.php
 php tests/nuliga-test.php
 php -l public/events.php
 php -l public/admin-pin.php
+php -l public/terminal.php
 php tests/events-test.php
 files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/app.css assets/app.js index.html)
 test -s public/nuliga.php
@@ -34,6 +35,13 @@ status="$(curl --silent --show-error --max-time 25 --output "$tmp/admin-response
 [[ "$status" == 405 ]] || { echo "::error::Admin endpoint not executing correctly"; exit 1; }
 php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||($v["ok"]??null)!==false)exit(1);' "$tmp/admin-response"
 if [[ -z "${ADMIN_PIN:-}" ]]; then echo "::notice::Admin PIN not configured; app fullscreen exit remains locked."; fi
+if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
+  php -r '$client=getenv("EBUSY_CLIENT_ID")?: ""; if($client!==""&&!preg_match("/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iD",$client)){fwrite(STDERR,"Invalid eBuSy client ID format\n");exit(1);} file_put_contents($argv[1],str_replace("__CLUBDISPLAY_EBUSY_CLIENT__",$client,file_get_contents("public/terminal.php")));' "$tmp/terminal.php"
+  php -l "$tmp/terminal.php"
+  upload "$tmp/terminal.php" terminal.php
+  curl --fail --silent --show-error --max-time 25 --output "$tmp/terminal-status" "https://${DOMAIN}/terminal.php?status=1"
+  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||($v["ready"]??null)!==false||!is_bool($v["configured"]??null))exit(1); echo "Terminal endpoint configured: ".($v["configured"]?"yes":"no")."\n";' "$tmp/terminal-status"
+fi
 upload public/nuliga.php nuliga.php
 # Dynamic PHP must be executed, never served as source.
 curl --fail --silent --show-error --max-time 40 --output "$tmp/feed" "https://${DOMAIN}/nuliga.php?release=${RELEASE_ID}"
