@@ -69,6 +69,10 @@ post "$other" "$base?device=1" 200 -H 'Content-Type: application/json' --data "{
 php -r '$s=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if($s["club"]!=="NTC 93"||$s["content"][0]["title"]!=="HTTP-Test"||isset($s["token_hash"]))exit(1);' "$tmp/body"
 post "$other" "$base?device=1" 200 -H 'Content-Type: application/json' --data "{\"action\":\"image\",\"token\":\"$token\",\"id\":$id}"
 php -r 'if(getimagesize($argv[1])["mime"]!=="image/png")exit(1);' "$tmp/body"
+if [[ "${CD_BROWSER_TEST:-0}" == 1 ]]; then
+  mkdir -p artifacts
+  CD_TEST_BASE="$base" CD_TEST_TOKEN="$token" node tests/admin-browser-test.cjs
+fi
 get "$club" "$url" 200; t="$(csrf)"
 grep -Fq 'Letzter Kontakt' "$tmp/body"
 ! grep -Fq "$token" "$tmp/body"
