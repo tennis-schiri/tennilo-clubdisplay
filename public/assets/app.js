@@ -10,12 +10,50 @@ en:{club:pilot?'NTC 93 · Pilot':'TENNILO · Development demo',info:'Information
 };
 const t=()=>dictionary[lang];
 const screens=['welcome','calendar','teams','news','partner'];
+let leagueData=null, matchFilter='home', matchPage=0, fetching=false;
+const sourceUrl='https://tvbb.liga.nu/cgi-bin/WebObjects/nuLigaTENDE.woa/wa/clubMeetings?club=36381';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tr=(de,en)=>lang==='de'?de:en;
+function matchView(){
+  const d=leagueData, info=view==='info', filter=info?'home':matchFilter;
+  const headings={home:tr('Nächste Heimspiele','Upcoming home matches'),away:tr('Nächste Auswärtsspiele','Upcoming away matches'),all:tr('Alle kommenden Spiele','All upcoming matches'),results:tr('Letzte Ergebnisse','Recent results')};
+  const tabs=info?'':'<div class="tabs">'+Object.keys(headings).map(k=>'<button data-action="match:'+k+'" aria-pressed="'+(k===filter)+'">'+({home:tr('Heim','Home'),away:tr('Auswärts','Away'),all:tr('Alle','All'),results:tr('Ergebnisse','Results')}[k])+'</button>').join('')+'</div>';
+  const title='<h1>'+headings[filter]+'</h1>'+tabs;
+  if(!d)return title+'<div class="panel"><p>'+tr('nuLiga-Daten werden geladen …','Loading nuLiga data …')+'</p></div>';
+  const source='<p class="match-source">'+tr('Quelle: nuLiga · TVBB','Source: nuLiga · TVBB')+(d.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info?' · <a href="'+sourceUrl+'" target="_blank" rel="noopener noreferrer">'+tr('Original-Spielplan','Original schedule')+'</a>':'')+'</p>';
+  if(d.status==='unavailable')return title+'<div class="panel"><p>'+tr('nuLiga momentan nicht verfügbar.','nuLiga currently unavailable.')+'</p></div>'+source;
+  const warning=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Daten – Aktualisierung fehlgeschlagen.','Cached data – refresh failed.')+'</p>':'';
+  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const future=m=>m.date.slice(0,10)>=day;
+  let rows=d.matches.filter(m=>filter==='results'?!!m.score:future(m)&&!m.score&&(filter==='all'||(filter==='home'?m.isHome:!m.isHome)));
+  if(filter==='results')rows=rows.slice().reverse();
+  const size=info?4:6, pages=Math.max(1,Math.ceil(rows.length/size)), page=info?0:Math.min(matchPage,pages-1);
+  if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine passenden Begegnungen im von nuLiga gelieferten Zeitraum.','No matching fixtures in the period supplied by nuLiga.')+'</p>'+(d.range?'<p>'+esc(d.range.from)+' – '+esc(d.range.to)+'</p>':'')+'</div>'+source;
+  const cards=rows.slice(page*size,(page+1)*size).map(m=>{
+    const date=new Date(m.date).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return '<article class="match-row"><div class="match-meta"><strong>'+esc(date)+'</strong><span>'+esc(m.league)+' · '+(m.isHome?tr('Heim','Home'):tr('Auswärts','Away'))+'</span></div><div class="match-teams"><strong>'+esc(m.home)+'</strong><span>'+esc(m.away)+'</span></div><strong class="match-score">'+(m.score?esc(m.score):'–')+'</strong></article>';
+  }).join('');
+  const pagination=!info&&pages>1?'<div class="actions match-pages"><button data-action="match-prev" '+(page===0?'disabled':'')+'>‹</button><span>'+(page+1)+' / '+pages+'</span><button data-action="match-next" '+(page===pages-1?'disabled':'')+'>›</button></div>':'';
+  return title+warning+'<div class="panel match-list">'+cards+'</div>'+pagination+source;
+}
+async function refreshLeague(){
+  if(fetching)return;fetching=true;
+  try{
+    const response=await fetch('nuliga.php',{cache:'no-store',signal:AbortSignal.timeout(25000)});
+    if(!response.ok)throw Error('HTTP');
+    const data=await response.json();
+    if(!Array.isArray(data.matches)||!['ok','stale','unavailable'].includes(data.status))throw Error('invalid feed');
+    leagueData=data;
+  }catch{leagueData=leagueData&&leagueData.status!=='unavailable'?{...leagueData,status:'stale'}:{status:'unavailable',matches:[]};}
+  finally{fetching=false;if(view==='teams'||(view==='info'&&screens[slide]==='teams'))render();}
+}
+setInterval(refreshLeague,300000);
 function button(label,action,cls=''){return '<button type="button" class="'+cls+'" data-action="'+action+'">'+label+'</button>'}
 function line(a,b){return '<div class="line"><strong>'+a+'</strong><span class="muted">'+b+'</span></div>'}
 function panel(title,names,details){return '<div class="panel"><h2>'+title+'</h2>'+names.map((n,i)=>line(n,details[i])).join('')+'</div>'}
 function hero(title,description,extra=''){return '<div class="hero"><div><h1>'+title+'</h1><p>'+description+'</p><div class="actions">'+button(t().start,'home','primary large')+'</div></div>'+extra+'</div>'}
 function courtList(){return '<div class="grid">'+[1,2,3,4].map(i=>'<button class="tile" data-action="court:'+i+'" '+(i===2?'disabled':'')+'><strong>'+t().court+' '+i+'</strong><span class="'+(i===2?'occupied':'availability')+'">'+(i===2?t().busy:t().available)+'</span><small>'+t().slot+'</small></button>').join('')+'</div>'}
-function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=l.demo;$('notice').textContent=l.notice;$('language').textContent=lang==='de'?'EN':'DE';$('fullscreen').setAttribute('aria-label',lang==='de'?'Vollbild':'Fullscreen');
+function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=tr('Platzbuchung, Termine und Meldungen sind noch Beispiele.','Court booking, events and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';$('fullscreen').setAttribute('aria-label',lang==='de'?'Vollbild':'Fullscreen');
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
 const active=view==='info'?screens[slide]:view;let html='';
 switch(active){
@@ -23,16 +61,16 @@ case 'welcome':html=hero(l.welcome,l.intro,panel(l.today,[l.court+' 1',l.court+'
 case 'home':html='<h1>'+l.welcome+'</h1><p>'+l.intro+'</p><div class="grid">'+[['courts',l.booking],['calendar',l.upcoming],['teams',l.matches],['news',l.announcements]].map(([k,v])=>button(v,k,'tile large')).join('')+'</div>';break;
 case 'courts':html='<h1>'+l.booking+'</h1><p>'+l.select+'</p>'+courtList();if(court!==null)html+='<div class="panel" style="margin-top:1rem"><h2>'+l.court+' '+court+'</h2><p>'+l.slot+'</p><div class="actions">'+button(l.confirm,'confirm','primary')+button(l.reset,'reset')+'</div><p role="status" class="message">'+message+'</p></div>';break;
 case 'calendar':html='<h1>'+l.upcoming+'</h1>'+panel(l.calendar,l.events,l.eventTimes);break;
-case 'teams':html='<h1>'+l.matches+'</h1>'+panel(l.teams,l.matchNames,l.matchDetails);break;
+case 'teams':html=matchView();break;
 case 'news':html='<h1>'+l.announcements+'</h1><div class="grid">'+l.newsItems.map(n=>'<article class="panel"><h2>'+n+'</h2><p>'+l.newsText+'</p></article>').join('')+'</div>';break;
 case 'partner':html=hero(l.partner,l.partnerText);break;
 }
 $('screen').innerHTML=html;clock();}
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
-function go(next){view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
-document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news'].includes(a))go(a);});
+function go(next){if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
+document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{last=Date.now();});
 $('language').addEventListener('click',()=>{lang=lang==='de'?'en':'de';message='';render();});
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{ /* Browser may block fullscreen. */ }});
 setInterval(()=>{const now=Date.now();clock();if(view==='info'){if(now-started>=dwell){slide=(slide+1)%screens.length;started=now;render();}$('progress').style.setProperty('--progress',Math.min(100,(now-started)/dwell*100)+'%');}else{if(now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
-render();
+render();refreshLeague();

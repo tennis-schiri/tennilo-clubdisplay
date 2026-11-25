@@ -5,7 +5,10 @@ set -euo pipefail
 case "$DOMAIN" in clubdisplay.tennilo.de|clubdisplay.ntc93.de) ;; *) exit 1;; esac
 [[ "$FTP_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'FTP host must be a hostname'; exit 1; }
 node --check public/assets/app.js
+php -l public/nuliga.php
+php tests/nuliga-test.php
 files=(assets/clubdisplay.png assets/favicon.png assets/app.css assets/app.js index.html)
+test -s public/nuliga.php
 for f in "${files[@]}"; do test -s "public/$f"; done
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -19,6 +22,10 @@ verify() {
 printf '%s\n' "${DOMAIN}:${RELEASE_ID}" > "$tmp/check"
 upload "$tmp/check" clubdisplay-deploy-check.txt
 verify "$tmp/check" clubdisplay-deploy-check.txt
+upload public/nuliga.php nuliga.php
+# Dynamic PHP must be executed, never served as source.
+curl --fail --silent --show-error --max-time 40 --output "$tmp/feed" "https://${DOMAIN}/nuliga.php?release=${RELEASE_ID}"
+php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!isset($v["status"],$v["matches"])||!is_array($v["matches"])) exit(1); echo "nuLiga feed: ".$v["status"]." / ".count($v["matches"])." matches\n";' "$tmp/feed"
 for f in "${files[@]}"; do
   echo "Deploy: $f"
   upload "public/$f" "$f"
