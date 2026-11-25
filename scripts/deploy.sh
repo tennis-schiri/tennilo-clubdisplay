@@ -7,6 +7,7 @@ case "$DOMAIN" in clubdisplay.tennilo.de|clubdisplay.ntc93.de) ;; *) exit 1;; es
 node --check public/assets/app.js
 node tests/info-countdown-test.cjs
 node tests/occupancy-test.cjs
+node tests/match-greeting-test.cjs
 php -l public/nuliga.php
 php tests/nuliga-test.php
 php -l public/events.php

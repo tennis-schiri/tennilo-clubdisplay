@@ -137,3 +137,6 @@ Namenorientierte Belegungsansicht: neun flache Court-Zeilen mit kleinen Platzgra
 
 ## 0.4.22 – Hallenplatzgrafiken
 Hallenplätze ebenfalls sandfarben wie die Außenplätze; Gruppenüberschriften bleiben getrennt.
+
+## 0.4.23 – Zeitgesteuerte Begrüßung der Heimmannschaften
+Für jedes NTC-Heimspiel ohne Ergebnis wird eine eigene Begrüßungsfolie in die Infomodus-Rotation aufgenommen, exakt ab geplantem Beginn minus 30 Minuten bis (exklusiv) plus 30 Minuten. Parallelspiele erhalten eigene Folien; Auswärtsspiele, abgesagte (sofern im Feed markiert) und abgeschlossene Begegnungen werden ausgeschlossen. Bei Ablauf verschwindet die Folie auch während einer Pause. Begegnung, Spielklasse, Uhrzeit und bestätigte Platznummern werden groß dargestellt. Der bestehende nuLiga-Feed enthält derzeit keine Platzzuordnung und kein separates Absagefeld; bis zur eBuSy-Integration wird die fehlende Zuordnung ausdrücklich angezeigt. Die Rotationsreihenfolge wird dynamisch angepasst, ohne andere Folien unnötig neu zu starten. Automatische Tests für Zeitgrenzen, Mehrfachspiele, fehlende Plätze und Ablauf. Optische Kontrolle ausstehend.

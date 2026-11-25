@@ -12,12 +12,57 @@ de:{club:pilot?'Neuenhagener Tennisclub 93 e. V.':'TENNILO · Entwicklungsdemo',
 en:{club:pilot?'Neuenhagener Tennisclub 93 e. V.':'TENNILO · Development demo',info:'Information mode',touch:'Interactive mode',demo:'PROTOTYPE · SAMPLE DATA',notice:'No real bookings or club data.',welcome:'Welcome to the clubhouse',intro:'Everything you need to know about your tennis club. Touch the screen to explore.',start:'Open touch menu',today:'Today at the club',courts:'Courts',calendar:'Events',teams:'Teams',news:'Club news',home:'Home',back:'Info mode',available:'Available',busy:'Occupied',court:'Court',booking:'Court booking',select:'Select a court',slot:'Example time: 15:00–16:00',confirm:'Simulate booking',success:'Simulation successful. Nothing was actually booked or stored.',upcoming:'Upcoming events',events:['Club training','Team match day','Club tournament'],eventTimes:['Today · 17:00','Saturday · 10:00','Sunday · 11:00'],matches:'Team matches',matchNames:['Men 30','Women','Junior U14'],matchDetails:['Home · Saturday','Away · Sunday','Training · Wednesday'],announcements:'Club updates',newsItems:['Welcome to the new season','Current court information','Club event information'],newsText:'Example club announcement. Future content will be managed centrally.',partner:'Partners & sponsors',partnerText:'Reserved for approved club advertising.',reset:'Back to selection'}
 };
 const t=()=>dictionary[lang];
-const screens=['welcome','weather','calendar','teams','news','partner'];
+const baseScreens=['welcome','weather','calendar','teams','news','partner'];
+const screens=[...baseScreens];
+let greetingMatches=new Map();
 let leagueData=null, matchFilter='home', matchPage=0, fetching=false;
 const sourceUrl='https://tvbb.liga.nu/cgi-bin/WebObjects/nuLigaTENDE.woa/wa/clubMeetings?club=36381';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tr=(de,en)=>lang==='de'?de:en;
 function shortClub(name){return String(name??'').replace(/^Neuenhagener\s+(?:Tennisclub|TC)\s+93(?=\s|$)/iu,'NTC 93');}
+// Match welcome slides are generated only for the scheduled 60-minute window.
+function matchGreetingKey(m){
+  return 'greeting:'+JSON.stringify([m.date,m.home,m.away,m.league]);
+}
+function activeMatchGreetings(data,now=Date.now()){
+  if(!data||data.status==='unavailable'||!Array.isArray(data.matches))return [];
+  const unique=new Map();
+  for(const m of data.matches){
+    if(m.isHome!==true||m.score||m.cancelled===true||m.cancelled==='true'||typeof m.home!=='string'||typeof m.away!=='string'||!m.home.trim()||!m.away.trim())continue;
+    const start=Date.parse(m.date);
+    if(!Number.isFinite(start)||now<start-1800000||now>=start+1800000)continue;
+    unique.set(matchGreetingKey(m),m);
+  }
+  return [...unique.values()].sort((a,b)=>Date.parse(a.date)-Date.parse(b.date)||String(a.league).localeCompare(String(b.league)));
+}
+function syncMatchGreetings(now=Date.now()){
+  const active=pilot?activeMatchGreetings(leagueData,now):[];
+  const previous=screens[slide];
+  const before=greetingMatches.get(previous);
+  greetingMatches=new Map(active.map(m=>[matchGreetingKey(m),m]));
+  const next=[baseScreens[0],...greetingMatches.keys(),...baseScreens.slice(1)];
+  const changed=next.length!==screens.length||next.some((key,i)=>screens[i]!==key);
+  if(changed){
+    screens.splice(0,screens.length,...next);
+    const index=screens.indexOf(previous);
+    slide=index>=0?index:0;
+    if(view==='info'&&index<0){
+      started=now;infoElapsed=0;infoPaused=false;infoPauseUntil=0;
+      render();
+    }else if(view==='info')infoControls();
+  }
+  const current=greetingMatches.get(screens[slide]);
+  if(view==='info'&&before&&current&&JSON.stringify(before)!==JSON.stringify(current))render();
+}
+function matchGreetingView(key){
+  const m=greetingMatches.get(key);
+  if(!m)return '';
+  const identity=teamAndLeague(m);
+  const time=new Intl.DateTimeFormat(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(m.date));
+  const courts=fixtureCourtNumbers(m.courts);
+  const courtList=courts.length?'<div class="greeting-courts">'+courts.map(n=>'<div class="greeting-court"><svg viewBox="0 0 120 68" aria-hidden="true"><rect x="1" y="1" width="118" height="66" rx="8" fill="#96603e"/><g fill="none" stroke="#fff" stroke-width="1.4"><rect x="8" y="8" width="104" height="52"/><path d="M8 16h104M8 52h104M32 16v36M88 16v36M32 34h56M60 4v60"/></g><circle cx="60" cy="34" r="18" fill="#073538"/><text x="60" y="35" dominant-baseline="middle" text-anchor="middle" font-size="24" font-weight="800" fill="#fff">'+esc(n)+'</text></svg><strong>'+tr('Platz ','Court ')+esc(n)+'</strong></div>').join('')+'</div>':'<p class="greeting-unassigned">'+tr('Platzzuordnung noch nicht verfügbar','Court assignment not yet available')+'</p>';
+  return '<div class="greeting-hero"><div class="greeting-kicker"><span>'+tr('HEIMSPIEL','HOME MATCH')+'</span><span>'+esc(time)+(lang==='de'?' Uhr':'')+'</span></div><div class="greeting-welcome">'+tr('Herzlich willkommen beim NTC 93!','Welcome to NTC 93!')+'</div><div class="greeting-category">'+esc(identity.team)+(identity.league?' · '+esc(identity.league):'')+'</div><div class="greeting-pair"><div class="greeting-home"><small>'+tr('Heim','Home')+'</small><strong>'+esc(shortClub(m.home))+'</strong></div><div class="greeting-versus">–</div><div class="greeting-away"><small>'+tr('Gast','Away')+'</small><strong>'+esc(shortClub(m.away))+'</strong></div></div><div class="greeting-assignment"><h2>'+tr('Eure Plätze','Your courts')+'</h2>'+courtList+'</div><p class="greeting-farewell">'+tr('Wir wünschen euch ein schönes und faires Match!','Have a great and fair match!')+'</p></div>';
+}
 function teamAndLeague(m){
   const full=String(m.league??'').trim();
   const match=full.match(/^(U\d{1,2}\s*[mw]?|[DH](?:\s*\d{2})?[mw]?|Mid|Mixed)(?=\s|$)\s*(.*)$/iu);
@@ -86,7 +131,7 @@ async function refreshLeague(){
     if(!Array.isArray(data.matches)||!['ok','stale','unavailable'].includes(data.status))throw Error('invalid feed');
     leagueData=data;
   }catch{leagueData=leagueData&&leagueData.status!=='unavailable'?{...leagueData,status:'stale'}:{status:'unavailable',matches:[]};}
-  finally{fetching=false;if(view==='teams'||(view==='info'&&screens[slide]==='teams'))render();}
+  finally{fetching=false;syncMatchGreetings();if(view==='teams'||(view==='info'&&screens[slide]==='teams'))render();}
 }
 setInterval(refreshLeague,300000);
 let eventData=null,eventPage=0,eventFetching=false;
@@ -433,8 +478,8 @@ function toggleInfoPause(){
 }
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();infoControls();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',pilot&&active==='partner');document.body.classList.toggle('occupancy-screen',pilot&&active==='welcome');let html='';
-switch(active){
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',pilot&&active==='partner');document.body.classList.toggle('occupancy-screen',pilot&&active==='welcome');document.body.classList.toggle('greeting-screen',pilot&&greetingMatches.has(active));let html='';
+if(greetingMatches.has(active))html=matchGreetingView(active);else switch(active){
 case 'welcome':html=pilot?occupancyView():hero(l.welcome,l.intro,panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available]));break;
 case 'home':{
   const tiles=[
@@ -586,7 +631,7 @@ adminForm.addEventListener('submit',async e=>{
   finally{$('admin-submit').disabled=false;if(adminDialog.open)adminPin.focus();}
 });
 syncFullscreen();
-setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+setInterval(()=>{const now=Date.now();clock();syncMatchGreetings(now);if(adminDialog.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
