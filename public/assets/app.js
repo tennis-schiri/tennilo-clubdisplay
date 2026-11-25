@@ -12,7 +12,7 @@ de:{club:pilot?'Neuenhagener Tennisclub 93 e. V.':'TENNILO · Entwicklungsdemo',
 en:{club:pilot?'Neuenhagener Tennisclub 93 e. V.':'TENNILO · Development demo',info:'Information mode',touch:'Interactive mode',demo:'PROTOTYPE · SAMPLE DATA',notice:'No real bookings or club data.',welcome:'Welcome to the clubhouse',intro:'Everything you need to know about your tennis club. Touch the screen to explore.',start:'Open touch menu',today:'Today at the club',courts:'Courts',calendar:'Events',teams:'Teams',news:'Club news',home:'Home',back:'Info mode',available:'Available',busy:'Occupied',court:'Court',booking:'Court booking',select:'Select a court',slot:'Example time: 15:00–16:00',confirm:'Simulate booking',success:'Simulation successful. Nothing was actually booked or stored.',upcoming:'Upcoming events',events:['Club training','Team match day','Club tournament'],eventTimes:['Today · 17:00','Saturday · 10:00','Sunday · 11:00'],matches:'Team matches',matchNames:['Men 30','Women','Junior U14'],matchDetails:['Home · Saturday','Away · Sunday','Training · Wednesday'],announcements:'Club updates',newsItems:['Welcome to the new season','Current court information','Club event information'],newsText:'Example club announcement. Future content will be managed centrally.',partner:'Partners & sponsors',partnerText:'Reserved for approved club advertising.',reset:'Back to selection'}
 };
 const t=()=>dictionary[lang];
-const baseScreens=['welcome','weather','calendar','teams','news','partner'];
+const baseScreens=['welcome','weather','calendar','teams','news',...(pilot?['restaurant']:[]),'partner'];
 const screens=[...baseScreens];
 let greetingMatches=new Map();
 let leagueData=null, matchFilter='home', matchPage=0, fetching=false;
@@ -460,6 +460,18 @@ function occupancyView(){
 function refreshOccupancyHour(now){
   if(view==='info'&&screens[slide]==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();
 }
+// NTC-only restaurant slide. Official Due Fratelli assets and published regular hours.
+function restaurantView(){
+  const asset='https://due-fratelli-neuenhagen.de/media/';
+  const image=(file,alt,cls)=>'<img class="'+cls+'" src="'+asset+file+'" alt="'+esc(alt)+'" decoding="async" referrerpolicy="no-referrer">';
+  const dateParts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const part=k=>dateParts.find(p=>p.type===k)?.value;
+  const date=part('year')+'-'+part('month')+'-'+part('day');
+  const festive=date>='2026-11-25'&&date<='2027-01-01';
+  const special=festive?'<div class="df-special"><strong>'+tr('Festtage','Festive season')+'</strong><span>'+tr('24.12. geschlossen · 25./26.12. 12–22 Uhr · 31.12./01.01. 14–22 Uhr','24 Dec closed · 25/26 Dec 12–22 · 31 Dec/1 Jan 14–22')+'</span></div>':'';
+  const event=date>='2026-11-25'&&date<='2026-12-06'?'<div class="df-special"><strong>06.12.</strong><span>'+tr('Geschlossene Veranstaltung bis ca. 16 Uhr','Private event until approximately 16:00')+'</span></div>':'';
+  return '<article class="df-display"><div class="df-display-photo">'+image('restaurant-innen.jpg',tr('Gastraum des Due Fratelli','Due Fratelli dining room'),'df-room-photo')+'<div class="df-photo-caption"><span>Benvenuti!</span><strong>'+tr('Italienische Küche direkt am Tennisplatz.','Italian cuisine right by the tennis courts.')+'</strong></div></div><div class="df-display-copy"><div class="df-logo-wrap">'+image('logo.jpg','Trattoria Due Fratelli','df-original-logo')+'</div><span class="df-eyebrow">'+tr('GASTRONOMIE IM NTC 93','DINING AT NTC 93')+'</span><h1>'+tr('Nach dem Tennis: buon appetito!','After tennis: buon appetito!')+'</h1><p class="df-intro">'+tr('Steinofenpizza, Pasta und italienische Spezialitäten.','Stone-baked pizza, pasta and Italian specialities.')+'</p><div class="df-hours"><h2>'+tr('Öffnungszeiten','Opening hours')+'</h2><div><span>'+tr('Montag','Monday')+'</span><strong>'+tr('Ruhetag','Closed')+'</strong></div><div><span>'+tr('Dienstag – Freitag','Tuesday – Friday')+'</span><strong>14:00–22:00</strong></div><div><span>'+tr('Samstag – Sonntag','Saturday – Sunday')+'</span><strong>12:00–22:00</strong></div></div><div class="df-specials">'+event+special+'</div><div class="df-contact"><div><small>'+tr('Tischreservierung','Table reservations')+'</small><strong>03342 203823</strong></div><span>due-fratelli-neuenhagen.de</span></div><small class="df-hours-note">'+tr('An Feiertagen können die Zeiten abweichen.','Hours may vary on public holidays.')+'</small></div><div class="df-food-strip">'+image('gericht-pizza.jpg',tr('Pizza von Due Fratelli','Due Fratelli pizza'),'df-food-photo')+'<div class="df-food-caption"><strong>Pizza al Mattone</strong><span>'+tr('Frisch aus dem Steinofen','Fresh from the stone oven')+'</span></div>'+image('gericht-pasta.jpg',tr('Pasta von Due Fratelli','Due Fratelli pasta'),'df-food-photo')+'<div class="df-food-caption"><strong>Pasta</strong><span>'+tr('Italienische Klassiker','Italian classics')+'</span></div></div></article>';
+}
 function infoControls(){
   const visible=view==='info';
   $('info-controls').hidden=!visible;$('info-controls').setAttribute('aria-label',tr('Informationsmodus','Information mode'));
@@ -518,7 +530,7 @@ function toggleInfoPause(){
 }
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();infoControls();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active));let html='';
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active));document.body.classList.toggle('restaurant-screen',pilot&&active==='restaurant');let html='';
 if(greetingMatches.has(active))html=matchGreetingView(active);else switch(active){
 case 'welcome':html=occupancyView();break;
 case 'home':{
@@ -537,6 +549,7 @@ case 'calendar':html=eventView();break;
 case 'teams':html=matchView();break;
 case 'weather':html=weatherView();if(!radarBusy)refreshRadar();break;
 case 'news':html=newsView();break;
+case 'restaurant':html=pilot?restaurantView():'';break;
 case 'partner':html=sponsorView();break;
 }
 $('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';const embeddedBooking=pilot&&active==='courts',readingNews=active==='news'&&view==='news'&&!!openedNews;document.body.classList.toggle('news-reading',readingNews);$('screen').innerHTML=embeddedBooking||readingNews?html:'<div class="fit-content">'+html+'</div>';if(!embeddedBooking&&!readingNews)fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
