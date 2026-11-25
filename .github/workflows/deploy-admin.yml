@@ -1,0 +1,49 @@
+name: ClubDisplay – Admin-Backend manuell veröffentlichen
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: clubdisplay-admin
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Admin-Backend prüfen
+        run: |
+          php -l public/admin/index.php
+          php -l public/admin/lib.php
+          php tests/admin-test.php
+      - name: Nur Admin-Dateien per FTPS übertragen
+        env:
+          FTP_HOST: ${{ secrets.TENNILO_FTP_HOST }}
+          FTP_USER: ${{ secrets.TENNILO_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.TENNILO_FTP_PASSWORD }}
+          ADMIN_PASSWORD: ${{ secrets.TENNILO_ADMIN_PASSWORD }}
+          ADMIN_STORAGE: ${{ secrets.TENNILO_ADMIN_STORAGE_DIR }}
+        run: |
+          set -euo pipefail
+          : "${FTP_HOST:?}" "${FTP_USER:?}" "${FTP_PASSWORD:?}" "${ADMIN_PASSWORD:?Admin password missing}" "${ADMIN_STORAGE:?Private storage directory missing}"
+          [[ "$FTP_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          php -r '$p=getenv("ADMIN_PASSWORD"); $s=getenv("ADMIN_STORAGE"); if(strlen($p)<16||strlen($p)>72||!str_starts_with($s,"/"))exit(1); $hash=password_hash($p,PASSWORD_BCRYPT); if(!$hash)exit(1); file_put_contents($argv[1],str_replace(["__CD_ADMIN_PASSWORD_HASH__","__CD_ADMIN_STORAGE_B64__"],[$hash,base64_encode($s)],file_get_contents("public/admin/index.php")));' "$tmp/index.php"
+          php -l "$tmp/index.php"
+          upload() { curl --fail --silent --show-error --ssl-reqd --ftp-pasv --ftp-create-dirs --connect-timeout 15 --max-time 90 --user "$FTP_USER:$FTP_PASSWORD" --upload-file "$1" "ftp://$FTP_HOST:21/$2"; }
+          printf '%s\n' "clubdisplay.tennilo.de:admin:${GITHUB_RUN_ID}" > "$tmp/check"
+          upload "$tmp/check" clubdisplay-admin-deploy-check.txt
+          curl --fail --silent --show-error --max-time 30 "https://clubdisplay.tennilo.de/clubdisplay-admin-deploy-check.txt?run=${GITHUB_RUN_ID}" -o "$tmp/remote"
+          cmp "$tmp/check" "$tmp/remote"
+          upload public/admin/lib.php admin/lib.php
+          upload public/admin/admin.css admin/admin.css
+          upload "$tmp/index.php" admin/index.php
+          curl --fail --silent --show-error --max-time 30 "https://clubdisplay.tennilo.de/admin/" -o "$tmp/login"
+          grep -Fq 'Administrator-Anmeldung' "$tmp/login"
+          ! grep -Fq 'Vereinsverwaltung' "$tmp/login"
+          echo 'Admin login reachable; authenticated browser test still required.'
