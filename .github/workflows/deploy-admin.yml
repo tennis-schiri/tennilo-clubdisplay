@@ -20,6 +20,7 @@ jobs:
           php -l public/admin/index.php
           php -l public/admin/lib.php
           php -l public/admin/managed.php
+          php -l public/admin/providers.php
           php -l public/admin/player.php
           node --check public/admin/player.js
           php -r 'if(!extension_loaded("gd")){fwrite(STDERR,"GD required for media tests\n");exit(1);}'
@@ -63,6 +64,7 @@ jobs:
           upload "$tmp/guard" clubdisplay-admin/.deployment-verified
           deny "clubdisplay-admin/.deployment-verified"
           echo 'Storage HTTP access denied; deploying backend.'
+          upload public/admin/providers.php admin/providers.php
           upload public/admin/managed.php admin/managed.php
           upload public/admin/player.php admin/player.php
           upload public/admin/player.css admin/player.css
