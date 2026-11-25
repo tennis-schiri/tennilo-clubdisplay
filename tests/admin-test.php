@@ -129,3 +129,15 @@ check(!isset(cd_snapshot_feeds($db,cd_snapshot($db,'ntc93','managed-one','ntc93'
 cd_save_display($db,array_replace($screen,['mode'=>'INTERACTIVE','modules'=>['welcome','courts']]),false,'ntc93');
 check(cd_snapshot_feeds($db,cd_snapshot($db,'ntc93','managed-one','ntc93'),'ntc93')['booking_url']==='https://clubdisplay.ntc93.de/terminal.php');
 echo "Provider validation, public network restrictions, generic feed parsers and interactive booking scope passed\n";
+
+check(cd_amount('19,90')===1990&&cd_amount('0')===0&&cd_amount('')===null&&cd_amount('12.5')===1250);
+try{cd_amount('1.000,00');throw new LogicException('Invalid amount accepted');}catch(InvalidArgumentException $e){}
+$bill=['club'=>'ntc93','recurring'=>'390,00','setup'=>'299','basis'=>'net','invoice_ref'=>'=FORMULA()','payment_state'=>'open'];
+cd_save_billing($db,$bill,null);check((int)cd_billing($db,'ntc93')['recurring_cents']===39000);
+try{cd_save_billing($db,$bill,'ntc93');throw new LogicException('Club changed billing');}catch(InvalidArgumentException $e){}
+$out=fopen('php://temp','w+');cd_billing_csv($db,$out);rewind($out);$csv=stream_get_contents($out);fclose($out);check(str_contains($csv,"'=FORMULA()")&&str_contains($csv,'390,00'));
+cd_audit($db,null,'contract','ntc93','managed-one');cd_audit($db,'test-club','content','ntc93',123);
+check(count(cd_audit_rows($db,'ntc93'))===1&&count(cd_audit_rows($db,'test-club'))===1);
+check(cd_audit_rows($db,'test-club')[0]['club']==='test-club');
+check(count(cd_audit_rows($db,null))===2);
+echo "Billing calculation, operator-only roles, CSV formula safety and audit isolation passed\n";
