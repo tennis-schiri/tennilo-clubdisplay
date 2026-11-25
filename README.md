@@ -216,3 +216,6 @@ Links: Admin https://github.com/tennis-schiri/tennilo-clubdisplay/actions/workfl
 
 ## Display 0.4.37 – Vereinsadmin außerhalb des Kiosks
 Der Vereinsadmin-Link wurde vollständig aus dem Footer beider öffentlichen Display-Versionen entfernt, auch außerhalb des Browser-Vollbilds. Der Vereinslogin auf der TENNILO-Produktseite und die direkten Admin-Adressen bleiben erhalten. Admin-PIN zur Vollbild-Freigabe unverändert.
+
+## Admin 0.6.3 – Individuelle zusätzliche Bildschirme
+Verwaltete Bildschirmprofile besitzen eine eigene Modulreihenfolge, eine optionale Begrüßung (leer = Vereinsbegrüßung) und optionale Anzeigezeit je Modul (leer = Profilstandard). Einzelne redaktionelle Inhalte einschließlich Bilder können für alle passenden Bildschirme oder eine explizite Auswahl innerhalb desselben Vereins freigegeben werden. Bestehende Einträge gelten weiterhin für alle passenden Bildschirme; neue Displays erhalten nur allgemeine Inhalte, nicht bereits gezielt zugewiesene. Externe automatische Feeds und strukturierte Gastronomiedaten werden über die Modulwahl gesteuert. Die Migration auf SQLite-Schema 603 ist additiv. Die klassischen NTC-/TENNILO-Displays bleiben unverändert; die Funktionen gelten für gekoppelte verwaltete Geräte und deren Vorschau.
