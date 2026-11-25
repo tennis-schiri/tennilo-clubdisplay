@@ -149,7 +149,7 @@ function matchView(){
   const cards=rows.map(m=>{
     const when=new Date(m.date),locale=lang==='de'?'de-DE':'en-GB',zone='Europe/Berlin';
     const weekday=when.toLocaleDateString(locale,{timeZone:zone,weekday:'long'});
-    const dayLabel=when.toLocaleDateString(locale,{timeZone:zone,day:'2-digit',month:'2-digit'});
+    const dayLabel=when.toLocaleDateString(locale,{timeZone:zone,day:'2-digit',month:'2-digit',year:'numeric'});
     const timeLabel=when.toLocaleTimeString(locale,{timeZone:zone,hour:'2-digit',minute:'2-digit'});
     const identity=teamAndLeague(m);
     const venueLabel=typeof m.venue==='string'?m.venue.trim():'';
@@ -189,12 +189,12 @@ function eventView(){
     const dayKey=s=>fmt(s,{year:'numeric',month:'2-digit',day:'2-digit'});
     const multi=dayKey(e.start)!==dayKey(e.end);
     const weekday=fmt(e.start,{weekday:'long'});
-    const date=fmt(e.start,{day:'2-digit',month:'2-digit'});
+    const date=fmt(e.start,{day:'2-digit',month:'2-digit',year:'numeric'});
     const time=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+(lang==='de'?' Uhr':'');
     const endTime=fmt(e.end,{hour:'2-digit',minute:'2-digit'});
     const dateRange=multi?fmt(e.start,{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})+' – '+fmt(e.end,{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}):'';
     const link=!info&&!pilot&&typeof e.url==='string'&&/^https:\/\/(?:www\.)?ntc93\.com\//i.test(e.url)?'<a class="event-link" href="'+esc(e.url)+'" target="_blank" rel="noopener noreferrer">'+tr('Details','Details')+'</a>':'';
-    const period=e.allDay?(multi?fmt(e.end,{day:'2-digit',month:'2-digit',year:'numeric'}):tr('Ganztägig','All day')):multi?fmt(e.end,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+(lang==='de'?' Uhr':''):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+endTime+(lang==='de'?' Uhr':'');
+    const period=e.allDay?(multi?fmt(e.end,{day:'2-digit',month:'2-digit',year:'numeric'}):tr('Ganztägig','All day')):multi?fmt(e.end,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+(lang==='de'?' Uhr':''):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+endTime+(lang==='de'?' Uhr':'');
     const periodLabel=multi?tr('Bis','Until'):tr('Zeitraum','Time');
     const cell=(label,value)=>'<div class="event-meta-cell"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>';
     return '<article class="fixture-card event-card'+(link?' event-card-linked':'')+'"><time class="fixture-date-block" datetime="'+esc(e.start)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(date)+'</strong><span class="fixture-time">'+esc(time)+'</span></time><div class="fixture-content event-content"><strong class="event-title">'+esc(e.title)+'</strong>'+(dateRange?'<div class="fixture-details event-details">'+esc(dateRange)+'</div>':'')+'</div><div class="event-meta">'+cell(periodLabel,period)+cell(tr('Ort','Venue'),e.venue||'–')+'</div>'+link+'</article>';
