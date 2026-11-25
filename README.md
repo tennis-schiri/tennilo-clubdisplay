@@ -191,3 +191,6 @@ Je Nachricht, Termin, Sponsor oder Gastronomieeintrag ein Bild hochladen, ersetz
 
 ## 0.4.35 – Admin-Link in der Entwicklungsdemo
 Kleiner Admin-Link im Footer von clubdisplay.tennilo.de öffnet /admin/ in einem neuen Tab. Auf dem NTC-Host und im Vollbild ausgeblendet. Keine Änderung am Passwortschutz.
+
+## 0.4.36 / Admin 0.5.5 – Getrennter Vereinslogin
+Produktseite und beide Display-Hosts verlinken ausschließlich den Vereinslogin /admin/?portal=club; NTC-Display mit zusätzlicher fester Vereinskennung verein=ntc93. Link im Display-Footer nur außerhalb des Vollbilds. Betreiberlogin /admin/ bleibt separat, eigene Session-Cookies, Betreiberpasswort wird am Vereinsportal nicht als Betreiberzugang akzeptiert. Vereinsrechte weiterhin serverseitig. NTC-Zugang muss durch TENNILO freigeschaltet sein. Noch keine Live-Anbindung der Inhaltsprofile.
