@@ -14,6 +14,21 @@ let leagueData=null, matchFilter='home', matchPage=0, fetching=false;
 const sourceUrl='https://tvbb.liga.nu/cgi-bin/WebObjects/nuLigaTENDE.woa/wa/clubMeetings?club=36381';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tr=(de,en)=>lang==='de'?de:en;
+function shortClub(name){return String(name??'').replace(/^Neuenhagener\s+(?:Tennisclub|TC)\s+93(?=\s|$)/iu,'NTC 93');}
+function teamAndLeague(m){
+  const full=String(m.league??'').trim();
+  const match=full.match(/^(U\d{1,2}\s*[mw]?|[DH](?:\s*\d{2})?[mw]?|Mid|Mixed)(?=\s|$)\s*(.*)$/iu);
+  const own=shortClub(m.isHome?m.home:m.away);
+  const suffix=own.match(/^NTC 93\s+(.+)$/u)?.[1]??'';
+  if(!match)return {team:own,league:full};
+  const key=match[1].replace(/\s+/g,'').toUpperCase();
+  let team=match[1];
+  if(/^H(?:\d{2})?$/.test(key))team=tr('Herren','Men')+(key.length>1?' '+key.slice(1):'');
+  else if(/^D(?:\d{2})?$/.test(key))team=tr('Damen','Women')+(key.length>1&&key.slice(1)!=='00'?' '+key.slice(1):'');
+  else if(/^U\d+[MW]?$/.test(key))team=key.replace(/M$/,' m').replace(/W$/,' w');
+  else if(key==='MID'||key==='MIXED')team='Mixed';
+  return {team:team+(suffix?' '+suffix:''),league:match[2]||full};
+}
 function matchView(){
   const d=leagueData, info=view==='info', filter=info?'home':matchFilter;
   const headings={home:tr('Nächste Heimspiele','Upcoming home matches'),away:tr('Nächste Auswärtsspiele','Upcoming away matches'),all:tr('Alle kommenden Spiele','All upcoming matches'),results:tr('Letzte Ergebnisse','Recent results')};
@@ -23,7 +38,9 @@ function matchView(){
   const source='<p class="match-source">'+tr('Quelle: nuLiga · TVBB','Source: nuLiga · TVBB')+(d.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info?' · <a href="'+sourceUrl+'" target="_blank" rel="noopener noreferrer">'+tr('Original-Spielplan','Original schedule')+'</a>':'')+'</p>';
   if(d.status==='unavailable')return title+'<div class="panel"><p>'+tr('nuLiga momentan nicht verfügbar.','nuLiga currently unavailable.')+'</p></div>'+source;
   const warning=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Daten – Aktualisierung fehlgeschlagen.','Cached data – refresh failed.')+'</p>':'';
-  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const dateParts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const part=k=>dateParts.find(p=>p.type===k)?.value;
+  const day=part('year')+'-'+part('month')+'-'+part('day');
   const future=m=>m.date.slice(0,10)>=day;
   let rows=d.matches.filter(m=>filter==='results'?!!m.score:future(m)&&!m.score&&(filter==='all'||(filter==='home'?m.isHome:!m.isHome)));
   if(filter==='results')rows=rows.slice().reverse();
@@ -31,7 +48,9 @@ function matchView(){
   if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine passenden Begegnungen im von nuLiga gelieferten Zeitraum.','No matching fixtures in the period supplied by nuLiga.')+'</p>'+(d.range?'<p>'+esc(d.range.from)+' – '+esc(d.range.to)+'</p>':'')+'</div>'+source;
   const cards=rows.slice(page*size,(page+1)*size).map(m=>{
     const date=new Date(m.date).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-    return '<article class="match-row"><div class="match-meta"><strong>'+esc(date)+'</strong><span>'+esc(m.league)+' · '+(m.isHome?tr('Heim','Home'):tr('Auswärts','Away'))+'</span></div><div class="match-teams"><strong>'+esc(m.home)+'</strong><span>'+esc(m.away)+'</span></div><strong class="match-score">'+(m.score?esc(m.score):'–')+'</strong></article>';
+    const identity=teamAndLeague(m);
+    const courtLabel=Array.isArray(m.courts)&&m.courts.length?m.courts.join(', '):typeof m.courts==='string'&&m.courts.trim()?m.courts:tr('nicht verfügbar','not available');
+    return '<article class="match-row"><div class="match-meta"><strong class="match-identity">'+esc(identity.team)+'</strong><span class="match-league">'+esc(identity.league)+'</span><span class="match-date">'+esc(date)+' · '+(m.isHome?tr('Heim','Home'):tr('Auswärts','Away'))+'</span></div><div class="match-teams"><strong class="match-team '+(m.isHome?'own-team':'opponent-team')+'">'+esc(shortClub(m.home))+'</strong><strong class="match-team '+(!m.isHome?'own-team':'opponent-team')+'">'+esc(shortClub(m.away))+'</strong><span class="match-court">'+tr('Platz / Plätze','Court(s)')+': '+esc(courtLabel)+'</span></div><strong class="match-score">'+(m.score?esc(m.score):'–')+'</strong></article>';
   }).join('');
   const pagination=!info&&pages>1?'<div class="actions match-pages"><button data-action="match-prev" '+(page===0?'disabled':'')+'>‹</button><span>'+(page+1)+' / '+pages+'</span><button data-action="match-next" '+(page===pages-1?'disabled':'')+'>›</button></div>':'';
   return title+warning+'<div class="panel match-list">'+cards+'</div>'+pagination+source;
