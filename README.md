@@ -225,3 +225,6 @@ Die öffentlichen Lizenznamen sind BASIC (19 €/Monat, 190 €/Jahr, Einrichtun
 
 ## Display 0.4.39 – Veranstaltungsbegrüßung
 Für jeden Kalendereintrag mit gültigem Beginn und Ende erscheint eine eigene Begrüßungsfolie ab 30 Minuten vor Beginn bis zum angegebenen Ende. Mehrere gleichzeitig stattfindende Veranstaltungen und Heimspielbegrüßungen laufen gemeinsam in der Rotation. Die Folie enthält Titel, vollständiges Datum, Zeitraum und gegebenenfalls Veranstaltungsort; abgesagte oder zeitlich ungültige Einträge werden nicht begrüßt. Die Begrüßung endet automatisch, auch bei pausierter Folie. Kalenderdaten bleiben von der verfügbaren Datenquelle abhängig.
+
+## Admin 0.6.4 – Veranstaltungsbegrüßung
+Verwaltete Geräte zeigen die zusätzliche Begrüßungsfolie nur bei aktiviertem Kalendermodul und für freigegebene Kalenderfeeds mit gültigem Start- und Endzeitpunkt. WordPress, iCalendar und NTC-Feed liefern vorhandene Endzeiten mit. Redaktionelle Datumseinträge ohne Uhrzeit werden nicht als zeitgesteuerte Begrüßung interpretiert. Die lokale Zeitsteuerung endet unabhängig vom nächsten Serverabruf.
