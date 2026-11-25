@@ -8,7 +8,7 @@ const home={date:'2027-05-09T10:00:00+02:00',home:'NTC 93',away:'Testclub',leagu
 const away={...home,isHome:false};
 const second={...home,away:'Testclub 2',league:'D30'};
 const data={status:'ok',matches:[home,away,second,{...home,score:'5:1'},{...home,cancelled:true},home]};
-const ctx=vm.createContext({Date,Intl,data,start,home,second,pilot:true,leagueData:data,baseScreens:['welcome','weather','teams'],screens:['welcome','weather','teams'],slide:1,view:'info',greetingMatches:new Map(),started:start,infoPaused:false,infoElapsed:0,infoPauseUntil:0,render(){},infoControls(){},lang:'de',tr:(de,en)=>de,esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),shortClub:s=>s,teamAndLeague:()=>({team:'Herren 30',league:'VL'}),fixtureCourtNumbers:r=>r||[]});
+const ctx=vm.createContext({Date,Intl,data,start,home,second,pilot:true,leagueData:data,baseScreens:['welcome','weather','teams'],screens:['welcome','weather','teams'],slide:1,view:'info',greetingMatches:new Map(),greetingEvents:new Map(),eventData:null,started:start,infoPaused:false,infoElapsed:0,infoPauseUntil:0,render(){},infoControls(){},lang:'de',tr:(de,en)=>de,esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),shortClub:s=>s,teamAndLeague:()=>({team:'Herren 30',league:'VL'}),fixtureCourtNumbers:r=>r||[]});
 vm.runInContext(source.slice(begin,end),ctx);
 const run=s=>vm.runInContext(s,ctx);
 assert.equal(run('activeMatchGreetings(data,start-1800001).length'),0);
@@ -29,3 +29,19 @@ run('pilot=false;syncMatchGreetings(start)');
 assert.equal(ctx.screens.length,5);
 assert.ok(run('matchGreetingView(matchGreetingKey(home)).includes("Demo-Club")'));
 console.log('Match greeting tests OK');
+
+const event={title:'Regel-Workshop <Test>',start:'2027-05-09T10:00:00+02:00',end:'2027-05-09T12:00:00+02:00',venue:'Clubhaus'};
+ctx.eventData={status:'ok',events:[event,event,{...event,cancelled:true},{...event,title:'Ohne Ende',end:event.start},{...event,title:'Ungültig',end:'invalid'}]};
+assert.equal(run('activeEventGreetings(eventData,start-1800001).length'),0);
+assert.equal(run('activeEventGreetings(eventData,start-1800000).length'),1);
+assert.equal(run('activeEventGreetings(eventData,start+7199999).length'),1);
+assert.equal(run('activeEventGreetings(eventData,start+7200000).length'),0);
+run('syncMatchGreetings(start)');
+assert.equal(ctx.screens.length,6);
+assert.ok(run('eventGreetingView(eventGreetingKey(eventData.events[0])).includes("Regel-Workshop &lt;Test&gt;")'));
+assert.ok(run('eventGreetingView(eventGreetingKey(eventData.events[0])).includes("09.05.2027 · 10:00 – 12:00 Uhr")'));
+run('slide=screens.indexOf(eventGreetingKey(eventData.events[0]));infoPaused=true;syncMatchGreetings(start+1800000)');
+assert.ok(ctx.screens[ctx.slide].startsWith('event-greeting:'));
+run('syncMatchGreetings(start+7200000)');
+assert.equal(ctx.screens[ctx.slide],'welcome');assert.equal(ctx.infoPaused,false);
+console.log('Event greetings: timing, duplicates, cancellation, escaping and rotation OK');
