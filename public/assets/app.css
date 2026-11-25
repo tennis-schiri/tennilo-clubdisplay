@@ -694,3 +694,6 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 /* Full calendar dates: keep all four year digits visible even in narrow cards. */
 .fixture-day{font-size:clamp(1rem,1.65vw,1.9rem);letter-spacing:-.035em;max-width:100%;font-variant-numeric:tabular-nums}
 @media(max-width:699px){.fixture-day{font-size:clamp(.65rem,2.6vw,1.05rem);letter-spacing:-.04em}}
+
+/* Event welcomes share the match-welcome layout; long titles remain readable. */
+.event-greeting-hero{justify-content:center;gap:clamp(.45rem,2dvh,1.5rem)}.event-greeting-title{font-size:clamp(1.65rem,5.2vw,5.2rem);line-height:1.08;font-weight:850;max-width:100%;overflow-wrap:anywhere;margin:0;color:var(--ink)}.event-greeting-period{font-size:clamp(.95rem,2.2vw,2.25rem);font-weight:750;color:var(--cyan);font-variant-numeric:tabular-nums}.event-greeting-venue{font-size:clamp(.85rem,1.6vw,1.6rem);color:var(--ink);max-width:100%;overflow-wrap:anywhere}.event-greeting-hero .greeting-farewell{margin-top:.25rem}@media(max-width:700px){.event-greeting-title{font-size:clamp(1.4rem,5vw,2rem)}.event-greeting-hero{gap:.55rem}}
