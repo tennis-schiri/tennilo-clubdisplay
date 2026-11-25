@@ -14,7 +14,7 @@ en:{club:pilot?'Neuenhagener Tennisclub 93 e. V.':'TENNILO · Development demo',
 const t=()=>dictionary[lang];
 const baseScreens=['welcome','weather','calendar','teams','news',...(pilot?['restaurant']:[]),'partner'];
 const screens=[...baseScreens];
-let greetingMatches=new Map();
+let greetingMatches=new Map(),greetingEvents=new Map();
 let leagueData=null, matchFilter='home', matchPage=0, fetching=false;
 const sourceUrl='https://tvbb.liga.nu/cgi-bin/WebObjects/nuLigaTENDE.woa/wa/clubMeetings?club=36381';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -74,12 +74,36 @@ function activeMatchGreetings(data,now=Date.now()){
   }
   return [...unique.values()].sort((a,b)=>Date.parse(a.date)-Date.parse(b.date)||String(a.league).localeCompare(String(b.league)));
 }
+function eventGreetingKey(e){
+  return 'event-greeting:'+JSON.stringify([e.title,e.start,e.end,e.venue||'']);
+}
+function activeEventGreetings(data,now=Date.now()){
+  if(!data||data.status==='unavailable'||!Array.isArray(data.events))return [];
+  const unique=new Map();
+  for(const e of data.events){
+    if(!e||typeof e.title!=='string'||!e.title.trim()||e.cancelled===true||e.cancelled==='true'||String(e.status||'').toLowerCase()==='cancelled')continue;
+    const start=Date.parse(e.start),end=Date.parse(e.end);
+    if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start||now<start-1800000||now>=end)continue;
+    unique.set(eventGreetingKey(e),e);
+  }
+  return [...unique.values()].sort((a,b)=>Date.parse(a.start)-Date.parse(b.start)||a.title.localeCompare(b.title));
+}
+function eventGreetingView(key){
+  const e=greetingEvents.get(key);if(!e)return '';
+  const locale=lang==='de'?'de-DE':'en-GB',timeZone='Europe/Berlin';
+  const date=s=>new Date(s).toLocaleDateString(locale,{timeZone,day:'2-digit',month:'2-digit',year:'numeric'});
+  const time=s=>new Date(s).toLocaleTimeString(locale,{timeZone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+  const first=date(e.start),last=date(e.end);
+  const when=e.allDay?(first===last?first:first+' – '+last)+' · '+tr('Ganztägig','All day'):first+' · '+time(e.start)+' – '+(first===last?'':last+' · ')+time(e.end)+(lang==='de'?' Uhr':'');
+  return '<div class="greeting-hero event-greeting-hero"><div class="greeting-kicker">'+tr('VERANSTALTUNG','EVENT')+'</div><div class="greeting-welcome">'+tr('Herzlich willkommen!','A warm welcome!')+'</div><h1 class="event-greeting-title">'+esc(e.title)+'</h1><div class="event-greeting-period">'+esc(when)+'</div>'+(e.venue?'<div class="event-greeting-venue">'+esc(e.venue)+'</div>':'')+'<p class="greeting-farewell">'+tr('Wir wünschen euch eine schöne Veranstaltung!','Enjoy the event!')+'</p></div>';
+}
 function syncMatchGreetings(now=Date.now()){
   const active=activeMatchGreetings(leagueData,now);
   const previous=screens[slide];
-  const before=greetingMatches.get(previous);
+  const before=greetingMatches.get(previous)||greetingEvents.get(previous);
   greetingMatches=new Map(active.map(m=>[matchGreetingKey(m),m]));
-  const next=[baseScreens[0],...greetingMatches.keys(),...baseScreens.slice(1)];
+  greetingEvents=new Map(activeEventGreetings(eventData,now).map(e=>[eventGreetingKey(e),e]));
+  const next=[baseScreens[0],...greetingMatches.keys(),...greetingEvents.keys(),...baseScreens.slice(1)];
   const changed=next.length!==screens.length||next.some((key,i)=>screens[i]!==key);
   if(changed){
     screens.splice(0,screens.length,...next);
@@ -90,7 +114,7 @@ function syncMatchGreetings(now=Date.now()){
       render();
     }else if(view==='info')infoControls();
   }
-  const current=greetingMatches.get(screens[slide]);
+  const current=greetingMatches.get(screens[slide])||greetingEvents.get(screens[slide]);
   if(view==='info'&&before&&current&&JSON.stringify(before)!==JSON.stringify(current))render();
 }
 function matchGreetingView(key){
@@ -206,7 +230,7 @@ async function refreshEvents(){
   if(eventFetching)return;eventFetching=true;
   try{const response=await fetch('events.php',{cache:'no-store',signal:AbortSignal.timeout(45000)});if(!response.ok)throw Error('HTTP');const data=await response.json();if(!Array.isArray(data.events)||!['ok','stale','unavailable'].includes(data.status))throw Error('feed');eventData=data;}
   catch{eventData=eventData&&eventData.status!=='unavailable'?{...eventData,status:'stale'}:{status:'unavailable',events:[]};}
-  finally{eventFetching=false;if(view==='calendar'||(view==='info'&&screens[slide]==='calendar'))render();}
+  finally{eventFetching=false;syncMatchGreetings();if(view==='calendar'||(view==='info'&&screens[slide]==='calendar'))render();}
 }
 setInterval(refreshEvents,300000);
 
@@ -529,8 +553,8 @@ function toggleInfoPause(){
 }
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();infoControls();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active));document.body.classList.toggle('restaurant-screen',pilot&&active==='restaurant');let html='';
-if(greetingMatches.has(active))html=matchGreetingView(active);else switch(active){
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active)||greetingEvents.has(active));document.body.classList.toggle('restaurant-screen',pilot&&active==='restaurant');let html='';
+if(greetingMatches.has(active))html=matchGreetingView(active);else if(greetingEvents.has(active))html=eventGreetingView(active);else switch(active){
 case 'welcome':html=occupancyView();break;
 case 'home':{
   const tiles=[
