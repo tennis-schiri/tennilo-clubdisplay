@@ -8,3 +8,5 @@
 .dining-form h3{margin:18px 0 0;color:#21d5db}.dining-form p{margin:0}.dining-row,.dining-offer{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));align-items:end;gap:8px;padding:12px;border:1px solid #456075;border-radius:8px}.dining-row strong{align-self:center}.dining-offer{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}.dining-row label,.dining-offer label{font-size:.85rem;min-width:0}.dining-row input,.dining-row select,.dining-offer input{min-width:0;padding:6px}.dining-row .full{grid-column:1/-1}
 
 .device-panel{padding:12px 0;border-top:1px solid #456075}.admin-action{display:inline-block;color:#21d5db;text-underline-offset:3px;font-weight:700}.device-panel .profile{margin-top:12px}button:disabled{opacity:.5;cursor:not-allowed}.panel input[readonly]{font-size:.9rem}
+
+.audit-list{margin-top:16px}.audit-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;padding:8px 0;border-top:1px solid #456075;font-size:.85rem;overflow-wrap:anywhere}.audit-row time{color:#a4becd}
