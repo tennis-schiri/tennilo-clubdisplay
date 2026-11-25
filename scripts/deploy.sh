@@ -7,7 +7,7 @@ case "$DOMAIN" in clubdisplay.tennilo.de|clubdisplay.ntc93.de) ;; *) exit 1;; es
 node --check public/assets/app.js
 php -l public/nuliga.php
 php tests/nuliga-test.php
-files=(assets/clubdisplay.png assets/favicon.png assets/app.css assets/app.js index.html)
+files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/app.css assets/app.js index.html)
 test -s public/nuliga.php
 for f in "${files[@]}"; do test -s "public/$f"; done
 tmp="$(mktemp -d)"

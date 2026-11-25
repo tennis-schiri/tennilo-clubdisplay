@@ -12,3 +12,23 @@ main{flex:1;padding:2.2rem 3vw 1rem;display:flex;flex-direction:column;gap:1rem}
 .match-row{grid-template-columns:minmax(190px,1.15fr) minmax(0,2fr) auto;gap:clamp(.8rem,2vw,2rem);padding:1rem 0}.match-meta{gap:.16rem}.match-meta .match-identity{font-size:clamp(1.25rem,2.25vw,2.4rem);line-height:1.12;color:var(--ink);overflow-wrap:anywhere}.match-meta .match-league{font-size:clamp(1rem,1.65vw,1.65rem);font-weight:700;color:var(--cyan);line-height:1.2}.match-meta .match-date{font-size:.85rem;margin-top:.2rem}.match-teams .match-team{font-size:clamp(1.2rem,2vw,2.1rem);line-height:1.18;overflow-wrap:anywhere}.match-teams .own-team{color:var(--cyan)}.match-teams .opponent-team{color:var(--ink)}.match-teams .match-court{font-size:.86rem;color:var(--muted);margin-top:.35rem}.match-score{align-self:center}@media(max-width:700px){.match-row{grid-template-columns:minmax(0,1fr) auto;gap:.6rem}.match-meta{grid-column:1/-1}.match-teams{grid-column:1}.match-score{grid-column:2}.match-meta .match-identity{font-size:1.35rem}.match-teams .match-team{font-size:1.25rem}}
 
 .match-teams .match-venue{font-size:clamp(.9rem,1.3vw,1.3rem);color:var(--muted);margin-top:.3rem;line-height:1.3}.match-venue strong{color:var(--ink);font-weight:700}
+
+/* NTC 93 club theme; the TENNILO demo is intentionally unaffected. */
+.ntc-brand-title{display:none}
+html[data-club="ntc"]{--bg:#073538;--panel:#105356;--line:#36777a;--muted:#c2dcda;--cyan:#f7dc14;--ink:#fff; color-scheme:dark}
+html[data-club="ntc"] body{background:radial-gradient(ellipse at 90% 0%,#116669 0%,#073538 60%,#062b2e 100%)}
+html[data-club="ntc"] header{background:#075357;border-bottom:3px solid #f7dc14}
+html[data-club="ntc"] .brand{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:1.1rem;row-gap:.2rem;align-items:center}
+html[data-club="ntc"] .brand img{grid-row:1/3;width:clamp(72px,8vw,112px);height:clamp(72px,8vw,112px);max-height:none;object-fit:contain;object-position:center}
+html[data-club="ntc"] .brand .ntc-brand-title{display:block;align-self:end;font-size:clamp(1.6rem,3.2vw,3.25rem);line-height:1.08;font-weight:850;letter-spacing:-.035em;color:#fff}
+html[data-club="ntc"] .ntc-brand-title small{font-size:.55em;font-weight:650;color:#f7dc14;letter-spacing:0;white-space:nowrap}
+html[data-club="ntc"] .brand #club{grid-column:2;align-self:start;color:#d8e9e7}
+html[data-club="ntc"] .panel,html[data-club="ntc"] .tile{background:linear-gradient(135deg,#146366,#0e484b);border-color:#36777a}
+html[data-club="ntc"] button{background:#145d60;border-color:#36777a}
+html[data-club="ntc"] button[aria-pressed=true],html[data-club="ntc"] button.primary{background:#f7dc14;color:#073538;border-color:#f7dc14}
+html[data-club="ntc"] nav{background:#093d40}
+html[data-club="ntc"] footer{background:#062f31}
+html[data-club="ntc"] .availability{color:#9ef1cc}
+html[data-club="ntc"] .occupied{color:#ffd7a3}
+html[data-club="ntc"] .match-teams .own-team,html[data-club="ntc"] .match-meta .match-league{color:#f7dc14}
+@media(max-width:700px){html[data-club="ntc"] .brand{column-gap:.7rem}html[data-club="ntc"] .brand img{width:68px;height:68px}html[data-club="ntc"] .brand .ntc-brand-title{font-size:1.65rem}}
