@@ -26,6 +26,7 @@ jobs:
           FTP_HOST: ${{ secrets.TENNILO_FTP_HOST }}
           FTP_USER: ${{ secrets.TENNILO_FTP_USER }}
           FTP_PASSWORD: ${{ secrets.TENNILO_FTP_PASSWORD }}
+          ADMIN_PIN: ${{ secrets.TENNILO_ADMIN_PIN }}
           DOMAIN: clubdisplay.tennilo.de
           RELEASE_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: bash scripts/deploy.sh

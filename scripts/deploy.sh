@@ -8,6 +8,7 @@ node --check public/assets/app.js
 php -l public/nuliga.php
 php tests/nuliga-test.php
 php -l public/events.php
+php -l public/admin-pin.php
 php tests/events-test.php
 files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/app.css assets/app.js index.html)
 test -s public/nuliga.php
@@ -25,6 +26,14 @@ verify() {
 printf '%s\n' "${DOMAIN}:${RELEASE_ID}" > "$tmp/check"
 upload "$tmp/check" clubdisplay-deploy-check.txt
 verify "$tmp/check" clubdisplay-deploy-check.txt
+# Generate the deployment-specific PIN verifier without storing the PIN in Git.
+php -r '$pin=getenv("ADMIN_PIN"); if($pin!==false && $pin!=="" && !preg_match("/^[0-9]{6,20}$/D",$pin)){fwrite(STDERR,"Admin PIN must contain 6 to 20 digits\n");exit(1);} $hash=($pin===false||$pin==="")?"":password_hash($pin,PASSWORD_BCRYPT); $src=file_get_contents("public/admin-pin.php"); file_put_contents($argv[1],str_replace("__CLUBDISPLAY_ADMIN_HASH__",$hash,$src));' "$tmp/admin-pin.php"
+php -l "$tmp/admin-pin.php"
+upload "$tmp/admin-pin.php" admin-pin.php
+status="$(curl --silent --show-error --max-time 25 --output "$tmp/admin-response" --write-out '%{http_code}' "https://${DOMAIN}/admin-pin.php")"
+[[ "$status" == 405 ]] || { echo "::error::Admin endpoint not executing correctly"; exit 1; }
+php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||($v["ok"]??null)!==false)exit(1);' "$tmp/admin-response"
+if [[ -z "${ADMIN_PIN:-}" ]]; then echo "::notice::Admin PIN not configured; app fullscreen exit remains locked."; fi
 upload public/nuliga.php nuliga.php
 # Dynamic PHP must be executed, never served as source.
 curl --fail --silent --show-error --max-time 40 --output "$tmp/feed" "https://${DOMAIN}/nuliga.php?release=${RELEASE_ID}"

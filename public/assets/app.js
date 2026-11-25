@@ -36,7 +36,7 @@ function matchView(){
   const tabs=info?'':'<div class="tabs">'+Object.keys(headings).map(k=>'<button data-action="match:'+k+'" aria-pressed="'+(k===filter)+'">'+({home:tr('Heim','Home'),away:tr('Auswärts','Away'),all:tr('Alle','All'),results:tr('Ergebnisse','Results')}[k])+'</button>').join('')+'</div>';
   const title='<h1>'+headings[filter]+'</h1>'+tabs;
   if(!d)return title+'<div class="panel"><p>'+tr('nuLiga-Daten werden geladen …','Loading nuLiga data …')+'</p></div>';
-  const source='<p class="match-source">'+tr('Quelle: nuLiga · TVBB','Source: nuLiga · TVBB')+(d.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info?' · <a href="'+sourceUrl+'" target="_blank" rel="noopener noreferrer">'+tr('Original-Spielplan','Original schedule')+'</a>':'')+'</p>';
+  const source='<p class="match-source">'+tr('Quelle: nuLiga · TVBB','Source: nuLiga · TVBB')+(d.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info&&!pilot?' · <a href="'+sourceUrl+'" target="_blank" rel="noopener noreferrer">'+tr('Original-Spielplan','Original schedule')+'</a>':'')+'</p>';
   if(d.status==='unavailable')return title+'<div class="panel"><p>'+tr('nuLiga momentan nicht verfügbar.','nuLiga currently unavailable.')+'</p></div>'+source;
   const warning=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Daten – Aktualisierung fehlgeschlagen.','Cached data – refresh failed.')+'</p>':'';
   const dateParts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -72,7 +72,7 @@ setInterval(refreshLeague,300000);
 let eventData=null,eventPage=0,eventFetching=false;
 function eventView(){
   const info=view==='info',d=eventData,title='<h1>'+t().upcoming+'</h1>';
-  const source='<p class="match-source">'+tr('Quelle: NTC-Veranstaltungskalender','Source: NTC event calendar')+(d?.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info?' · <a href="https://ntc93.com/events/" target="_blank" rel="noopener noreferrer">'+tr('Original-Kalender','Original calendar')+'</a>':'')+'</p>';
+  const source='<p class="match-source">'+tr('Quelle: NTC-Veranstaltungskalender','Source: NTC event calendar')+(d?.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info&&!pilot?' · <a href="https://ntc93.com/events/" target="_blank" rel="noopener noreferrer">'+tr('Original-Kalender','Original calendar')+'</a>':'')+'</p>';
   if(!d)return title+'<div class="panel"><p>'+tr('Termine werden geladen …','Loading events …')+'</p></div>';
   if(d.status==='unavailable')return title+'<div class="panel"><p>'+tr('Vereinskalender momentan nicht verfügbar.','Club calendar currently unavailable.')+'</p></div>'+source;
   const warning=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Termine – Aktualisierung fehlgeschlagen.','Cached events – refresh failed.')+'</p>':'';
@@ -85,7 +85,7 @@ function eventView(){
     const multi=e.start.slice(0,10)!==e.end.slice(0,10),opts={weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'};
     const date=fmt(e.start,opts)+(multi?' – '+fmt(e.end,opts):'');
     const time=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+fmt(e.end,{hour:'2-digit',minute:'2-digit'});
-    const link=!info&&typeof e.url==='string'&&/^https:\/\/(?:www\.)?ntc93\.com\//i.test(e.url)?'<a class="event-link" href="'+esc(e.url)+'" target="_blank" rel="noopener noreferrer">'+tr('Details','Details')+'</a>':'';
+    const link=!info&&!pilot&&typeof e.url==='string'&&/^https:\/\/(?:www\.)?ntc93\.com\//i.test(e.url)?'<a class="event-link" href="'+esc(e.url)+'" target="_blank" rel="noopener noreferrer">'+tr('Details','Details')+'</a>':'';
     return '<article class="event-row"><div class="event-date"><strong>'+esc(date)+'</strong><span>'+esc(time)+'</span></div><div><strong class="event-name">'+esc(e.title)+'</strong>'+(e.venue?'<p>'+esc(e.venue)+'</p>':'')+'</div>'+link+'</article>';
   }).join('');
   const paging=!info&&pages>1?'<div class="actions match-pages"><button data-action="event-prev" '+(page===0?'disabled':'')+'>‹</button><span>'+(page+1)+' / '+pages+'</span><button data-action="event-next" '+(page===pages-1?'disabled':'')+'>›</button></div>':'';
@@ -104,10 +104,10 @@ function line(a,b){return '<div class="line"><strong>'+a+'</strong><span class="
 function panel(title,names,details){return '<div class="panel"><h2>'+title+'</h2>'+names.map((n,i)=>line(n,details[i])).join('')+'</div>'}
 function hero(title,description,extra=''){return '<div class="hero"><div><h1>'+title+'</h1><p>'+description+'</p><div class="actions">'+button(t().start,'home','primary large')+'</div></div>'+extra+'</div>'}
 function ebusyView(){
-  return '<div class="booking-head"><h1>'+tr('Außenplätze buchen','Book outdoor courts')+'</h1>'+button(tr('Buchung beenden / Zurück','Finish booking / Back'),'home','primary')+'</div><p>'+tr('Original-Buchungsplan von eBuSy. Buchung und PIN-Eingabe erfolgen ausschließlich bei eBuSy.','Original eBuSy booking plan. Booking and PIN entry take place exclusively in eBuSy.')+'</p><iframe class="booking-frame" title="'+tr('eBuSy Außenplatzbuchung','eBuSy outdoor court booking')+'" src="https://ntc93v8.ebusy.de/embed/lite-module/1731" referrerpolicy="no-referrer"></iframe><p class="booking-fallback">'+tr('Falls die eingebettete Ansicht nicht funktioniert:','If the embedded view does not work:')+' <a href="https://ntc93v8.ebusy.de/lite-module/1731" target="_blank" rel="noopener noreferrer">'+tr('Originalseite öffnen (neuer Tab)','Open original page (new tab)')+'</a></p><p>'+tr('Bitte nach der Buchung den eBuSy-Dialog schließen und oben auf Zurück tippen.','After booking, close the eBuSy dialog and tap Back above.')+'</p>';
+  return '<div class="booking-head"><h1>'+tr('Außenplätze buchen','Book outdoor courts')+'</h1>'+button(tr('Zurück','Back'),'home','primary')+'</div><iframe class="booking-frame" title="'+tr('eBuSy Außenplatzbuchung','eBuSy outdoor court booking')+'" src="https://ntc93v8.ebusy.de/embed/lite-module/1731" sandbox="allow-scripts allow-forms allow-same-origin" referrerpolicy="no-referrer"></iframe>';
 }
 function courtList(){return '<div class="grid">'+[1,2,3,4].map(i=>'<button class="tile" data-action="court:'+i+'" '+(i===2?'disabled':'')+'><strong>'+t().court+' '+i+'</strong><span class="'+(i===2?'occupied':'availability')+'">'+(i===2?t().busy:t().available)+'</span><small>'+t().slot+'</small></button>').join('')+'</div>'}
-function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen sind noch Beispiele · Buchung über eBuSy.','Club news is still sample data · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';$('fullscreen').setAttribute('aria-label',lang==='de'?'Vollbild':'Fullscreen');
+function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen sind noch Beispiele · Buchung über eBuSy.','Club news is still sample data · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
 const active=view==='info'?screens[slide]:view;let html='';
 switch(active){
@@ -125,6 +125,43 @@ function go(next){if(next==='calendar')eventPage=0;if(next==='teams'){matchFilte
 document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{last=Date.now();});
 $('language').addEventListener('click',()=>{if(pilot&&view==='courts')return;lang=lang==='de'?'en':'de';message='';render();});
-$('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{ /* Browser may block fullscreen. */ }});
-setInterval(()=>{const now=Date.now();clock();if(view==='info'){if(now-started>=dwell){slide=(slide+1)%screens.length;started=now;render();}$('progress').style.setProperty('--progress',Math.min(100,(now-started)/dwell*100)+'%');}else{if(!(pilot&&view==='courts')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+const adminDialog=$('admin-dialog'), adminForm=$('admin-form'), adminPin=$('admin-pin'), adminStatus=$('admin-status');
+function syncFullscreen(){
+  const active=!!document.fullscreenElement;
+  $('fullscreen').textContent=active?'🔒':'⛶';
+  $('fullscreen').setAttribute('aria-label',active?tr('Vollbild verlassen – Admin-PIN erforderlich','Exit fullscreen – admin PIN required'):tr('Vollbild starten','Enter fullscreen'));
+  $('fullscreen').title=$('fullscreen').getAttribute('aria-label');
+}
+document.addEventListener('fullscreenchange',syncFullscreen);
+$('fullscreen').addEventListener('click',async()=>{
+  if(!document.fullscreenElement){
+    try{await document.documentElement.requestFullscreen();}catch{ /* Browser may block fullscreen. */ }
+    return;
+  }
+  if(adminDialog.open)return;
+  $('admin-title').textContent=tr('Admin-Freigabe','Admin approval');
+  $('admin-label').textContent=tr('Admin-PIN','Admin PIN');
+  $('admin-submit').textContent=tr('Vollbild verlassen','Exit fullscreen');
+  $('admin-cancel').textContent=tr('Abbrechen','Cancel');
+  adminPin.value='';adminStatus.textContent='';adminDialog.showModal();adminPin.focus();
+});
+$('admin-cancel').addEventListener('click',()=>{adminPin.value='';adminDialog.close();});
+adminDialog.addEventListener('close',()=>{adminPin.value='';adminStatus.textContent='';last=Date.now();});
+adminForm.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if($('admin-submit').disabled)return;
+  $('admin-submit').disabled=true;
+  const pin=adminPin.value;adminPin.value='';
+  adminStatus.textContent=tr('Prüfe …','Checking …');
+  try{
+    const res=await fetch('admin-pin.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin}),cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(8000)});
+    const data=await res.json();
+    if(!adminDialog.open)return;
+    if(res.ok&&data.ok===true){adminDialog.close();if(document.fullscreenElement)await document.exitFullscreen();return;}
+    adminStatus.textContent=res.status===429?tr('Zu viele Versuche. Bitte später erneut versuchen.','Too many attempts. Try again later.'):res.status===503?tr('Admin-PIN noch nicht eingerichtet.','Admin PIN not configured.'):tr('PIN nicht korrekt.','Incorrect PIN.');
+  }catch{if(adminDialog.open)adminStatus.textContent=tr('Prüfung nicht verfügbar.','Verification unavailable.');}
+  finally{$('admin-submit').disabled=false;if(adminDialog.open)adminPin.focus();}
+});
+syncFullscreen();
+setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view==='info'){if(now-started>=dwell){slide=(slide+1)%screens.length;started=now;render();}$('progress').style.setProperty('--progress',Math.min(100,(now-started)/dwell*100)+'%');}else{if(!(pilot&&view==='courts')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 render();refreshLeague();refreshEvents();

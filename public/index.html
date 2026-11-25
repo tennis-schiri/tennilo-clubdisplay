@@ -16,8 +16,8 @@
     document.getElementById('favicon').href = 'assets/ntc93-logo.png';
   }
 </script>
-<link rel="stylesheet" href="assets/app.css?v=031">
-<script defer src="assets/app.js?v=031"></script>
+<link rel="stylesheet" href="assets/app.css?v=032">
+<script defer src="assets/app.js?v=032"></script>
 </head>
 <body>
 <header>
@@ -31,6 +31,15 @@
   <div id="progress" aria-hidden="true"></div>
 </main>
 <nav id="nav" aria-label="Menü"></nav>
-<footer><span id="notice"></span><span class="version">v0.3.1</span></footer>
+<footer><span id="notice"></span><span class="version">v0.3.2</span></footer>
+<dialog id="admin-dialog" aria-labelledby="admin-title">
+  <form id="admin-form">
+    <h2 id="admin-title">Admin-Freigabe</h2>
+    <label for="admin-pin" id="admin-label">Admin-PIN</label>
+    <input id="admin-pin" type="password" inputmode="numeric" pattern="[0-9]{6,20}" minlength="6" maxlength="20" autocomplete="off" required>
+    <p id="admin-status" role="status"></p>
+    <div class="actions"><button type="button" id="admin-cancel">Abbrechen</button><button type="submit" id="admin-submit" class="primary">Vollbild verlassen</button></div>
+  </form>
+</dialog>
 <noscript>Bitte JavaScript aktivieren.</noscript>
 </body></html>
