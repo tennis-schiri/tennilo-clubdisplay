@@ -83,3 +83,6 @@ Erweiterter antippbarer Wetterblock mit Temperatur, Wetterzustand, Tagesminimum/
 
 ## 0.4.4 – Kopfzeilenanordnung
 Logo/Vereinsname, umrandeter Datums-/Uhrzeitblock, Wetterblock, Sprach- und Vollbildsteuerung. Datum/Uhrzeit direkt links neben Wetter; beide Informationsblöcke gleich hoch. Wetterinhalte unverändert.
+
+## 0.4.5 – Direkte Außenplatzbuchung
+Zusätzliche ClubDisplay-Terminalfreigabe entfernt. Bei gesetztem NTC_EBUSY_CLIENT_ID wird das eBuSy-Freiplatzterminal 1731 direkt eingebettet, die Mitgliederanmeldung übernimmt eBuSy. Admin-PIN nur zum Verlassen des Vollbildmodus. Keine Client-ID im Git-Quellcode; bei öffentlich erreichbarer NTC-Seite ist die Terminaladresse jedoch für jeden Besucher technisch abrufbar. Vor regulärem Einsatz eBuSy-seitige Beschränkung der Terminal-ID auf den Vereinsstandort bzw. Schutz des NTC-Displays auf Netzwerkebene prüfen. Hallenansicht unverändert.

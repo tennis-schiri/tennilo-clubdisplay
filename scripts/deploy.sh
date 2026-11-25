@@ -42,7 +42,7 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   php -l "$tmp/terminal.php"
   upload "$tmp/terminal.php" terminal.php
   curl --fail --silent --show-error --max-time 25 --output "$tmp/terminal-status" "https://${DOMAIN}/terminal.php?status=1"
-  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||($v["ready"]??null)!==false||!is_bool($v["configured"]??null))exit(1); echo "Terminal endpoint configured: ".($v["configured"]?"yes":"no")."\n";' "$tmp/terminal-status"
+  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!is_bool($v["configured"]??null)||($v["ready"]??null)!==$v["configured"])exit(1); echo "Terminal endpoint configured: ".($v["configured"]?"yes":"no")."\n";' "$tmp/terminal-status"
 fi
 upload public/nuliga.php nuliga.php
 # Dynamic PHP must be executed, never served as source.
