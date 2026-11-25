@@ -105,13 +105,24 @@ html[data-club="ntc"] .fixture-date-block{background:#f7dc14;color:#073538}
 .match-screen nav{padding:.5rem 3vw}
 @media(max-width:699px){.match-screen header{padding:.65rem 1rem}.match-screen main{padding:.7rem 1rem}.match-screen nav{padding:.5rem 1rem}.match-heading h1{font-size:1.8rem}.fixture-card{grid-template-columns:clamp(64px,21vw,105px) minmax(0,1fr) clamp(55px,16vw,80px)}.fixture-date-block{padding:.45rem .15rem}.fixture-weekday{font-size:clamp(.5rem,2.25vw,.75rem)}.fixture-day{font-size:clamp(1.05rem,4.7vw,1.8rem)}.fixture-time{font-size:clamp(.68rem,2.8vw,1rem)}.fixture-content{padding:.5rem .4rem;gap:.35rem}.fixture-identity{font-size:.95rem}.fixture-league{font-size:.75rem}.fixture-pair{font-size:clamp(.85rem,3.4vw,1.25rem);gap:.25rem}.fixture-details{font-size:.7rem;justify-content:flex-start}.fixture-result{padding:.25rem;gap:.2rem}.fixture-result span{font-size:.65rem}.fixture-result strong{font-size:clamp(.9rem,3.5vw,1.35rem)}}
 
-/* 0.3.10: left aligned team pair; high-visibility court assignment. */
-.fixture-team{flex:0 1 auto;text-align:left}
+
+/* 0.3.11: approved CD-M04c. Compact four-part fixture with separate court strip. */
+.fixture-list{gap:.45rem}
+.fixture-card{grid-template-columns:clamp(112px,14vw,190px) clamp(46px,5.1vw,76px) minmax(0,1fr) clamp(88px,11vw,150px);border-radius:10px}
+.fixture-date-block{gap:0;padding:.35rem .3rem;line-height:1.06}
+.fixture-weekday{font-size:clamp(.72rem,1vw,1rem)}
+.fixture-day{font-size:clamp(1.5rem,2.3vw,2.45rem)}
+.fixture-time{font-size:clamp(.9rem,1.2vw,1.3rem);margin-top:.15rem}
+.fixture-court-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(26px,1fr));align-content:center;justify-items:center;gap:2px;padding:4px;background:#1bb5bd;color:#052b35;--court-icon-ink:#21d5db;border-left:1px solid #0002}
+html[data-club="ntc"] .fixture-court-strip{background:#c6ae10;color:#073538;--court-icon-ink:#f7dc14}
+.fixture-court-icon{width:100%;max-width:34px;display:block;line-height:0}
+.fixture-court-icon svg{display:block;width:100%;height:auto}
+.fixture-court-unknown{display:grid;justify-items:center;font-size:.67rem;font-weight:700;line-height:1.05;grid-column:1/-1}
+.fixture-court-unknown strong{font-size:1.3rem}
+.fixture-content{padding:.45rem .85rem;gap:.22rem}
+.fixture-pair{display:flex;justify-content:flex-start;align-items:baseline;font-size:clamp(1.15rem,1.9vw,2rem);gap:.5rem}
+.fixture-team,.fixture-team:first-child,.fixture-team:last-child{text-align:left;flex:0 1 auto}
 .fixture-versus{flex:none}
-.fixture-details{align-items:center;justify-content:flex-start;column-gap:clamp(.5rem,1.2vw,1.4rem)}
-.fixture-courts{margin-left:auto;display:inline-flex;align-items:center;gap:.5rem;padding:.25rem .65rem;border-radius:7px;background:var(--cyan);color:#052b35;font-weight:750;line-height:1.2}
-.fixture-courts>span{font-size:clamp(.8rem,1.05vw,1.05rem)}
-.fixture-details .fixture-courts>strong{font-size:clamp(1.15rem,1.7vw,1.7rem);font-weight:850;color:inherit}
-.fixture-courts-pending{background:transparent;border:1px solid var(--cyan);color:var(--cyan)}
-html[data-club="ntc"] .fixture-courts:not(.fixture-courts-pending){background:#f7dc14;color:#073538}
-@media(max-width:699px){.fixture-courts{margin-left:0;padding:.2rem .35rem;gap:.3rem}.fixture-courts>span{font-size:.7rem}.fixture-details .fixture-courts>strong{font-size:.95rem}}
+.fixture-details{justify-content:flex-start;gap:.25rem .85rem}
+.fixture-result{gap:.15rem;padding:.3rem}
+@media(max-width:699px){.fixture-card{grid-template-columns:clamp(62px,18vw,100px) 31px minmax(0,1fr) clamp(45px,13vw,72px)}.fixture-date-block{padding:.3rem .1rem}.fixture-weekday{font-size:clamp(.46rem,1.95vw,.7rem)}.fixture-day{font-size:clamp(1rem,4vw,1.6rem)}.fixture-time{font-size:clamp(.62rem,2.4vw,.9rem)}.fixture-court-strip{grid-template-columns:1fr;padding:2px}.fixture-court-unknown{font-size:.53rem}.fixture-content{padding:.35rem .35rem;gap:.2rem}.fixture-pair{font-size:clamp(.8rem,3.1vw,1.15rem);gap:.2rem}.fixture-result strong{font-size:clamp(.8rem,3vw,1.2rem)}}

@@ -65,3 +65,6 @@ Freigegebener Entwurf: jede Begegnung über die gesamte Breite, gelber Datumsblo
 
 ## 0.3.10 – CD-M04 Detailkorrektur
 Beide Mannschaftsnamen direkt nebeneinander, linksbündig, ohne zentrierten Zwischenraum. Platznummern in einem kontrastreichen eigenen Feld rechts in der Infozeile; noch nicht zugeordnete Heimspielplätze als gelb/cyan umrandetes Feld. Datum, Ergebnisfeld und volle Kartenbreite bleiben unverändert.
+
+## 0.3.11 – CD-M04c
+Kompakte, vollbreite Spielkarte mit ausgeschriebenem Wochentag, gelbem Datumsblock und dunklerem gelben Platzstreifen (NTC; TENNILO cyan). Jede bestätigte Platznummer wird als eigenes Tennisplatzsymbol angezeigt. Numerische Bereiche werden einzeln aufgelöst; keine geratenen Platznummern. Ohne bestätigte Platzzuordnung steht bei Heimspielen ein Strich. Paarung bleibt linksbündig, Ergebnis rechts. Bis zu sechs Spiele pro Seite abhängig von der Fensterhöhe. Noch keine eBuSy-API-Zuordnung verfügbar.
