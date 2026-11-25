@@ -33,3 +33,14 @@ assert.match(vm.runInContext('eventView()',dateCtx),/01\.01\.2027/);
 dateCtx.lang='en';assert.deepEqual(dates('matchView()'),['01/01/2027']);assert.deepEqual(dates('eventView()'),['04/03/2027','31/12/2026']);
 dateCtx.view='teams';dateCtx.matchFilter='results';dateCtx.leagueData.matches[0].score='6:3';assert.deepEqual(dates('matchView()'),['01/01/2027']);
 console.log('Fixture and event year labels in DE/EN, results and cross-year dates OK');
+
+const managedSource=fs.readFileSync('public/admin/player.js','utf8');
+const managedCtx=vm.createContext({Date,Intl,s:{modules:['calendar'],feeds:{calendar:{status:'ok',rows:[{title:'Workshop',start:'2027-03-04T19:00:00+01:00',end:'2027-03-04T21:00:00+01:00'},{title:'Unvollständig',start:'2027-03-04T19:00:00+01:00'}]}}},start:Date.parse('2027-03-04T19:00:00+01:00')});
+vm.runInContext(managedSource.slice(managedSource.indexOf('function activeEventGreetingRows('),managedSource.indexOf('function eventGreetingPeriod(')),managedCtx);
+const managedRun=s=>vm.runInContext(s,managedCtx);
+assert.equal(managedRun('activeEventGreetingRows(s,start-1800001).length'),0);
+assert.equal(managedRun('activeEventGreetingRows(s,start-1800000).length'),1);
+assert.equal(managedRun('activeEventGreetingRows(s,start+7199999).length'),1);
+assert.equal(managedRun('activeEventGreetingRows(s,start+7200000).length'),0);
+assert.equal(managedRun('activeEventGreetingRows({...s,modules:["welcome"]},start).length'),0);
+console.log('Managed calendar module gating and welcome timing OK');
