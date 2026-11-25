@@ -45,5 +45,6 @@ jobs:
           upload "$tmp/index.php" admin/index.php
           curl --fail --silent --show-error --max-time 30 "https://clubdisplay.tennilo.de/admin/" -o "$tmp/login"
           grep -Fq 'Administrator-Anmeldung' "$tmp/login"
-          ! grep -Fq 'Vereinsverwaltung' "$tmp/login"
+          ! grep -Fq 'TENNILO · Kundenverwaltung' "$tmp/login"
+          ! grep -Fq 'Bildschirm anlegen' "$tmp/login"
           echo 'Admin login reachable; authenticated browser test still required.'
