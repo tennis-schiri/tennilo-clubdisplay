@@ -59,3 +59,11 @@ if(function_exists('imagecreatefromstring')){
     check((int)$db->query('SELECT COUNT(*) FROM content_media')->fetchColumn()===0);
 }else{throw new RuntimeException('GD extension required for media tests');}
 echo "Media validation, scope and cascade tests passed\n";
+
+$dining=['club'=>'ntc93','name'=>'Testrestaurant','phone'=>'+49 123','website'=>'https://example.com/','reservation_phone'=>1,'hours'=>[0=>['state'=>'open','from1'=>'12:00','to1'=>'15:00','from2'=>'17:00','to2'=>'23:00'],1=>['state'=>'closed'],2=>['state'=>'open','from1'=>'17:00','to1'=>'01:00']],'special'=>[['date'=>'2026-12-24','state'=>'closed','note'=>'Feiertag']],'offers'=>[['title'=>'Pizza','day'=>0,'price'=>'9,90 €','starts'=>'2026-12-01','ends'=>'2026-12-31']]];
+cd_dining_save($db,$dining,'ntc93');$d=cd_dining_get($db,'ntc93','ntc93');
+check($d['hours'][0]['slots'][1]['from']==='17:00');check($d['hours'][1]['state']==='closed');check($d['hours'][2]['slots'][0]['to']==='01:00');check($d['hours'][3]['state']==='unknown');check($d['special'][0]['date']==='2026-12-24');check($d['offers'][0]['price']==='9,90 €');
+foreach([['club'=>'test-club'],['website'=>'javascript:alert(1)'],['phone'=>''],['special'=>[['date'=>'2026-02-30']]],['special'=>[$dining['special'][0],$dining['special'][0]]],['hours'=>[['state'=>'open','from1'=>'12:00','to1'=>'18:00','from2'=>'17:00','to2'=>'20:00']]],['offers'=>[['title'=>'Pizza','day'=>8]]]] as $bad){try{cd_dining_save($db,array_replace($dining,$bad),'ntc93');throw new RuntimeException('Invalid dining data accepted');}catch(InvalidArgumentException $e){}}
+try{cd_dining_get($db,'ntc93','test-club');throw new RuntimeException('Cross-club dining read accepted');}catch(InvalidArgumentException $e){}
+check(cd_dining_get($db,'ntc93','ntc93')['name']==='Testrestaurant');
+echo "Structured dining tests passed\n";
