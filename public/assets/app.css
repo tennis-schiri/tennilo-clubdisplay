@@ -304,3 +304,17 @@ body.fixed-screen .court-screen .fit-content{flex:0 0 auto}
 .event-meta-cell>span{font-size:clamp(.7rem,1vw,.95rem);color:var(--muted);font-weight:600}
 .event-meta-cell>strong{font-size:clamp(.9rem,1.4vw,1.45rem);line-height:1.2;color:var(--ink);font-weight:750;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 @media(max-width:699px){.event-screen .event-card,.event-screen .event-card-linked{grid-template-columns:clamp(62px,18vw,100px) minmax(0,1fr) minmax(0,40%)}.event-meta{grid-template-columns:minmax(0,1fr)}.event-meta-cell{padding:.22rem .3rem;gap:.08rem}.event-meta-cell+.event-meta-cell{border-left:0;border-top:1px solid var(--line)}.event-meta-cell>span{font-size:.6rem}.event-meta-cell>strong{font-size:.75rem}.event-card>.event-link{grid-column:2/-1;justify-self:end}}
+
+/* 0.4.10: fully visible focus outlines and explanatory home tiles. */
+body.fixed-screen button:hover:not(:disabled),body.fixed-screen button:focus-visible{outline:2px solid var(--cyan);outline-offset:-4px;border-color:var(--cyan)}
+body.fixed-screen button[aria-pressed="true"]:hover:not(:disabled),body.fixed-screen button[aria-pressed="true"]:focus-visible,body.fixed-screen button.primary:hover:not(:disabled),body.fixed-screen button.primary:focus-visible{outline-color:var(--bg)}
+.home-welcome h1{margin:.35rem 0 .5rem}
+.home-welcome p{margin:0 0 1rem}
+.home-tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:clamp(.55rem,1vw,1rem)}
+.home-tiles>.home-tile{grid-column:span 2;min-width:0;min-height:clamp(108px,18dvh,190px);display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:.6rem;padding:clamp(.8rem,1.4vw,1.4rem);text-align:left;white-space:normal}
+.home-tiles>.home-tile:nth-child(n+4){grid-column:span 3}
+.home-tile-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.home-tile-top strong{font-size:clamp(1.15rem,1.9vw,2rem);font-weight:800;line-height:1.15;overflow-wrap:anywhere}
+.home-tile-top svg{flex:none;color:var(--cyan)}
+.home-tile-description{color:var(--muted);font-size:clamp(.85rem,1.15vw,1.1rem);line-height:1.4;font-weight:500}
+@media(max-width:700px){.home-welcome h1{font-size:1.75rem;margin:.15rem 0 .4rem}.home-welcome p{font-size:.85rem;margin-bottom:.6rem}.home-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.home-tiles>.home-tile,.home-tiles>.home-tile:nth-child(n+4){grid-column:span 1;min-height:88px;padding:.55rem;gap:.35rem}.home-tiles>.home-tile:last-child{grid-column:1/-1}.home-tile-top strong{font-size:1rem}.home-tile-top svg{width:18px;height:18px}.home-tile-description{font-size:.75rem;line-height:1.3}}

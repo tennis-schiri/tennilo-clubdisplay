@@ -98,3 +98,6 @@ Ein einziger viewportgebundener CSS-Grid-Rahmen für sämtliche Ansichten einsch
 
 ## 0.4.9 – Terminkarten: Zeitraum und Ort
 Zeitspanne bzw. Enddatum und Veranstaltungsort als eigene, leicht dunklere Felder am rechten Kartenrand. Titel bleibt links neben dem gelben Datumsblock; bei mehrtägigen Terminen bleibt der Datumsbereich zusätzlich unter dem Titel sichtbar. Mobile Ansicht stapelt die beiden Metafelder platzsparend. Keine Änderung am festen Seitenrahmen.
+
+## 0.4.10 – Startmenü und Fokusrahmen
+Fokus- und Hover-Umrandungen liegen innerhalb der Buttons, damit sie an keinem Rand des festen Inhaltsbereichs abgeschnitten werden. Aktive gelbe/cyanfarbene Buttons erhalten kontrastierende dunkle Fokusumrandungen. Startmenü mit fünf größeren Touch-Karten im 3+2-Raster, kurzen zweisprachigen Funktionsbeschreibungen und Pfeil; mobile Ansicht zweispaltig. Unveränderter fester Seitenrahmen, keine Änderung an Datenquellen oder Buchungen.
