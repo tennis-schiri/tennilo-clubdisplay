@@ -8,14 +8,17 @@ header("Content-Security-Policy: default-src 'none'; style-src 'self'; img-src '
 if(($_SERVER['HTTP_HOST']??'')!=='clubdisplay.tennilo.de'||(empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off')){http_response_code(404);exit;}
 require __DIR__.'/lib.php';
 $hash='__CD_ADMIN_PASSWORD_HASH__';
-$storage=base64_decode('__CD_ADMIN_STORAGE_B64__',true);
+$storage=dirname(__DIR__).'/clubdisplay-admin';
+$guardToken='__CD_ADMIN_GUARD_TOKEN__';
 function cd_unavailable(string $code):never {http_response_code(503);header('Content-Type: text/plain; charset=utf-8');exit('CD_ADMIN_'.$code);}
 if(!str_starts_with($hash,'$2'))cd_unavailable('HASH');
-if(!is_string($storage)||$storage==='')cd_unavailable('STORAGE_CONFIG');
 if(!is_dir($storage))cd_unavailable('STORAGE_DIRECTORY');
 if(!is_writable($storage))cd_unavailable('STORAGE_PERMISSIONS');
 $dir=realpath($storage);$root=realpath($_SERVER['DOCUMENT_ROOT']??'');
-if(!$dir||!$root||$dir===$root||str_starts_with($dir,$root.DIRECTORY_SEPARATOR))cd_unavailable('STORAGE_NOT_PRIVATE');
+if(!$dir||!$root||$dir!==realpath(dirname(__DIR__)).DIRECTORY_SEPARATOR.'clubdisplay-admin'||$dir!==$root.DIRECTORY_SEPARATOR.'clubdisplay-admin')cd_unavailable('STORAGE_NOT_PRIVATE');
+if(@file_get_contents($dir.'/.htaccess')!=="Require all denied\n")cd_unavailable('STORAGE_GUARD');
+if(!preg_match('/^[a-f0-9]{64}$/D',$guardToken)||!hash_equals($guardToken,(string)@file_get_contents($dir.'/.deployment-verified')))cd_unavailable('STORAGE_GUARD');
+if(is_link($dir.'/clubdisplay-admin.sqlite'))cd_unavailable('STORAGE_NOT_PRIVATE');
 if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true))cd_unavailable('SQLITE_DRIVER');
 umask(0077);
 try{$db=cd_db($dir.'/clubdisplay-admin.sqlite');}catch(Throwable $e){cd_unavailable('DATABASE_INIT');}
