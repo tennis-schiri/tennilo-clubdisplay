@@ -61,7 +61,15 @@ function cd_feed_json(string $provider,string $raw):array{
         foreach(array_slice($j,0,12) as $r){$title=cd_plain($r['title']['rendered']??'',200);if($title!=='')$rows[]=['title'=>$title,'excerpt'=>cd_plain($r['excerpt']['rendered']??'',600),'date'=>cd_plain($r['date']??'',32)];}
     }elseif($provider==='wp-events'){
         if(!is_array($j['events']??null))throw new RuntimeException('Invalid calendar feed.');
-        foreach(array_slice($j['events'],0,30) as $r){$title=cd_plain($r['title']??'',200);$date=cd_plain($r['start_date']??'',32);if($title!==''&&preg_match('/^\d{4}-\d{2}-\d{2}/D',$date))$rows[]=['title'=>$title,'start'=>$date,'venue'=>cd_plain($r['venue']['venue']??'',200)];}
+        foreach(array_slice($j['events'],0,30) as $r){
+            if(strtolower((string)($r['status']??''))==='cancelled')continue;
+            $title=cd_plain($r['title']??'',200);$date=cd_plain($r['start_date']??'',32);
+            if($title===''||!preg_match('/^\d{4}-\d{2}-\d{2}/D',$date))continue;
+            $row=['title'=>$title,'start'=>$date,'venue'=>cd_plain($r['venue']['venue']??'',200)];
+            $start=cd_event_timestamp($date);$end=cd_event_timestamp(cd_plain($r['end_date']??'',32));
+            if($start!==null&&$end!==null&&$end>$start){$row['start']=$start->format(DATE_ATOM);$row['end']=$end->format(DATE_ATOM);$row['allDay']=filter_var($r['all_day']??false,FILTER_VALIDATE_BOOLEAN);}
+            $rows[]=$row;
+        }
     }elseif($provider==='brightsky'){
         if(!is_array($j['weather']??null))throw new RuntimeException('Invalid weather feed.');
         $nearest=null;$distance=PHP_INT_MAX;foreach($j['weather'] as $r){$t=strtotime((string)($r['timestamp']??''));if($t===false)continue;$d=abs(time()-$t);if($d<$distance){$nearest=$r;$distance=$d;}}
@@ -71,6 +79,21 @@ function cd_feed_json(string $provider,string $raw):array{
     }
     return ['status'=>'ok','fetchedAt'=>time(),'rows'=>$rows];
 }
+function cd_event_timestamp(string $s):?DateTimeImmutable{
+    if(!preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?$/D',$s))return null;
+    try{$d=new DateTimeImmutable($s,new DateTimeZone('Europe/Berlin'));$err=DateTimeImmutable::getLastErrors();return $err!==false&&($err['warning_count']||$err['error_count'])?null:$d;}catch(Throwable $e){return null;}
+}
+function cd_ical_timestamp(array $pair):?DateTimeImmutable{
+    $value=$pair[1]??'';$key=$pair[0]??'';$tz=new DateTimeZone('Europe/Berlin');
+    try{
+        if(preg_match('/(?:^|;)TZID=([^;:]+)/i',$key,$m))$tz=new DateTimeZone(trim($m[1],'"'));
+        if(preg_match('/^\d{8}$/D',$value))$d=DateTimeImmutable::createFromFormat('!Ymd',$value,$tz);
+        elseif(preg_match('/^\d{8}T\d{6}Z$/D',$value))$d=DateTimeImmutable::createFromFormat('!Ymd\THis\Z',$value,new DateTimeZone('UTC'));
+        elseif(preg_match('/^\d{8}T\d{6}$/D',$value))$d=DateTimeImmutable::createFromFormat('!Ymd\THis',$value,$tz);
+        else return null;
+        $err=DateTimeImmutable::getLastErrors();return $d&&($err===false||(!$err['warning_count']&&!$err['error_count']))?$d->setTimezone(new DateTimeZone('Europe/Berlin')):null;
+    }catch(Throwable $e){return null;}
+}
 function cd_ical_parse(string $raw):array{
     if(!str_contains($raw,'BEGIN:VCALENDAR')||!str_contains($raw,'END:VCALENDAR'))throw new RuntimeException('Invalid iCalendar');
     $raw=preg_replace('/\r?\n[ \t]/','',$raw)??'';$rows=[];$event=null;$today=date('Y-m-d');
@@ -78,18 +101,17 @@ function cd_ical_parse(string $raw):array{
         if($line==='BEGIN:VEVENT'){$event=[];continue;}
         if($line==='END:VEVENT'&&is_array($event)){
             if(($event['STATUS'][1]??'')==='CANCELLED'||isset($event['RRULE'])||isset($event['RECURRENCE-ID'])){$event=null;continue;}
-            $pair=$event['DTSTART']??[];$value=$pair[1]??'';$key=$pair[0]??'';$tz=new DateTimeZone('Europe/Berlin');$dt=null;
-            try{
-                if(preg_match('/(?:^|;)TZID=([^;:]+)/i',$key,$m))$tz=new DateTimeZone(trim($m[1],'"'));
-                if(preg_match('/^\d{8}$/D',$value))$dt=DateTimeImmutable::createFromFormat('!Ymd',$value,$tz);
-                elseif(preg_match('/^\d{8}T\d{6}Z$/D',$value))$dt=DateTimeImmutable::createFromFormat('!Ymd\THis\Z',$value,new DateTimeZone('UTC'));
-                elseif(preg_match('/^\d{8}T\d{6}$/D',$value))$dt=DateTimeImmutable::createFromFormat('!Ymd\THis',$value,$tz);
-            }catch(Throwable $e){}
+            $dt=cd_ical_timestamp($event['DTSTART']??[]);$end=cd_ical_timestamp($event['DTEND']??[]);
+            $allDay=preg_match('/^\d{8}$/D',$event['DTSTART'][1]??'')===1;
             $title=cd_plain(str_replace(['\\n','\\N','\\,','\\;'],[' ',' ',',',';'],$event['SUMMARY'][1]??''),200);
-            if($dt&&$title!==''&&$dt->format('Y-m-d')>=$today)$rows[]=['title'=>$title,'start'=>$dt->setTimezone(new DateTimeZone('Europe/Berlin'))->format(DATE_ATOM),'venue'=>cd_plain($event['LOCATION'][1]??'',200)];
+            if($dt&&$title!==''&&($end??$dt)->format('Y-m-d')>=$today){
+                $row=['title'=>$title,'start'=>$dt->format(DATE_ATOM),'venue'=>cd_plain($event['LOCATION'][1]??'',200)];
+                if($end&&$end>$dt){$row['end']=$end->format(DATE_ATOM);$row['allDay']=$allDay;}
+                $rows[]=$row;
+            }
             $event=null;continue;
         }
-        if(is_array($event)&&str_contains($line,':')){[$key,$value]=explode(':',$line,2);$name=strtoupper(explode(';',$key,2)[0]);if(in_array($name,['DTSTART','SUMMARY','LOCATION','STATUS','RRULE','RECURRENCE-ID'],true))$event[$name]=[$key,$value];}
+        if(is_array($event)&&str_contains($line,':')){[$key,$value]=explode(':',$line,2);$name=strtoupper(explode(';',$key,2)[0]);if(in_array($name,['DTSTART','DTEND','SUMMARY','LOCATION','STATUS','RRULE','RECURRENCE-ID'],true))$event[$name]=[$key,$value];}
     }
     usort($rows,fn($a,$b)=>strcmp($a['start'],$b['start']));return array_slice($rows,0,30);
 }
