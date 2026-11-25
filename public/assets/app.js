@@ -339,23 +339,38 @@ function occupancyHours(now=Date.now()){
 function occupancyTime(s){
   return new Intl.DateTimeFormat(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(s));
 }
+function occupancyRecord(area,court,hour,data=occupancyData){
+  // Future adapter: only display-approved booking labels, never raw personal records.
+  if(!data||data.status!=='ok'||!Number.isFinite(data.fetchedAt)||Date.now()-data.fetchedAt*1000>180000||!Array.isArray(data.slots))return null;
+  return data.slots.find(s=>s.area===area&&s.court===court&&s.start===hour.start&&s.end===hour.end)||null;
+}
 function occupancySlot(area,court,hour,data=occupancyData){
-  // Future adapter contract: normalized per-court/per-hour status with exact UTC interval.
-  // Missing or expired coverage is UNKNOWN, never FREE. No names or booking details.
-  if(!data||data.status!=='ok'||!Number.isFinite(data.fetchedAt)||Date.now()-data.fetchedAt*1000>180000||!Array.isArray(data.slots))return 'unknown';
-  const slot=data.slots.find(s=>s.area===area&&s.court===court&&s.start===hour.start&&s.end===hour.end);
+  const slot=occupancyRecord(area,court,hour,data);
   return ['free','occupied','partial','blocked'].includes(slot?.status)?slot.status:'unknown';
 }
 function occupancyCourtGraphic(court){
-  return '<svg class="occupancy-court-art" viewBox="0 0 240 110" aria-hidden="true"><rect class="court-surface" x="3" y="3" width="234" height="104" rx="8"/><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="15" y="12" width="210" height="86"/><path d="M15 23h210M15 87h210M62 23v64M178 23v64M62 55h116M120 8v94" /><path d="M15 55h5m200 0h5" /></g><circle class="court-number-disc" cx="120" cy="55" r="22"/><text class="court-number" x="120" y="56" dominant-baseline="middle" text-anchor="middle">'+court+'</text></svg>';
+  return '<svg class="occupancy-court-art" viewBox="0 0 120 56" aria-hidden="true"><rect class="court-surface" x="1" y="1" width="118" height="54" rx="5"/><g fill="none" stroke="currentColor" stroke-width="1.1"><rect x="7" y="6" width="106" height="44"/><path d="M7 12h106M7 44h106M31 12v32M89 12v32M31 28h58M60 3v50"/></g><circle class="court-number-disc" cx="60" cy="28" r="13"/><text class="court-number" x="60" y="29" dominant-baseline="middle" text-anchor="middle">'+court+'</text></svg>';
+}
+function occupancyBookingText(area,court,hour){
+  const record=occupancyRecord(area,court,hour);
+  const status=occupancySlot(area,court,hour);
+  const fallback={unknown:tr('Noch keine Daten','No data yet'),free:tr('Frei','Free'),occupied:tr('Belegt · Name nicht verfügbar','Occupied · name unavailable'),partial:tr('Teilbelegt','Partly occupied'),blocked:tr('Gesperrt','Closed')};
+  // Each approved label may describe a player pair, team, training group or closure.
+  const entries=(status==='occupied'||status==='partial'||status==='blocked')&&Array.isArray(record?.bookings)?record.bookings.filter(r=>typeof r?.displayLabel==='string'&&r.displayLabel.trim()):[];
+  const body=entries.length?entries.map(r=>{
+    const label=r.displayLabel.trim();
+    const timed=typeof r.start==='string'&&typeof r.end==='string'&&Number.isFinite(Date.parse(r.start))&&Number.isFinite(Date.parse(r.end))&&Date.parse(r.start)<Date.parse(r.end);
+    const extra=timed&&(entries.length>1||status==='partial')?'<span class="occupancy-booking-time">'+esc(occupancyTime(r.start)+'–'+occupancyTime(r.end))+'</span>':'';
+    return '<div class="occupancy-booking-entry">'+extra+'<strong>'+esc(label)+'</strong></div>';
+  }).join(''):'<span class="occupancy-booking-placeholder">'+fallback[status]+'</span>';
+  return '<div class="occupancy-cell occupancy-'+status+'">'+body+'</div>';
 }
 function occupancyView(){
   const hours=occupancyHours();occupancyHourKey=hours[0].start;
-  const labels={unknown:tr('Keine Daten','No data'),free:tr('Frei','Free'),occupied:tr('Belegt','Occupied'),partial:tr('Teilbelegt','Partly occupied'),blocked:tr('Gesperrt','Closed')};
-  const marks={unknown:'–',free:'✓',occupied:'×',partial:'½',blocked:'—'};
-  const group=(area,title)=>'<section class="occupancy-court-group occupancy-group-'+area+'"><div class="occupancy-group-head"><span>'+title+'</span><small>'+occupancyCourts[area].length+' '+tr('Plätze','courts')+'</small></div><div class="occupancy-court-grid">'+occupancyCourts[area].map(court=>'<article class="occupancy-court-card occupancy-court-'+area+'" aria-label="'+title+' · '+tr('Platz ','Court ')+court+'"><div class="occupancy-court-label">'+tr('Platz ','Court ')+court+'</div>'+occupancyCourtGraphic(court)+'<div class="occupancy-slots">'+hours.map((hour,i)=>{const status=occupancySlot(area,court,hour);const time=occupancyTime(hour.start)+'–'+occupancyTime(hour.end);return '<div class="occupancy-slot"><div class="occupancy-slot-time'+(i===0?' occupancy-slot-now':'')+'">'+time+'</div><div class="occupancy-cell occupancy-'+status+'"><span class="occupancy-mark" aria-hidden="true">'+marks[status]+'</span><span class="occupancy-slot-label">'+labels[status]+'</span></div></div>';}).join('')+'</div></article>').join('')+'</div></section>';
   const ready=hours.some(hour=>Object.keys(occupancyCourts).some(area=>occupancyCourts[area].some(court=>occupancySlot(area,court,hour)!=='unknown')));
-  return '<div class="match-heading occupancy-heading"><h1>'+tr('Platzbelegung','Court availability')+'</h1><span class="occupancy-status">'+(ready?tr('Quelle: eBuSy','Source: eBuSy'):tr('Live-Daten noch nicht verfügbar','Live data not yet available'))+'</span></div><div class="occupancy-court-plan">'+group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts'))+'</div><div class="occupancy-footer"><div class="occupancy-legend">'+['free','occupied','partial','blocked','unknown'].map(status=>'<span><i class="occupancy-key occupancy-'+status+'"></i>'+labels[status]+'</span>').join('')+'</div>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
+  const header='<div class="occupancy-timeline-head"><span>'+tr('Platz','Court')+'</span>'+hours.map((hour,i)=>'<div class="occupancy-hour-head'+(i===0?' occupancy-hour-current':'')+'"><strong>'+occupancyTime(hour.start)+' – '+occupancyTime(hour.end)+'</strong><small>'+(i===0?tr('Aktuelle Stunde','Current hour'):tr('Danach','Upcoming'))+'</small></div>').join('')+'</div>';
+  const group=(area,title)=>'<section class="occupancy-roster-group occupancy-roster-'+area+'"><div class="occupancy-roster-caption">'+title+'</div>'+occupancyCourts[area].map(court=>'<article class="occupancy-roster-row occupancy-court-'+area+'" aria-label="'+title+' · '+tr('Platz ','Court ')+court+'"><div class="occupancy-court-ident">'+occupancyCourtGraphic(court)+'<strong>'+tr('Platz ','Court ')+court+'</strong></div>'+hours.map(hour=>occupancyBookingText(area,court,hour)).join('')+'</article>').join('')+'</section>';
+  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(ready?tr('Buchungsübersicht · eBuSy','Booking overview · eBuSy'):tr('eBuSy-Anbindung noch ausstehend','Awaiting eBuSy integration'))+'</span></div><div class="occupancy-roster">'+header+group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts'))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.')+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
 }
 function refreshOccupancyHour(now){
   if(pilot&&view==='info'&&screens[slide]==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();

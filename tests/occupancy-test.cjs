@@ -5,7 +5,7 @@ const begin=source.indexOf('const occupancyCourts='),end=source.indexOf('functio
 assert(begin>=0&&end>begin);
 const now=Date.parse('2026-11-25T13:37:22.123Z');
 class Clock extends Date{static now(){return now;}}
-const ctx=vm.createContext({Date:Clock,Intl,lang:'de',tr:(de,en)=>de,button:(label)=>label});
+const ctx=vm.createContext({Date:Clock,Intl,lang:'de',tr:(de,en)=>de,button:(label)=>label,esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')});
 vm.runInContext(source.slice(begin,end),ctx);
 const check=s=>vm.runInContext(s,ctx);
 assert.equal(check('occupancyHours()[0].start'),'2026-11-25T13:00:00.000Z');
@@ -20,5 +20,12 @@ assert.equal(check("occupancySlot('outdoor',1,occupancyHours()[0])"),'unknown');
 assert.equal(check("occupancyView().match(/class=\"occupancy-cell occupancy-unknown\"/g).length"),27);
 assert.equal(check("occupancyHours(Date.parse('2026-10-25T00:37:00Z'))[1].start"),'2026-10-25T01:00:00.000Z');
 assert.equal(check("occupancyView().match(/class=\"occupancy-court-art\"/g).length"),9);
-assert.equal(check("occupancyView().match(/class=\"occupancy-slot-time occupancy-slot-now\"/g).length"),9);
+assert.equal(check("occupancyView().match(/occupancy-hour-head occupancy-hour-current/g).length"),1);
+check("occupancyData={status:'ok',fetchedAt:Date.now()/1000,slots:[{area:'outdoor',court:1,...occupancyHours()[0],status:'occupied',bookings:[{displayLabel:'Testspieler A / B'}]}]}");
+assert.ok(check("occupancyView().includes('Testspieler A / B')"));
+check("occupancyData.slots[0].bookings[0].displayLabel='<script>'");
+assert.ok(check("occupancyView().includes('&lt;script&gt;')"));
+assert.ok(!check("occupancyView().includes('<script>')"));
+check('occupancyData.fetchedAt-=181');
+assert.ok(!check("occupancyView().includes('&lt;script&gt;')"));
 console.log('Court occupancy tests OK');
