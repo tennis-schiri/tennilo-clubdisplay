@@ -177,3 +177,12 @@ check(cd_club($db,'ntc93')['plan']==='INTERACTIVE');
 check(cd_display($db,'ntc93','managed-one','ntc93')['mode']==='INFO');
 $out=fopen('php://temp','w+');cd_billing_csv($db,$out);rewind($out);$csv=stream_get_contents($out);fclose($out);check(str_contains($csv,';PLUS;')&&str_contains($csv,';BASIC;'));
 echo "BASIC and PLUS labels, compatible stored identifiers and CSV export passed\n";
+
+$events=cd_feed_json('wp-events','{"events":[{"title":"Regel-Workshop","start_date":"2027-03-04 19:00:00","end_date":"2027-03-04 21:00:00","all_day":false},{"title":"Ohne Ende","start_date":"2027-03-04 19:00:00"},{"title":"Abgesagt","start_date":"2027-03-04 19:00:00","end_date":"2027-03-04 21:00:00","status":"cancelled"}]}');
+check(count($events['rows'])===2);
+check($events['rows'][0]['start']==='2027-03-04T19:00:00+01:00'&&$events['rows'][0]['end']==='2027-03-04T21:00:00+01:00');
+check(!isset($events['rows'][1]['end']));
+$timedIcs="BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART;TZID=Europe/Berlin:20991205T180000\nDTEND;TZID=Europe/Berlin:20991205T200000\nSUMMARY:Workshop\nEND:VEVENT\nEND:VCALENDAR";
+check(cd_ical_parse($timedIcs)[0]['end']==='2099-12-05T20:00:00+01:00');
+check(cd_event_timestamp('2027-02-30 12:00:00')===null);
+echo "Managed event times and missing-end validation passed\n";
