@@ -14,4 +14,9 @@ if(function_exists('simplexml_load_string')){
     $r=newsRss('<rss version="2.0"><channel><item><title>News</title><link>https://ntc93.com/news-example/</link><pubDate>Mon, 01 Jan 2024 12:00:00 +0100</pubDate><description><![CDATA[<p>RSS text</p>]]></description></item></channel></rss>');
     expectNews(count($r)===1&&$r[0]['excerpt']==='RSS text','RSS');
 }
+if(class_exists('DOMDocument')){
+    $content=newsContent('<p>Text <a href="https://example.org">Link</a></p><img src="https://ntc93.com/wp-content/uploads/2026/photo.jpg" onerror="bad()"><img src="https://example.org/track.png"><iframe src="https://example.org"></iframe><script>bad()</script>');
+    expectNews(str_contains($content,'Text Link')&&str_contains($content,'photo.jpg'),'article text and local images');
+    expectNews(!str_contains($content,'href=')&&!str_contains($content,'onerror')&&!str_contains($content,'example.org')&&!str_contains($content,'bad()'),'no links or active content');
+}
 echo "News tests OK\n";

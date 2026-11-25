@@ -225,7 +225,7 @@ function weatherView(){
   return head+warn+'<div class="wx-layout"><div class="wx-left">'+current+hourly+daily+'</div>'+radar+'</div>'+source;
 }
 
-let newsData=null,newsBusy=false;
+let newsData=null,newsBusy=false,openedNews=null;
 async function refreshNews(){
   if(!pilot||newsBusy)return;newsBusy=true;
   try{
@@ -235,21 +235,26 @@ async function refreshNews(){
     if(!Array.isArray(data.posts)||!['ok','stale','unavailable'].includes(data.status))throw Error('feed');
     newsData=data;
   }catch{newsData=newsData?.posts?.length?{...newsData,status:'stale'}:{status:'unavailable',posts:[]};}
-  finally{newsBusy=false;if(view==='news'||(view==='info'&&screens[slide]==='news'))render();}
+  finally{newsBusy=false;if((view==='news'&&!openedNews)||(view==='info'&&screens[slide]==='news'))render();}
+}
+function newsDate(p){return new Date(p.date).toLocaleDateString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'});}
+function newsArticleView(p){
+  const source='<span class="news-origin">'+tr('Originalbeitrag: ','Original article: ')+'ntc93.com</span>';
+  const image=p.image&&!(p.article||'').includes(esc(p.image))?'<figure class="news-cover"><img src="'+esc(p.image)+'" alt="'+esc(p.imageAlt||'')+'" referrerpolicy="no-referrer"></figure>':'';
+  const warning=!p.complete?'<p class="news-article-warning">'+tr('Der vollständige Beitrag ist momentan nicht über die Schnittstelle verfügbar. Angezeigt wird der vorhandene Inhalt.','The complete article is currently unavailable through the feed. Available content is shown.')+'</p>':'';
+  return '<div class="news-reader-head"><div><time class="news-date" datetime="'+esc(p.date)+'">'+esc(newsDate(p))+'</time>'+source+'<h1>'+esc(p.title)+'</h1></div>'+button(tr('Zurück zu den Meldungen','Back to news'),'news-back','primary')+'</div><div id="news-article-scroll" class="panel news-article-scroll" tabindex="0" aria-label="'+tr('Artikelinhalt','Article content')+'">'+warning+image+(p.article||'<p>'+esc(p.excerpt)+'</p>')+'</div><div class="news-reader-foot"><span>'+tr('Quelle: ntc93.com · Originaltext','Source: ntc93.com · Original text')+'</span><div><button data-action="news-up" aria-label="'+tr('Nach oben','Scroll up')+'">↑</button><button data-action="news-down" aria-label="'+tr('Weiterlesen','Read further')+'">↓</button></div></div>';
 }
 function newsView(){
-  const title='<div class="match-heading"><h1>'+t().announcements+'</h1></div>';
-  if(!pilot)return title+'<div class="grid">'+t().newsItems.map(n=>'<article class="panel"><h2>'+esc(n)+'</h2><p>'+esc(t().newsText)+'</p></article>').join('')+'</div>';
+  if(pilot&&view==='news'&&openedNews)return newsArticleView(openedNews);
+  const title='<div class="match-heading"><h1>'+t().announcements+'</h1><span class="news-origin">'+tr('Aktuelle Meldungen von ','Latest news from ')+'ntc93.com</span></div>';
+  if(!pilot)return '<div class="match-heading"><h1>'+t().announcements+'</h1></div><div class="grid">'+t().newsItems.map(n=>'<article class="panel"><h2>'+esc(n)+'</h2><p>'+esc(t().newsText)+'</p></article>').join('')+'</div>';
   const d=newsData;
   const stamp=d?.fetchedAt?new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'}):'';
-  const source='<p class="match-source">'+tr('Quelle: NTC-Website','Source: NTC website')+(stamp?' · '+tr('Stand ','Updated ')+esc(stamp):'')+(lang==='en'?' · Original German articles':'')+'</p>';
+  const source='<p class="match-source">'+tr('Quelle: ntc93.com','Source: ntc93.com')+(stamp?' · '+tr('Stand ','Updated ')+esc(stamp):'')+(lang==='en'?' · Original German articles':'')+'</p>';
   if(!d||d.status==='unavailable')return title+'<div class="panel">'+tr(d?'Vereinsmeldungen momentan nicht verfügbar.':'Vereinsmeldungen werden geladen …',d?'Club news currently unavailable.':'Loading club news …')+'</div>'+source;
   if(!d.posts.length)return title+'<div class="panel">'+tr('Keine veröffentlichten Meldungen gefunden.','No published news found.')+'</div>'+source;
   const warn=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Meldungen – Aktualisierung fehlgeschlagen.','Cached news – refresh failed.')+'</p>':'';
-  const cards=d.posts.slice(0,3).map(p=>{
-    const date=new Date(p.date).toLocaleDateString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'});
-    return '<article class="panel news-card"><time datetime="'+esc(p.date)+'">'+esc(date)+'</time><h2>'+esc(p.title)+'</h2><p>'+esc(p.excerpt)+'</p></article>';
-  }).join('');
+  const cards=d.posts.slice(0,3).map((p,i)=>'<button type="button" class="panel news-card" data-action="news-open:'+i+'"><time class="news-date" datetime="'+esc(p.date)+'">'+esc(newsDate(p))+'</time><strong class="news-card-title">'+esc(p.title)+'</strong><span class="news-excerpt">'+esc(p.excerpt)+'</span><span class="news-read-more">'+tr('Artikel lesen','Read article')+' →</span></button>').join('');
   return title+warn+'<div class="news-grid">'+cards+'</div>'+source;
 }
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();
@@ -275,7 +280,7 @@ case 'weather':html=weatherView();if(!radarBusy)refreshRadar();break;
 case 'news':html=newsView();break;
 case 'partner':html=hero(l.partner,l.partnerText);break;
 }
-$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';const embeddedBooking=pilot&&active==='courts';$('screen').innerHTML=embeddedBooking?html:'<div class="fit-content">'+html+'</div>';if(!embeddedBooking)fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
+$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';const embeddedBooking=pilot&&active==='courts',readingNews=pilot&&active==='news'&&view==='news'&&!!openedNews;document.body.classList.toggle('news-reading',readingNews);$('screen').innerHTML=embeddedBooking||readingNews?html:'<div class="fit-content">'+html+'</div>';if(!embeddedBooking&&!readingNews)fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
 
 // Allocate space using rendered content, not viewport-size guesses. Recompute on resize and data changes.
 function fitActiveScreen(){
@@ -357,14 +362,14 @@ let fitFrame=0;
 function scheduleScreenFit(){
   cancelAnimationFrame(fitFrame);
   fitFrame=requestAnimationFrame(()=>{
-    if(!(pilot&&view==='courts'))render();
+    if(!(pilot&&view==='courts')&&!openedNews)render();
   });
 }
 
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
-function go(next){if(next==='weather'&&view!=='weather')weatherPage='all';if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
-document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
-for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{last=Date.now();});
+function go(next){openedNews=null;if(next==='weather'&&view!=='weather')weatherPage='all';if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
+document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a.startsWith('news-open:')&&pilot&&(view==='news'||(view==='info'&&screens[slide]==='news'))){const index=Number(a.split(':')[1]);const p=newsData?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
+for(const event of ['pointerdown','keydown','wheel','touchmove'])document.addEventListener(event,()=>{last=Date.now();});
 $('language').addEventListener('click',()=>{if(pilot&&view==='courts'&&courtMode==='outdoor')return;lang=lang==='de'?'en':'de';message='';render();});
 const adminDialog=$('admin-dialog'), adminForm=$('admin-form'), adminPin=$('admin-pin'), adminStatus=$('admin-status');
 function syncFullscreen(){
