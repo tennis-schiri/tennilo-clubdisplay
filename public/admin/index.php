@@ -9,11 +9,16 @@ if(($_SERVER['HTTP_HOST']??'')!=='clubdisplay.tennilo.de'||(empty($_SERVER['HTTP
 require __DIR__.'/lib.php';
 $hash='__CD_ADMIN_PASSWORD_HASH__';
 $storage=base64_decode('__CD_ADMIN_STORAGE_B64__',true);
-if(!str_starts_with($hash,'$2')||!is_string($storage)||!is_dir($storage)||!is_writable($storage)){http_response_code(503);exit('Administration noch nicht eingerichtet.');}
+function cd_unavailable(string $code):never {http_response_code(503);header('Content-Type: text/plain; charset=utf-8');exit('CD_ADMIN_'.$code);}
+if(!str_starts_with($hash,'$2'))cd_unavailable('HASH');
+if(!is_string($storage)||$storage==='')cd_unavailable('STORAGE_CONFIG');
+if(!is_dir($storage))cd_unavailable('STORAGE_DIRECTORY');
+if(!is_writable($storage))cd_unavailable('STORAGE_PERMISSIONS');
 $dir=realpath($storage);$root=realpath($_SERVER['DOCUMENT_ROOT']??'');
-if(!$dir||!$root||$dir===$root||str_starts_with($dir,$root.DIRECTORY_SEPARATOR)){http_response_code(503);exit('Privater Speicher fehlt.');}
+if(!$dir||!$root||$dir===$root||str_starts_with($dir,$root.DIRECTORY_SEPARATOR))cd_unavailable('STORAGE_NOT_PRIVATE');
+if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true))cd_unavailable('SQLITE_DRIVER');
 umask(0077);
-try{$db=cd_db($dir.'/clubdisplay-admin.sqlite');}catch(Throwable $e){http_response_code(503);exit('Privater Speicher nicht verfügbar.');}
+try{$db=cd_db($dir.'/clubdisplay-admin.sqlite');}catch(Throwable $e){cd_unavailable('DATABASE_INIT');}
 ini_set('session.use_strict_mode','1');
 session_name('CD_ADMIN');
 session_set_cookie_params(['lifetime'=>0,'path'=>'/admin/','secure'=>true,'httponly'=>true,'samesite'=>'Strict']);
