@@ -179,3 +179,6 @@ Separates Admin-Portal https://clubdisplay.tennilo.de/admin/ für den Betreiber.
 
 ## 0.5.1 – TENNILO → Verein → Bildschirm
 Zentrale Kundenverwaltung und separate, durch TENNILO freischaltbare Vereinszugänge. Ein Verein kann mehrere Bildschirmprofile mit Betriebsart, Sprache, Modulen, Wechselzeit und Aktivstatus verwalten. Vereinszugänge sehen ausschließlich den eigenen Verein und können weder Lizenzen noch Zugangsdaten anderer Vereine ändern. Profile sind weiterhin Entwürfe; Geräteanbindung und Vereinsinhalte folgen. Vorhandenes TENNILO_ADMIN_PASSWORD wird weiterverwendet; kein neues Passwort-Secret. Privater SQLite-Speicher und manuelle Abnahme erforderlich.
+
+## 0.5.2 – Gemeinsame Vereinsinhalte
+Vereinslogo (PNG/JPEG/WebP, max. 2 MB, serverseitig als PNG neu kodiert; PHP GD erforderlich), Akzentfarbe und Begrüßungstext sowie redaktionelle Einträge für Nachrichten, Termine, Sponsoren und Gastronomie. Einträge mit Titel, Text, optionalem Zeitraum und HTTPS-Link, aktiv/inaktiv, bearbeitbar und löschbar. Logos liegen privat in SQLite und werden nur nach Login und Vereinsrechteprüfung angezeigt. Vereinsinhalte sind noch nicht an produktive Displays angebunden. Sponsorenbilder, strukturierte Gastronomiezeiten und externe Datenquellen folgen.
