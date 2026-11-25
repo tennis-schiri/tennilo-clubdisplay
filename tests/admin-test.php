@@ -171,3 +171,9 @@ cd_save_content($db,['club'=>'ntc93','kind'=>'news','id'=>$id,'intent'=>'delete'
 check((int)$db->query("SELECT COUNT(*) FROM content_targets WHERE content_id=".$id)->fetchColumn()===0);
 check((int)$db->query("SELECT COUNT(*) FROM content_audience WHERE content_id=".$id)->fetchColumn()===0);
 echo "Per-screen layout, audience, module intersection, media isolation and cascade tests passed\n";
+
+check(cd_plan_label('INFO')==='BASIC'&&cd_plan_label('INTERACTIVE')==='PLUS');
+check(cd_club($db,'ntc93')['plan']==='INTERACTIVE');
+check(cd_display($db,'ntc93','managed-one','ntc93')['mode']==='INFO');
+$out=fopen('php://temp','w+');cd_billing_csv($db,$out);rewind($out);$csv=stream_get_contents($out);fclose($out);check(str_contains($csv,';PLUS;')&&str_contains($csv,';BASIC;'));
+echo "BASIC and PLUS labels, compatible stored identifiers and CSV export passed\n";
