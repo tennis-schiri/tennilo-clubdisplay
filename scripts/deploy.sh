@@ -11,6 +11,8 @@ php -l public/events.php
 php -l public/admin-pin.php
 php -l public/terminal.php
 php tests/events-test.php
+php -l public/news.php
+php tests/news-test.php
 php -l public/weather.php
 php tests/weather-test.php
 files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/app.css assets/app.js index.html)
@@ -54,6 +56,11 @@ php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!iss
 upload public/weather.php weather.php
 curl --fail --silent --show-error --max-time 50 --output "$tmp/weather" "https://${DOMAIN}/weather.php"
 php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!in_array($v["status"]??"",["ok","stale","unavailable"],true))exit(1); echo "Weather feed: ".$v["status"]."\n";' "$tmp/weather"
+if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
+  upload public/news.php news.php
+  curl --fail --silent --show-error --max-time 50 --output "$tmp/news" "https://${DOMAIN}/news.php?release=${RELEASE_ID}"
+  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!in_array($v["status"]??"",["ok","stale","unavailable"],true)||!is_array($v["posts"]??null)||count($v["posts"])>3)exit(1); echo "News feed: ".$v["status"]." / ".count($v["posts"])." posts / ".($v["source"]??"none")."\n";' "$tmp/news"
+fi
 for f in "${files[@]}"; do
   echo "Deploy: $f"
   upload "public/$f" "$f"

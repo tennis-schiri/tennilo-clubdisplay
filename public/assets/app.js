@@ -225,7 +225,34 @@ function weatherView(){
   return head+warn+'<div class="wx-layout"><div class="wx-left">'+current+hourly+daily+'</div>'+radar+'</div>'+source;
 }
 
-function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen sind noch Beispiele · Buchung über eBuSy.','Club news is still sample data · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();
+let newsData=null,newsBusy=false;
+async function refreshNews(){
+  if(!pilot||newsBusy)return;newsBusy=true;
+  try{
+    const response=await fetch('news.php',{cache:'no-store',signal:AbortSignal.timeout(30000)});
+    if(!response.ok)throw Error('HTTP');
+    const data=await response.json();
+    if(!Array.isArray(data.posts)||!['ok','stale','unavailable'].includes(data.status))throw Error('feed');
+    newsData=data;
+  }catch{newsData=newsData?.posts?.length?{...newsData,status:'stale'}:{status:'unavailable',posts:[]};}
+  finally{newsBusy=false;if(view==='news'||(view==='info'&&screens[slide]==='news'))render();}
+}
+function newsView(){
+  const title='<div class="match-heading"><h1>'+t().announcements+'</h1></div>';
+  if(!pilot)return title+'<div class="grid">'+t().newsItems.map(n=>'<article class="panel"><h2>'+esc(n)+'</h2><p>'+esc(t().newsText)+'</p></article>').join('')+'</div>';
+  const d=newsData;
+  const stamp=d?.fetchedAt?new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'}):'';
+  const source='<p class="match-source">'+tr('Quelle: NTC-Website','Source: NTC website')+(stamp?' · '+tr('Stand ','Updated ')+esc(stamp):'')+(lang==='en'?' · Original German articles':'')+'</p>';
+  if(!d||d.status==='unavailable')return title+'<div class="panel">'+tr(d?'Vereinsmeldungen momentan nicht verfügbar.':'Vereinsmeldungen werden geladen …',d?'Club news currently unavailable.':'Loading club news …')+'</div>'+source;
+  if(!d.posts.length)return title+'<div class="panel">'+tr('Keine veröffentlichten Meldungen gefunden.','No published news found.')+'</div>'+source;
+  const warn=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Meldungen – Aktualisierung fehlgeschlagen.','Cached news – refresh failed.')+'</p>':'';
+  const cards=d.posts.slice(0,3).map(p=>{
+    const date=new Date(p.date).toLocaleDateString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'});
+    return '<article class="panel news-card"><time datetime="'+esc(p.date)+'">'+esc(date)+'</time><h2>'+esc(p.title)+'</h2><p>'+esc(p.excerpt)+'</p></article>';
+  }).join('');
+  return title+warn+'<div class="news-grid">'+cards+'</div>'+source;
+}
+function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
 const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');let html='';
 switch(active){
@@ -245,7 +272,7 @@ case 'courts':if(pilot){html=ebusyView();break;}html='<h1>'+l.booking+'</h1><p>'
 case 'calendar':html=eventView();break;
 case 'teams':html=matchView();break;
 case 'weather':html=weatherView();if(!radarBusy)refreshRadar();break;
-case 'news':html='<h1>'+l.announcements+'</h1><div class="grid">'+l.newsItems.map(n=>'<article class="panel"><h2>'+n+'</h2><p>'+l.newsText+'</p></article>').join('')+'</div>';break;
+case 'news':html=newsView();break;
 case 'partner':html=hero(l.partner,l.partnerText);break;
 }
 $('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';const embeddedBooking=pilot&&active==='courts';$('screen').innerHTML=embeddedBooking?html:'<div class="fit-content">'+html+'</div>';if(!embeddedBooking)fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
@@ -384,4 +411,4 @@ setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
-render();refreshLeague();refreshEvents();refreshWeather();setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);
+render();refreshLeague();refreshEvents();refreshWeather();refreshNews();setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);

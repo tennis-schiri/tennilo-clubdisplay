@@ -101,3 +101,6 @@ Zeitspanne bzw. Enddatum und Veranstaltungsort als eigene, leicht dunklere Felde
 
 ## 0.4.10 – Startmenü und Fokusrahmen
 Fokus- und Hover-Umrandungen liegen innerhalb der Buttons, damit sie an keinem Rand des festen Inhaltsbereichs abgeschnitten werden. Aktive gelbe/cyanfarbene Buttons erhalten kontrastierende dunkle Fokusumrandungen. Startmenü mit fünf größeren Touch-Karten im 3+2-Raster, kurzen zweisprachigen Funktionsbeschreibungen und Pfeil; mobile Ansicht zweispaltig. Unveränderter fester Seitenrahmen, keine Änderung an Datenquellen oder Buchungen.
+
+## 0.4.11 – NTC-Vereinsmeldungen
+Auf dem NTC-Display werden bis zu drei neueste öffentliche WordPress-Beiträge von ntc93.com mit Datum, Titel und kurzem Originalauszug (max. 240 Zeichen) angezeigt; REST-API primär, RSS als Alternative. Servercache 15 Minuten, bei Ausfall bis 7 Tage alter Stand klar gekennzeichnet. Keine API-Schlüssel, keine externen Links im Kiosk, Originaltexte bleiben deutsch. TENNILO-Demo behält Beispielmeldungen. Parser-Tests und Live-Endpunktprüfung im Deployment; tatsächliche Erreichbarkeit der News-Feeds bis zur Ausführung nicht bestätigt.
