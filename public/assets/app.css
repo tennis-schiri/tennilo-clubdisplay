@@ -249,3 +249,11 @@ body.court-screen{height:100dvh;min-height:0;overflow:hidden}
 .court-screen .hall-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex:0 0 auto;color:var(--muted);font-size:.8rem}
 .court-screen .hall-toolbar button{min-height:38px;padding:.3rem .65rem;font-size:.8rem}
 @media(max-width:700px){body>header{padding:.4rem .6rem;gap:.35rem}.court-screen .booking-head h1{font-size:1.5rem}.court-screen .court-switch{flex-basis:100%;max-width:none;order:3}.court-screen .booking-head>button{min-height:34px}.court-screen .court-switch button{min-height:36px;font-size:.78rem;padding:.25rem .35rem}}
+
+/* 0.4.7: calendar cards use the approved CD-M04c visual language. */
+.event-screen .event-card{grid-template-columns:clamp(112px,14vw,190px) minmax(0,1fr) auto}
+.event-screen .event-content{gap:.25rem;align-content:center}
+.event-title{font-size:clamp(1.25rem,2vw,2.15rem);line-height:1.15;overflow-wrap:anywhere;color:var(--ink);font-weight:800;text-align:left}
+.event-details{justify-content:flex-start}
+.event-card>.event-link{align-self:stretch;justify-content:center;padding:.45rem 1rem;min-height:0;border-left:1px solid var(--line);background:#0002;font-weight:650}
+@media(max-width:699px){.event-screen .event-card{grid-template-columns:clamp(62px,18vw,100px) minmax(0,1fr) auto}.event-title{font-size:clamp(.95rem,3.5vw,1.3rem)}.event-card>.event-link{font-size:.7rem;padding:.3rem}}

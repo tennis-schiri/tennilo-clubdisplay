@@ -89,7 +89,7 @@ async function refreshLeague(){
 setInterval(refreshLeague,300000);
 let eventData=null,eventPage=0,eventFetching=false;
 function eventView(){
-  const info=view==='info',d=eventData,title='<h1>'+t().upcoming+'</h1>';
+  const info=view==='info',d=eventData,title='<div class="match-heading"><h1>'+t().upcoming+'</h1></div>';
   const source='<p class="match-source">'+tr('Quelle: NTC-Veranstaltungskalender','Source: NTC event calendar')+(d?.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info&&!pilot?' · <a href="https://ntc93.com/events/" target="_blank" rel="noopener noreferrer">'+tr('Original-Kalender','Original calendar')+'</a>':'')+'</p>';
   if(!d)return title+'<div class="panel"><p>'+tr('Termine werden geladen …','Loading events …')+'</p></div>';
   if(d.status==='unavailable')return title+'<div class="panel"><p>'+tr('Vereinskalender momentan nicht verfügbar.','Club calendar currently unavailable.')+'</p></div>'+source;
@@ -98,16 +98,21 @@ function eventView(){
   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const val=k=>parts.find(p=>p.type===k)?.value;const today=val('year')+'-'+val('month')+'-'+val('day');
   const rows=d.events.filter(e=>e.end.slice(0,10)>=today);
   if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine kommenden Veranstaltungen im abgerufenen Zeitraum.','No upcoming events in the retrieved period.')+'</p>'+(d.to?'<p>'+tr('Zeitraum bis ','Period until ')+esc(d.to)+'</p>':'')+'</div>'+source;
-  const size=info?4:6,pages=Math.ceil(rows.length/size),page=info?0:Math.min(eventPage,pages-1);
-  const cards=rows.slice(page*size,(page+1)*size).map(e=>{
-    const multi=e.start.slice(0,10)!==e.end.slice(0,10),opts={weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'};
-    const date=fmt(e.start,opts)+(multi?' – '+fmt(e.end,opts):'');
-    const time=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+fmt(e.end,{hour:'2-digit',minute:'2-digit'});
+  const cards=rows.map(e=>{
+    const dayKey=s=>fmt(s,{year:'numeric',month:'2-digit',day:'2-digit'});
+    const multi=dayKey(e.start)!==dayKey(e.end);
+    const weekday=fmt(e.start,{weekday:'long'});
+    const date=fmt(e.start,{day:'2-digit',month:'2-digit'});
+    const time=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+(lang==='de'?' Uhr':'');
+    const endTime=fmt(e.end,{hour:'2-digit',minute:'2-digit'});
+    const dateRange=multi?fmt(e.start,{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})+' – '+fmt(e.end,{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}):'';
+    const duration=e.allDay?'':multi?tr('Ende: ','Ends: ')+fmt(e.end,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):tr('Uhrzeit: ','Time: ')+fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+endTime+(lang==='de'?' Uhr':'');
     const link=!info&&!pilot&&typeof e.url==='string'&&/^https:\/\/(?:www\.)?ntc93\.com\//i.test(e.url)?'<a class="event-link" href="'+esc(e.url)+'" target="_blank" rel="noopener noreferrer">'+tr('Details','Details')+'</a>':'';
-    return '<article class="event-row"><div class="event-date"><strong>'+esc(date)+'</strong><span>'+esc(time)+'</span></div><div><strong class="event-name">'+esc(e.title)+'</strong>'+(e.venue?'<p>'+esc(e.venue)+'</p>':'')+'</div>'+link+'</article>';
+    const details=[dateRange,duration,e.venue?tr('Ort: ','Venue: ')+e.venue:''].filter(Boolean).map(value=>'<span>'+esc(value)+'</span>').join('');
+    return '<article class="fixture-card event-card"><time class="fixture-date-block" datetime="'+esc(e.start)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(date)+'</strong><span class="fixture-time">'+esc(time)+'</span></time><div class="fixture-content event-content"><strong class="event-title">'+esc(e.title)+'</strong>'+(details?'<div class="fixture-details event-details">'+details+'</div>':'')+'</div>'+link+'</article>';
   }).join('');
-  const paging=!info&&pages>1?'<div class="actions match-pages"><button data-action="event-prev" '+(page===0?'disabled':'')+'>‹</button><span>'+(page+1)+' / '+pages+'</span><button data-action="event-next" '+(page===pages-1?'disabled':'')+'>›</button></div>':'';
-  return title+warning+'<div class="panel">'+cards+'</div>'+paging+source;
+  const paging='<div class="actions match-pages"><button data-action="event-prev" aria-label="'+tr('Vorherige Seite','Previous page')+'">‹</button><span class="match-page-number"></span><button data-action="event-next" aria-label="'+tr('Nächste Seite','Next page')+'">›</button></div>';
+  return title+warning+'<div class="fixture-list">'+cards+'</div>'+paging+source;
 }
 async function refreshEvents(){
   if(eventFetching)return;eventFetching=true;
@@ -221,7 +226,7 @@ function weatherView(){
 
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen sind noch Beispiele · Buchung über eBuSy.','Club news is still sample data · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('fixed-screen',active==='teams'||active==='weather'||active==='courts');let html='';
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('fixed-screen',active==='teams'||active==='weather'||active==='courts'||active==='calendar');let html='';
 switch(active){
 case 'welcome':html=hero(l.welcome,l.intro,(pilot?'<div class="panel"><h2>'+tr('Außenplätze','Outdoor courts')+'</h2><p>'+tr('Aktuelle Belegung im eBuSy-Buchungsplan.','Current availability in the eBuSy booking plan.')+'</p><div class="actions">'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary large')+'</div></div>':panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available])));break;
 case 'home':html='<h1>'+l.welcome+'</h1><p>'+l.intro+'</p><div class="grid">'+[['courts',l.booking],['calendar',l.upcoming],['teams',l.matches],['weather',tr('Wetter','Weather')],['news',l.announcements]].map(([k,v])=>button(v,k,'tile large')).join('')+'</div>';break;
@@ -232,7 +237,7 @@ case 'weather':html=weatherView();if(!radarBusy)refreshRadar();break;
 case 'news':html='<h1>'+l.announcements+'</h1><div class="grid">'+l.newsItems.map(n=>'<article class="panel"><h2>'+n+'</h2><p>'+l.newsText+'</p></article>').join('')+'</div>';break;
 case 'partner':html=hero(l.partner,l.partnerText);break;
 }
-$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';$('screen').innerHTML=(active==='teams'||active==='weather')?'<div class="fit-content">'+html+'</div>':html;if(active==='teams'||active==='weather')fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
+$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';$('screen').innerHTML=(active==='teams'||active==='weather'||active==='calendar')?'<div class="fit-content">'+html+'</div>':html;if(active==='teams'||active==='weather'||active==='calendar')fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
 
 // Allocate space using rendered content, not viewport-size guesses. Recompute on resize and data changes.
 function fitActiveScreen(){
@@ -242,7 +247,8 @@ function fitActiveScreen(){
   screen.dataset.weatherLayout='';
   const available=screen.clientHeight;
   if(available<=0)return;
-  if(document.body.classList.contains('match-screen')){
+  if(document.body.classList.contains('match-screen')||document.body.classList.contains('event-screen')){
+    const isEvent=document.body.classList.contains('event-screen'),prefix=isEvent?'event':'match';
     const list=content.querySelector('.fixture-list'),pager=content.querySelector('.match-pages');
     if(list&&pager){
       const cards=Array.from(list.children);
@@ -259,14 +265,14 @@ function fitActiveScreen(){
         used+=(group.length?gap:0)+height;group.push(card);
       }
       if(group.length)groups.push(group);
-      const page=view==='info'?0:Math.max(0,Math.min(matchPage,groups.length-1));
-      if(view!=='info')matchPage=page;
+      const page=view==='info'?0:Math.max(0,Math.min(isEvent?eventPage:matchPage,groups.length-1));
+      if(view!=='info'){if(isEvent)eventPage=page;else matchPage=page;}
       const shown=new Set(groups[page]||[]);
       for(const card of cards)card.hidden=!shown.has(card);
       pager.hidden=groups.length<=1||view==='info';
       pager.querySelector('.match-page-number').textContent=(page+1)+' / '+groups.length;
-      pager.querySelector('[data-action="match-prev"]').disabled=page<=0;
-      pager.querySelector('[data-action="match-next"]').disabled=page>=groups.length-1;
+      pager.querySelector('[data-action="'+prefix+'-prev"]').disabled=page<=0;
+      pager.querySelector('[data-action="'+prefix+'-next"]').disabled=page>=groups.length-1;
     }
   }else{
     const layout=content.querySelector('.wx-layout'), controls=content.querySelector('.wx-pages');

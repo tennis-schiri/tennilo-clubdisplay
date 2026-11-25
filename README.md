@@ -89,3 +89,6 @@ Zusätzliche ClubDisplay-Terminalfreigabe entfernt. Bei gesetztem NTC_EBUSY_CLIE
 
 ## 0.4.6 – Einheitlicher Kopf und Platzansicht
 Flache Kopfzeile der Wetteransicht auf allen Reitern; Logo, Datum/Uhrzeit und Wetter unverändert angeordnet. Plätze belegen exakt den verbleibenden Flex-Bereich zwischen Kopf und Navigation, ohne bisherige feste Mindesthöhe des iframes. Kompakte Umschaltung und Hallen-Statuszeile. Fenstergrößenänderungen passen den iframe per CSS an, ohne laufende Buchungen neu zu laden. Kein vertikales Scrollen der ClubDisplay-Hülle; Scrollverhalten innerhalb der fremden eBuSy-Seite ist durch deren eigenes Layout bestimmt. Buchungsfunktion und Hallen-Anzeigesperre unverändert.
+
+## 0.4.7 – Terminkarten
+Termine im CD-M04c-Stil mit identischem Datumsblock (ausgeschriebener Wochentag, Datum, Beginn bzw. ganztägig), linksbündigem Veranstaltungstitel und vorhandener Zeitspanne/Ort; mehrtägige Termine mit zusätzlichem Datumsbereich. Keine leeren Platz-/Ergebnisspalten. Wie Mannschaftsspiele dynamisch nach gemessener Kartenhöhe paginiert, feste Kopfzeile und Navigation. Kalenderdaten und externe Linkregeln unverändert.
