@@ -19,8 +19,12 @@ jobs:
         run: |
           php -l public/admin/index.php
           php -l public/admin/lib.php
+          php -l public/admin/managed.php
+          php -l public/admin/player.php
+          node --check public/admin/player.js
           php -r 'if(!extension_loaded("gd")){fwrite(STDERR,"GD required for media tests\n");exit(1);}'
           php tests/admin-test.php
+          bash tests/admin-http-test.sh
       - name: Nur Admin-Dateien per FTPS übertragen
         env:
           FTP_HOST: ${{ secrets.TENNILO_FTP_HOST }}
@@ -59,6 +63,10 @@ jobs:
           upload "$tmp/guard" clubdisplay-admin/.deployment-verified
           deny "clubdisplay-admin/.deployment-verified"
           echo 'Storage HTTP access denied; deploying backend.'
+          upload public/admin/managed.php admin/managed.php
+          upload public/admin/player.php admin/player.php
+          upload public/admin/player.css admin/player.css
+          upload public/admin/player.js admin/player.js
           upload public/admin/lib.php admin/lib.php
           upload public/admin/admin.css admin/admin.css
           upload "$tmp/index.php" admin/index.php
@@ -78,4 +86,15 @@ jobs:
             ! grep -Fq 'Administrator-Anmeldung' "$tmp/club-login"
           done
           grep -Fq '<p>NTC 93</p>' "$tmp/club-login"
-          echo 'Separate login pages reachable; authenticated browser test still required.'
+          curl --fail --silent --show-error --max-time 30 "https://clubdisplay.tennilo.de/admin/?player=1" -o "$tmp/player"
+          grep -Fq 'player.js' "$tmp/player"
+          for asset in player.js player.css admin.css; do
+            curl --fail --silent --show-error --max-time 30 "https://clubdisplay.tennilo.de/admin/$asset?run=${GITHUB_RUN_ID}" -o "$tmp/asset"
+            cmp "public/admin/$asset" "$tmp/asset"
+          done
+          status="$(curl --silent --show-error --max-time 30 -H 'Content-Type: application/json' --data '{"action":"snapshot","token":"invalid"}' --write-out '%{http_code}' -o "$tmp/device" "https://clubdisplay.tennilo.de/admin/?device=1")"
+          [[ "$status" == 403 ]]
+          status="$(curl --silent --show-error --max-time 30 --write-out '%{http_code}' -o "$tmp/preview" "https://clubdisplay.tennilo.de/admin/?preview-data=1&club=ntc93&screen=hall")"
+          [[ "$status" == 403 ]]
+          deny "clubdisplay-admin/clubdisplay-admin.sqlite"
+          echo 'Separate login pages and managed player reachable; unauthenticated device and preview denied.'
