@@ -594,3 +594,12 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:100%;display:fle
 .df-simple-footer{align-items:center;flex-wrap:wrap}
 .df-website-address{font:400 clamp(1.1rem,2.1vw,2rem)/1.15 Georgia,'Times New Roman',serif;color:var(--df-wine-dark);overflow-wrap:anywhere;text-align:right}
 @media(max-width:700px){.df-simple-phone .df-reservation-options{font-size:.58rem}.df-website-address{font-size:clamp(.85rem,3.3vw,1.15rem)}.df-simple-footer{gap:.2rem}}
+
+/* 0.4.29: original restaurant food photos inside the two compact offer cards. */
+.df-offer-panel .df-offer{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);grid-template-rows:auto auto auto;column-gap:clamp(.3rem,.8vw,.7rem);align-items:center}
+.df-offer-panel .df-offer .df-offer-dish{grid-column:1;grid-row:1/4;width:100%;height:100%;min-height:0;max-height:clamp(74px,15dvh,145px);aspect-ratio:1/1;object-fit:cover;border-radius:9px;display:block;background:#fff8ee18}
+.df-offer-panel .df-offer span{grid-column:2;grid-row:1;align-self:end}
+.df-offer-panel .df-offer strong{grid-column:2;grid-row:2;font-size:clamp(.88rem,1.4vw,1.5rem);overflow-wrap:anywhere}
+.df-offer-panel .df-offer b{grid-column:2;grid-row:3;align-self:start;font-size:clamp(1.35rem,2.2vw,2.5rem)}
+.df-offer-panel .df-offer.is-today .df-offer-dish{outline:2px solid #f4d49e;outline-offset:-2px}
+@media(max-width:700px){.df-offer-panel .df-offer{grid-template-columns:minmax(0,.65fr) minmax(0,1.35fr);grid-template-rows:auto auto auto;column-gap:.25rem}.df-offer-panel .df-offer .df-offer-dish{max-height:58px;border-radius:5px}.df-offer-panel .df-offer strong{font-size:.78rem}.df-offer-panel .df-offer b{font-size:1rem}}

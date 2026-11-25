@@ -155,3 +155,6 @@ Drei ruhige Informationsspalten beibehalten. Originale Dolce-Vita-Farben aus der
 
 ## 0.4.28 – Due Fratelli: Reservierung und Webadresse
 Webadresse deutlich größer in der Fußzeile der Restaurantfolie. Reservierungshinweis vor Ort, telefonisch oder online im bestehenden Kontaktfeld, zweisprachig. Webadresse bleibt für den Infomodus reiner Anzeigetext, ohne externe Navigation. Sonst unverändertes Layout. Visuelle Live-Prüfung ausstehend.
+
+## 0.4.29 – Originale Pizza- und Pastafotos
+Die beiden Wochenaktionskarten erhalten die Originalfotos aus WeeklyOffer.astro der Due-Fratelli-Homepage (gericht-pizza.jpg, gericht-pasta.jpg). Kompakte Bildspalte neben Tag, Gericht und Preis; heutige Aktion weiterhin hervorgehoben. Keine weiteren großen Fotos, übriges Layout unverändert. Live-Bildabruf und optische Prüfung stehen aus.
