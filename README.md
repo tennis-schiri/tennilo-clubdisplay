@@ -80,3 +80,6 @@ Mannschaften und Wetter belegen die verfügbare Viewporthöhe mit sichtbarer Kop
 
 ## 0.4.3 – Kopfzeile
 Erweiterter antippbarer Wetterblock mit Temperatur, Wetterzustand, Tagesminimum/-maximum, Wind, Niederschlagswahrscheinlichkeit der nächsten verfügbaren Stunde sowie eigenen SVG-Sonnenauf-/untergangssymbolen. Uhrzeit/Datum als eigener Block ganz rechts nach den Sprach-/Vollbild-Buttons. Auf schmalen Displays werden zunächst Zusatzwerte ausgeblendet; Sonnenzeiten bleiben sichtbar. Keine Änderung an Wetterquellen oder Spielkarten.
+
+## 0.4.4 – Kopfzeilenanordnung
+Logo/Vereinsname, umrandeter Datums-/Uhrzeitblock, Wetterblock, Sprach- und Vollbildsteuerung. Datum/Uhrzeit direkt links neben Wetter; beide Informationsblöcke gleich hoch. Wetterinhalte unverändert.
