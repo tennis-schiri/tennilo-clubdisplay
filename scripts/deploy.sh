@@ -19,7 +19,7 @@ php -l public/news.php
 php tests/news-test.php
 php -l public/weather.php
 php tests/weather-test.php
-files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/app.css assets/app.js index.html)
+files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/tennilo-footer-logo.png assets/app.css assets/app.js index.html)
 test -s public/nuliga.php
 test -s public/events.php
 for f in "${files[@]}"; do test -s "public/$f"; done

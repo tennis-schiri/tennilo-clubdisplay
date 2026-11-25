@@ -164,3 +164,6 @@ Rechte Weihnachtsspalte leicht verbreitert. Datumsangaben und Zeiten nebeneinand
 
 ## 0.4.31 – Restaurantfolie: Webadresse im Kopf
 Homepage-Adresse zwischen Logo und Reservierungsfeld; auf schmalen Bildschirmen direkt darunter. Fußzeile mit Trattoria-am-NTC-Hinweis vollständig entfernt, sodass die drei Informationsspalten mehr Höhe erhalten. Übriges Layout unverändert. Visuelle Live-Prüfung ausstehend.
+
+## 0.4.32 – TENNILO-Entwicklerhinweis im Footer
+Auf beiden Domains dauerhaft Design & Entwicklung, Original-TENNILO-Wortmarke (lokale Kopie aus tennilo-website/public/assets/tennilo-logo.png, einfarbig weiß per CSS für dunklen Footer) und tennilo.de als Text ohne externe Navigation. Deutsch/Englisch. Bestehender Footer bleibt 30 px bzw. 24 px hoch; Release-Nummer und Quellenhinweis bleiben erhalten. Logo wird beim FTP-Upload mit verifiziert. Visuelle Kontrolle ausstehend.
