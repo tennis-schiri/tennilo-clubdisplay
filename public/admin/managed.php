@@ -134,7 +134,7 @@ function cd_ntc_feed(PDO $db,string $kind):array{
             $data=['status'=>$raw['status'],'fetchedAt'=>$raw['fetchedAt']??null];
             // Only display-safe fields, never HTML, booking data or arbitrary links.
             if($kind==='weather')$data['current']=array_intersect_key(is_array($raw['current']??null)?$raw['current']:[],array_flip(['temperature','wind','rain','icon']));
-            else{$key=['teams'=>'matches','calendar'=>'events','news'=>'posts'][$kind];$fields=['home','away','homeTeam','awayTeam','date','time','league','score','title','start','venue','excerpt'];$data['rows']=[];foreach(array_slice(is_array($raw[$key]??null)?$raw[$key]:[],0,20) as $r)if(is_array($r))$data['rows'][]=array_filter(array_intersect_key($r,array_flip($fields)),fn($v)=>is_scalar($v));}
+            else{$key=['teams'=>'matches','calendar'=>'events','news'=>'posts'][$kind];$fields=['home','away','homeTeam','awayTeam','date','time','league','score','title','start','end','allDay','cancelled','status','venue','excerpt'];$data['rows']=[];foreach(array_slice(is_array($raw[$key]??null)?$raw[$key]:[],0,20) as $r)if(is_array($r))$data['rows'][]=array_filter(array_intersect_key($r,array_flip($fields)),fn($v)=>is_scalar($v));}
         }}
     }
     $fetched=$now;if($data===null){$data=$old&&$now-(int)$old['fetched']<3600?(json_decode($old['payload'],true)?:[]):[];$data['status']=$data?'stale':'unavailable';if(!$old||$now-(int)$old['fetched']>=3600)$data=['status'=>'unavailable'];$fetched=(int)($old['fetched']??0);}
