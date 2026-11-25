@@ -222,3 +222,6 @@ Verwaltete Bildschirmprofile besitzen eine eigene Modulreihenfolge, eine optiona
 
 ## Produktnamen – BASIC und PLUS
 Die öffentlichen Lizenznamen sind BASIC (19 €/Monat, 190 €/Jahr, Einrichtung 149 €) und PLUS (39 €/Monat, 390 €/Jahr, Einrichtung 299 €). Die Datenbank- und API-Kennungen INFO und INTERACTIVE bleiben absichtlich kompatibel; die Administration übersetzt diese in BASIC und PLUS. Zusätzliche Displays weiterhin 9 €/Monat bzw. 90 €/Jahr. Informationsmodus und interaktiver Modus sind weiterhin Funktionsbeschreibungen, keine Tarifnamen.
+
+## Display 0.4.39 – Veranstaltungsbegrüßung
+Für jeden Kalendereintrag mit gültigem Beginn und Ende erscheint eine eigene Begrüßungsfolie ab 30 Minuten vor Beginn bis zum angegebenen Ende. Mehrere gleichzeitig stattfindende Veranstaltungen und Heimspielbegrüßungen laufen gemeinsam in der Rotation. Die Folie enthält Titel, vollständiges Datum, Zeitraum und gegebenenfalls Veranstaltungsort; abgesagte oder zeitlich ungültige Einträge werden nicht begrüßt. Die Begrüßung endet automatisch, auch bei pausierter Folie. Kalenderdaten bleiben von der verfügbaren Datenquelle abhängig.
