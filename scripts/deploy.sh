@@ -11,6 +11,8 @@ php -l public/events.php
 php -l public/admin-pin.php
 php -l public/terminal.php
 php tests/events-test.php
+php -l public/weather.php
+php tests/weather-test.php
 files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/app.css assets/app.js index.html)
 test -s public/nuliga.php
 test -s public/events.php
@@ -49,6 +51,9 @@ php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!iss
 upload public/events.php events.php
 curl --fail --silent --show-error --max-time 50 --output "$tmp/events" "https://${DOMAIN}/events.php?release=${RELEASE_ID}"
 php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!isset($v["status"],$v["events"])||!is_array($v["events"])) exit(1); echo "Calendar feed: ".$v["status"]." / ".count($v["events"])." events\n";' "$tmp/events"
+upload public/weather.php weather.php
+curl --fail --silent --show-error --max-time 50 --output "$tmp/weather" "https://${DOMAIN}/weather.php"
+php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!in_array($v["status"]??"",["ok","stale","unavailable"],true))exit(1); echo "Weather feed: ".$v["status"]."\n";' "$tmp/weather"
 for f in "${files[@]}"; do
   echo "Deploy: $f"
   upload "public/$f" "$f"
