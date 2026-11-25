@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 // Managed displays: scoped read-only delivery, no booking or arbitrary remote requests.
+require_once __DIR__.'/providers.php';
 const CD_SOURCE_MODULES=['teams'=>'nuLiga','calendar'=>'Vereinskalender','news'=>'WordPress / News','weather'=>'Wetter','courts'=>'eBuSy'];
 function cd_managed_schema(PDO $db):void{
     $db->exec("CREATE TABLE IF NOT EXISTS source_config (club TEXT NOT NULL REFERENCES clubs(slug), kind TEXT NOT NULL, provider TEXT NOT NULL, reference TEXT NOT NULL, updated TEXT NOT NULL, PRIMARY KEY(club,kind));
@@ -19,10 +20,12 @@ function cd_save_sources(PDO $db,array $in,?string $scope):void{
         foreach(CD_SOURCE_MODULES as $kind=>$label){
             if(!in_array($kind,$modules,true))continue;
             $row=$in['sources'][$kind]??[];$provider=$row['provider']??'manual';
-            if(!in_array($provider,['manual','pending','ntc-feed'],true))throw new InvalidArgumentException('Ungültige Datenquelle.');
-            if($provider==='ntc-feed'&&($club!=='ntc93'||$kind==='courts'||($scope!==null&&($old[$kind]['provider']??'')!=='ntc-feed')))throw new InvalidArgumentException('Nur TENNILO kann geprüfte NTC-Datenquellen aktivieren.');
-            $ref=cd_text($row['reference']??'',500);
-            // References are documentation only, never fetched as URLs.
+            $allowed=['manual','pending',...array_keys(CD_PROVIDER_OPTIONS[$kind]??[])];
+            if($club==='ntc93')$allowed[]=$kind==='courts'?'ntc-booking':'ntc-feed';
+            if(!in_array($provider,$allowed,true))throw new InvalidArgumentException('Ungültige Datenquelle.');
+            $ref=cd_provider_reference($provider,cd_text($row['reference']??'',500));
+            if(!in_array($provider,['manual','pending'],true)&&$scope!==null&&(($old[$kind]['provider']??'')!==$provider||($old[$kind]['reference']??'')!==$ref))throw new InvalidArgumentException('Nur TENNILO kann externe Datenquellen oder Terminallinks freischalten bzw. ändern. Bitte Prüfung erforderlich wählen.');
+            // Manual and pending references are documentation only.
             $q=$db->prepare('INSERT INTO source_config VALUES (?,?,?,?,?) ON CONFLICT(club,kind) DO UPDATE SET provider=excluded.provider,reference=excluded.reference,updated=excluded.updated');
             $q->execute([$club,$kind,$provider,$ref,gmdate('c')]);
         }
@@ -129,6 +132,15 @@ function cd_ntc_feed(PDO $db,string $kind):array{
     $q=$db->prepare('INSERT INTO source_cache VALUES (?,?,?,?) ON CONFLICT(kind) DO UPDATE SET payload=excluded.payload,fetched=excluded.fetched,attempted=excluded.attempted');$q->execute([$kind,json_encode($data,JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE),$fetched,$now]);return $data;
 }
 function cd_snapshot_feeds(PDO $db,array $snapshot,string $club):array{
-    $snapshot['feeds']=[];if($club==='ntc93')foreach($snapshot['sources'] as $kind=>$provider)if($provider==='ntc-feed'&&$kind!=='courts')$snapshot['feeds'][$kind]=cd_ntc_feed($db,$kind);
+    $snapshot['feeds']=[];$refs=cd_sources($db,$club,$club);
+    foreach($snapshot['sources'] as $kind=>$provider){
+        if(($refs[$kind]['provider']??'')!==$provider)continue;
+        $ref=$refs[$kind]['reference']??'';
+        if($club==='ntc93'&&$provider==='ntc-feed'&&$kind!=='courts')$snapshot['feeds'][$kind]=cd_ntc_feed($db,$kind);
+        elseif($kind==='courts'&&$snapshot['mode']==='INTERACTIVE'){
+            if($club==='ntc93'&&$provider==='ntc-booking')$snapshot['booking_url']='https://clubdisplay.ntc93.de/terminal.php';
+            elseif($provider==='ebusy-link')$snapshot['booking_url']=cd_provider_reference($provider,$ref);
+        }elseif(isset(CD_PROVIDER_OPTIONS[$kind][$provider])&&$kind!=='courts')$snapshot['feeds'][$kind]=cd_provider_cached($db,$club,$kind,$provider,$ref);
+    }
     return $snapshot;
 }
