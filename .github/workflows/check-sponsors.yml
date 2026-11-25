@@ -1,0 +1,34 @@
+name: NTC Sponsorenquelle prüfen
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-sponsors.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: NTC-Startseite abrufen und Sponsorenbereich untersuchen
+        run: |
+          curl --fail --silent --show-error --max-time 25 'https://ntc93.com/' -o /tmp/ntc.html
+          python -m pip install --quiet beautifulsoup4
+          python - <<'PY'
+          from bs4 import BeautifulSoup
+          import re
+          s=BeautifulSoup(open('/tmp/ntc.html').read(),'html.parser')
+          heads=[h for h in s.find_all(re.compile('^h[1-6]$')) if h.get_text(strip=True).casefold()=='sponsoren']
+          print('Sponsoren headings:',len(heads))
+          for h in heads:
+              for i,p in enumerate(list(h.parents)[:7]):
+                  imgs=p.find_all('img')
+                  print('Ancestor',i,p.name, p.get('class'), 'id',p.get('id'),'images',len(imgs))
+                  if len(imgs)>60: break
+                  for im in imgs[:40]:
+                      print('IMAGE', im.get('alt'), im.get('src'),im.get('data-src'),im.get('data-lazy-src'))
+                  for el in p.find_all(attrs={'data-settings':True})[:15]:
+                      print('SETTINGS',str(el.get('data-settings'))[:1500])
+          PY
