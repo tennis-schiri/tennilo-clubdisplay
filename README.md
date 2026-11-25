@@ -56,3 +56,6 @@ Einheitliche, volle Breite nutzende Spielkarten: gut lesbares Datum und Uhrzeit 
 
 ## 0.3.7 – Kompakte Begegnungen
 Datum/Uhrzeit, Mannschaft, Liga und Heim/Auswärts in einer gemeinsamen Kopfzeile; Paarung und vorhandene Platzinformationen direkt darunter. Kein künstlicher Abstand zwischen den Informationsgruppen. Reduzierte Kartenabstände, 3–6 Begegnungen je Seite abhängig von der Fensterhöhe (mobil 3). Namen bleiben nebeneinander, Umbruch innerhalb langer Namen möglich.
+
+## 0.3.8 – Zweispaltige Begegnungsübersicht
+Ab 1200 CSS-Pixeln zwei Spielkarten nebeneinander in chronologischer Reihenfolge, 4/6/8 Begegnungen pro Seite nach Fensterhöhe. Einzelne verbleibende Karte behält die halbe Breite. Datum/Mannschaft und Liga/Heimstatus bilden eine kompakte Kopfzeile, Begegnungen bleiben horizontal mit zentriertem Trenner/Ergebnis. Lange Mannschaftsnamen dürfen innerhalb ihrer Spalte umbrechen. Schmale Displays bleiben einspaltig. Keine Änderungen an Datenquellen oder Buchungen.
