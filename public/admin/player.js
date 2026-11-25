@@ -1,12 +1,12 @@
 'use strict';
 (()=>{
-const $=id=>document.getElementById(id), preview=document.body.dataset.preview, token=location.hash.slice(1), VERSION='0.6.0';
+const $=id=>document.getElementById(id), preview=document.body.dataset.preview, token=location.hash.slice(1), VERSION='0.6.1';
 let snapshot=null,slides=[],index=0,rotation=null,paused=false,lastOk=0,denied=false,generation=0,logoUrl=null,slideUrl=null,polling=false,signature='';
 const tr=(de,en)=>snapshot?.language==='en'?en:de;
 const node=(tag,value,cls)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=String(value);if(cls)e.className=cls;return e;};
 function clearImage(kind){if(kind==='logo'){if(logoUrl)URL.revokeObjectURL(logoUrl);logoUrl=null;$('club-logo').hidden=true;$('club-logo').removeAttribute('src');}else{if(slideUrl)URL.revokeObjectURL(slideUrl);slideUrl=null;}}
 async function request(action,id){
-  const options={cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(22000)};
+  const options={cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(35000)};
   let url;
   if(preview){url=preview+(action==='image'?'&image='+encodeURIComponent(id):'');}
   else{url='./?device=1';options.method='POST';options.headers={'Content-Type':'application/json'};options.body=JSON.stringify({token,action,id,version:VERSION});}
@@ -25,7 +25,9 @@ function build(s){
     if(kind==='welcome')continue;
     if(kind==='restaurant'&&s.dining?.name)out.push({key:'dining',kind:'dining'});
     for(const row of (s.content||[]).filter(r=>r.kind===kind))out.push({key:'entry:'+row.id,kind:'entry',row});
-    if(s.feeds?.[kind])out.push({key:'feed:'+kind,kind:'feed',source:kind});
+    if(kind==='courts'&&s.mode==='INTERACTIVE'&&s.booking_url&&!preview)out.push({key:'booking',kind:'booking'});
+    else if(kind==='courts'&&s.mode==='INTERACTIVE'&&s.booking_url&&preview)out.push({key:'booking',kind:'booking'});
+    else if(s.feeds?.[kind])out.push({key:'feed:'+kind,kind:'feed',source:kind});
     else if(['weather','teams','courts'].includes(kind)||s.sources?.[kind]==='pending')out.push({key:'pending:'+kind,kind:'pending',source:kind});
   }
   return out;
@@ -60,6 +62,11 @@ function render(){
   const regular=node('div',undefined,'cards');const days=snapshot.language==='en'?['Mon','Tue','Wed','Thu','Fri','Sat','Sun']:['Mo','Di','Mi','Do','Fr','Sa','So'];
   (d.hours||[]).forEach((h,i)=>add(regular,tile(days[i],hoursText(h))));if(regular.children.length)add(main,node('h2',tr('Reguläre Öffnungszeiten','Regular opening hours')),regular);
   const specials=(d.special||[]).filter(r=>r.date>=snapshot.date).slice(0,8);if(specials.length){add(main,node('h2',tr('Sonderöffnungszeiten','Special hours')));for(const r of specials)add(main,node('div',r.date+' · '+hoursText(r)+(r.note?' · '+r.note:''),'feed-row'));}
+ }else if(slide.kind==='booking'){
+  heading(main,'courts',tr('Platz buchen','Book a court'));
+  add(main,node('p',tr('Reservierung im freigegebenen externen Buchungssystem.','Reservation in the approved external booking system.')));
+  if(preview)add(main,node('p',tr('Vorschau · Buchung nicht möglich.','Preview · booking disabled.'),'warning'));
+  else{const url=new URL(snapshot.booking_url);if(url.protocol==='https:'&&(url.hostname.endsWith('.ebusy.de')||url.href==='https://clubdisplay.ntc93.de/terminal.php')){const a=node('a',tr('Buchungssystem öffnen','Open booking system'),'booking-button');a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';add(main,a);}}
  }else if(slide.kind==='feed'){
   const f=snapshot.feeds[slide.source];heading(main,slide.source,label(slide.source));
   if(f.status!=='ok')add(main,node('p',f.status==='stale'?tr('Zwischengespeicherte Daten','Cached data'):tr('Daten derzeit nicht verfügbar','Data currently unavailable'),'warning'));
