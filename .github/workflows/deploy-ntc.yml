@@ -4,9 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'public/**'
+      - 'public/index.html'
+      - 'public/assets/**'
+      - 'public/*.php'
       - 'scripts/deploy.sh'
-      - '.github/workflows/deploy-ntc.yml'
 permissions:
   contents: read
 concurrency:
