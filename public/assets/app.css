@@ -690,3 +690,7 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 .brand .product-link[hidden],html[data-club="ntc"] .brand .product-link{display:none!important}
 .brand .product-link:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 
+
+/* Full calendar dates: keep all four year digits visible even in narrow cards. */
+.fixture-day{font-size:clamp(1rem,1.65vw,1.9rem);letter-spacing:-.035em;max-width:100%;font-variant-numeric:tabular-nums}
+@media(max-width:699px){.fixture-day{font-size:clamp(.65rem,2.6vw,1.05rem);letter-spacing:-.04em}}
