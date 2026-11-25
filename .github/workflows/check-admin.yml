@@ -1,0 +1,46 @@
+name: ClubDisplay – Qualitätsprüfung ohne Live-Upload
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'public/admin/**'
+      - 'tests/**'
+      - 'deploy/admin-storage.htaccess'
+      - '.github/workflows/check-admin.yml'
+      - '.github/workflows/deploy-admin.yml'
+permissions:
+  contents: read
+concurrency:
+  group: clubdisplay-admin-ci
+  cancel-in-progress: true
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax und PHP-Erweiterungen
+        run: |
+          php -v
+          php -r 'foreach(["pdo_sqlite","gd","dom","curl"] as $e){if(!extension_loaded($e)){fwrite(STDERR,"Missing ".$e."\n");exit(1);}}'
+          find public -name '*.php' -print0 | xargs -0 -n 1 php -l
+          node --check public/assets/app.js
+          node --check public/admin/player.js
+          bash -n scripts/deploy.sh tests/admin-http-test.sh
+      - name: Admin und Geräte
+        run: |
+          php tests/admin-test.php
+          bash tests/admin-http-test.sh
+      - name: Bestehende Displays
+        run: |
+          node tests/info-countdown-test.cjs
+          node tests/occupancy-test.cjs
+          node tests/match-greeting-test.cjs
+          node tests/demo-test.cjs
+          php tests/nuliga-test.php
+          php tests/events-test.php
+          php tests/news-test.php
+          php tests/weather-test.php
