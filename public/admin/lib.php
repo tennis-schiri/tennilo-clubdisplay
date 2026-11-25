@@ -12,6 +12,7 @@ function cd_db(string $path): PDO {
     }
     $db->exec('CREATE TABLE IF NOT EXISTS displays (club TEXT NOT NULL REFERENCES clubs(slug), slug TEXT NOT NULL, name TEXT NOT NULL, mode TEXT NOT NULL, language TEXT NOT NULL, dwell INTEGER NOT NULL, modules TEXT NOT NULL, enabled INTEGER NOT NULL, updated TEXT NOT NULL, PRIMARY KEY(club,slug)); CREATE TABLE IF NOT EXISTS club_accounts (club TEXT PRIMARY KEY REFERENCES clubs(slug), password_hash TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1)');
     $db->exec('CREATE TABLE IF NOT EXISTS club_brand (club TEXT PRIMARY KEY REFERENCES clubs(slug), logo BLOB, mime TEXT, welcome TEXT NOT NULL DEFAULT \'\'); CREATE TABLE IF NOT EXISTS club_content (id INTEGER PRIMARY KEY AUTOINCREMENT, club TEXT NOT NULL REFERENCES clubs(slug), kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, starts TEXT NOT NULL, ends TEXT NOT NULL, url TEXT NOT NULL, enabled INTEGER NOT NULL, updated TEXT NOT NULL)');
+    $db->exec('CREATE TABLE IF NOT EXISTS content_media (content_id INTEGER PRIMARY KEY REFERENCES club_content(id) ON DELETE CASCADE, image BLOB NOT NULL)');
     return $db;
 }
 function cd_validate(array $in): array {
@@ -106,7 +107,7 @@ function cd_save_brand(PDO $db,array $in,array $file,?string $scope):void{
     }catch(Throwable $e){$db->rollBack();throw $e;}
 }
 function cd_content_rows(PDO $db,string $club,string $kind):array{
-    $q=$db->prepare('SELECT * FROM club_content WHERE club=? AND kind=? ORDER BY starts,title,id');$q->execute([$club,$kind]);return $q->fetchAll();
+    $q=$db->prepare('SELECT c.*, EXISTS(SELECT 1 FROM content_media m WHERE m.content_id=c.id) AS has_image FROM club_content c WHERE c.club=? AND c.kind=? ORDER BY c.starts,c.title,c.id');$q->execute([$club,$kind]);return $q->fetchAll();
 }
 function cd_date(mixed $v):string{
     $v=cd_text($v,10);if($v==='')return '';
@@ -131,4 +132,44 @@ function cd_save_content(PDO $db,array $in,?string $scope):void{
     $v=[$title,$body,$starts,$ends,$url,isset($in['enabled'])?1:0,gmdate('c')];
     if($id){$q=$db->prepare('UPDATE club_content SET title=?,body=?,starts=?,ends=?,url=?,enabled=?,updated=? WHERE id=? AND club=? AND kind=?');$q->execute([...$v,$id,$club,$kind]);}
     else{$q=$db->prepare('INSERT INTO club_content(club,kind,title,body,starts,ends,url,enabled,updated) VALUES (?,?,?,?,?,?,?,?,?)');$q->execute([$club,$kind,...$v]);}
+}
+
+function cd_media_png(string $bytes):string{
+    if(strlen($bytes)>2000000)throw new InvalidArgumentException('Bild: maximal 2 MB.');
+    $info=@getimagesizefromstring($bytes);
+    if(!$info||!in_array($info['mime'],['image/png','image/jpeg','image/webp'],true)||$info[0]>3000||$info[1]>3000)throw new InvalidArgumentException('PNG, JPEG oder WebP, maximal 3000 × 3000 Pixel.');
+    if(!function_exists('imagecreatefromstring'))throw new InvalidArgumentException('PHP GD fehlt beim Hosting.');
+    $im=@imagecreatefromstring($bytes);
+    if(!$im)throw new InvalidArgumentException('Ungültiges Bild.');
+    imagealphablending($im,false);imagesavealpha($im,true);
+    ob_start();imagepng($im);$png=ob_get_clean();imagedestroy($im);
+    if(!is_string($png)||$png===''||strlen($png)>6000000)throw new InvalidArgumentException('Bild nach Verarbeitung zu groß.');
+    return $png;
+}
+function cd_media_allowed(PDO $db,string $club,int $id,?string $scope):void{
+    cd_scope($scope,$club);
+    $c=cd_club($db,$club);
+    $q=$db->prepare('SELECT kind FROM club_content WHERE club=? AND id=?');$q->execute([$club,$id]);$kind=$q->fetchColumn();
+    if(!$kind||!in_array($kind,json_decode($c['modules'],true)?:[],true))throw new InvalidArgumentException('Eintrag nicht verfügbar.');
+}
+function cd_media_get(PDO $db,string $club,int $id,?string $scope):?string{
+    cd_media_allowed($db,$club,$id,$scope);
+    $q=$db->prepare('SELECT image FROM content_media WHERE content_id=?');$q->execute([$id]);$v=$q->fetchColumn();return is_string($v)?$v:null;
+}
+function cd_media_save(PDO $db,array $in,array $file,?string $scope):void{
+    $club=cd_text($in['club']??'',50,true);$id=filter_var($in['id']??null,FILTER_VALIDATE_INT);
+    if(!$id||$id<1)throw new InvalidArgumentException('Ungültiger Eintrag.');
+    cd_media_allowed($db,$club,$id,$scope);
+    if(($in['intent']??'')==='remove'){$q=$db->prepare('DELETE FROM content_media WHERE content_id=?');$q->execute([$id]);return;}
+    if(($file['error']??null)!==UPLOAD_ERR_OK||!is_string($file['tmp_name']??null)||!is_uploaded_file($file['tmp_name'])||filesize($file['tmp_name'])>2000000)throw new InvalidArgumentException('Bitte ein Bild bis 2 MB auswählen.');
+    $bytes=file_get_contents($file['tmp_name']);if($bytes===false)throw new InvalidArgumentException('Datei nicht lesbar.');
+    $png=cd_media_png($bytes);
+    $db->exec('BEGIN IMMEDIATE');
+    try{
+        cd_media_allowed($db,$club,$id,$scope);
+        $q=$db->prepare('SELECT COALESCE(SUM(length(m.image)),0) FROM content_media m JOIN club_content c ON c.id=m.content_id WHERE c.club=? AND c.id<>?');$q->execute([$club,$id]);
+        if((int)$q->fetchColumn()+strlen($png)>50000000)throw new InvalidArgumentException('Medienlimit pro Verein: 50 MB.');
+        $q=$db->prepare('INSERT INTO content_media VALUES (?,?) ON CONFLICT(content_id) DO UPDATE SET image=excluded.image');
+        $q->bindValue(1,$id,PDO::PARAM_INT);$q->bindValue(2,$png,PDO::PARAM_LOB);$q->execute();$db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
