@@ -1,5 +1,5 @@
 'use strict';
-// Copyright © 2026 TENNILO. All rights reserved.
+// TENNILO ClubDisplay | Copyright © 2026 TENNILO | Alle Rechte vorbehalten.
 const $ = id => document.getElementById(id);
 const pilot = location.hostname === 'clubdisplay.ntc93.de';
 let lang='de', view='info', slide=0, last=Date.now(), started=Date.now(), court=null, message='';

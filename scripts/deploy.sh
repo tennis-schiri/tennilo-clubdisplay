@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# TENNILO ClubDisplay | Copyright © 2026 TENNILO | Alle Rechte vorbehalten.
 set -euo pipefail
 : "${FTP_HOST:?FTP host missing}" "${FTP_USER:?FTP user missing}" "${FTP_PASSWORD:?FTP password missing}" "${DOMAIN:?Domain missing}" "${RELEASE_ID:?Release ID missing}"
 case "$DOMAIN" in clubdisplay.tennilo.de|clubdisplay.ntc93.de) ;; *) exit 1;; esac
