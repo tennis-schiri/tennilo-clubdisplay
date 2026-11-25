@@ -19,4 +19,6 @@ check('occupancyData.fetchedAt-=181');
 assert.equal(check("occupancySlot('outdoor',1,occupancyHours()[0])"),'unknown');
 assert.equal(check("occupancyView().match(/class=\"occupancy-cell occupancy-unknown\"/g).length"),27);
 assert.equal(check("occupancyHours(Date.parse('2026-10-25T00:37:00Z'))[1].start"),'2026-10-25T01:00:00.000Z');
+assert.equal(check("occupancyView().match(/class=\"occupancy-court-art\"/g).length"),9);
+assert.equal(check("occupancyView().match(/class=\"occupancy-slot-time occupancy-slot-now\"/g).length"),9);
 console.log('Court occupancy tests OK');

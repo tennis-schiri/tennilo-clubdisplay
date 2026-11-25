@@ -417,3 +417,33 @@ body.fixed-screen.occupancy-screen #screen .fit-content{display:flex;flex-direct
 .occupancy-key{display:inline-block;width:12px;height:12px;border:1px solid var(--line);border-radius:3px}
 .occupancy-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 @media(max-width:700px){.occupancy-areas{grid-template-columns:1fr;gap:.35rem;flex:0 0 auto}.occupancy-table th,.occupancy-table td{padding:.14rem .1rem;font-size:.72rem}.occupancy-table thead th{font-size:.62rem;padding:.23rem .1rem}.occupancy-area h2{font-size:.9rem;padding:.25rem .45rem}.occupancy-footer{flex-wrap:wrap}.occupancy-legend{font-size:.62rem;gap:.2rem .4rem}.occupancy-footer button{min-height:34px;font-size:.7rem}.occupancy-heading .occupancy-status{font-size:.7rem}}
+
+/* 0.4.20: graphic court cards, not a timetable grid. */
+.occupancy-court-plan{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,1.15fr);gap:clamp(.45rem,1vw,1rem);flex:1 1 0;min-height:0}
+.occupancy-court-group{display:flex;flex-direction:column;gap:.4rem;min-width:0;min-height:0}
+.occupancy-group-head{display:flex;align-items:center;justify-content:space-between;gap:.4rem;color:var(--ink);font-weight:800;font-size:clamp(1rem,1.6vw,1.55rem);flex:none;padding:.1rem .15rem}
+.occupancy-group-head small{font-size:.7em;color:var(--muted);font-weight:600}
+.occupancy-group-indoor .occupancy-group-head{padding-left:.45rem}
+.occupancy-court-grid{display:grid;gap:clamp(.35rem,.7vw,.7rem);flex:1 1 0;min-height:0}
+.occupancy-group-outdoor .occupancy-court-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))}
+.occupancy-group-outdoor .occupancy-court-card{grid-column:span 3}
+.occupancy-group-outdoor .occupancy-court-card:nth-child(n+5){grid-column:span 4}
+.occupancy-group-indoor{border-left:1px solid var(--line);padding-left:clamp(.4rem,.8vw,.75rem)}
+.occupancy-group-indoor .occupancy-court-grid{grid-template-rows:repeat(2,minmax(0,1fr));grid-template-columns:minmax(0,1fr)}
+.occupancy-court-card{display:flex;flex-direction:column;align-items:stretch;gap:.25rem;min-width:0;min-height:0;padding:.35rem .4rem .4rem;background:linear-gradient(145deg,#ffffff08,var(--panel));border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.occupancy-court-label{font-size:clamp(.75rem,1.05vw,1.1rem);font-weight:800;line-height:1.1;flex:none;color:var(--ink)}
+.occupancy-court-art{display:block;flex:1 1 0;min-height:0;width:100%;height:100%;max-height:130px;color:#fff9}
+.occupancy-court-outdoor .court-surface{fill:#96603e}
+.occupancy-court-indoor .court-surface{fill:#315f76}
+.court-number-disc{fill:#073538;stroke:#fff8;stroke-width:1.1}
+.court-number{font:800 25px system-ui,sans-serif;fill:#fff}
+.occupancy-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.2rem;flex:none}
+.occupancy-slot{min-width:0;display:flex;flex-direction:column;gap:.12rem}
+.occupancy-slot-time{font-size:clamp(.55rem,.7vw,.8rem);color:var(--muted);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:650;letter-spacing:-.025em}
+.occupancy-slot-now{color:var(--cyan);font-weight:850}
+.occupancy-slot .occupancy-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:35px;padding:.16rem .08rem;border:1px solid var(--line);border-radius:5px;gap:0;text-align:center;line-height:1.1}
+.occupancy-mark{font-size:clamp(.9rem,1.3vw,1.3rem);font-weight:800}
+.occupancy-slot-label{font-size:clamp(.52rem,.68vw,.76rem);overflow-wrap:anywhere}
+.occupancy-slot .occupancy-unknown{background:#ffffff0c}
+@media(max-width:1000px){.occupancy-slot-time{font-size:.6rem}.occupancy-slot-label{font-size:.55rem}.occupancy-court-card{padding:.25rem}.occupancy-court-plan{grid-template-columns:minmax(0,3.5fr) minmax(0,1.2fr)}}
+@media(max-width:700px){body.fixed-screen.occupancy-screen #screen .fit-content{height:auto}.occupancy-court-plan{grid-template-columns:1fr;flex:none;gap:.4rem}.occupancy-group-outdoor .occupancy-court-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:auto}.occupancy-group-outdoor .occupancy-court-card{grid-column:span 4}.occupancy-group-outdoor .occupancy-court-card:nth-child(n+5){grid-column:span 4}.occupancy-group-outdoor .occupancy-court-card:last-child{grid-column:span 4}.occupancy-group-indoor{padding-left:0;border-left:0}.occupancy-group-indoor .occupancy-court-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto}.occupancy-group-indoor .occupancy-group-head{padding-left:0}.occupancy-court-art{height:46px;flex:none}.occupancy-slot-time{font-size:.48rem}.occupancy-slot-label{font-size:.5rem}.occupancy-slot .occupancy-cell{min-height:23px}.occupancy-mark{font-size:.75rem}.occupancy-court-label{font-size:.7rem}.occupancy-court-group{gap:.2rem}.occupancy-group-head{font-size:.85rem}}
