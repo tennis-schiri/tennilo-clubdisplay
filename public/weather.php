@@ -53,14 +53,29 @@ function loadWeather():?array{
     if(!$observed)$current=$nearest&&abs($nearest['time']-$now)<=7200?$nearest:null;
     return ['status'=>'ok','fetchedAt'=>$now,'current'=>$current,'observed'=>(bool)$observed,'hourly'=>array_slice($hourly,0,24),'daily'=>array_values($days),'sun'=>weatherSun($today),'location'=>'Neuenhagen bei Berlin'];
 }
+// Same projection, bounding box and dimensions for both WMS layers.
+function radarMapParams():array{
+    return ['service'=>'WMS','version'=>'1.1.1','request'=>'GetMap','srs'=>'EPSG:4326','bbox'=>'12.4833,51.8033,14.8833,53.2633','width'=>600,'height'=>600,'format'=>'image/png'];
+}
+function validMapPng(?string $image):bool{
+    if($image===null||!str_starts_with($image,"\x89PNG\r\n\x1a\n"))return false;
+    $size=@getimagesizefromstring($image);
+    return is_array($size)&&$size[0]===600&&$size[1]===600&&$size[2]===IMAGETYPE_PNG;
+}
+function loadBaseMap():?array{
+    $params=radarMapParams()+['layers'=>'de_basemapde_web_raster_farbe','styles'=>'default','transparent'=>'false'];
+    $image=weatherGet('https://sgx.geodatenzentrum.de/wms_basemapde?'.http_build_query($params),2000000);
+    if(!validMapPng($image))return null;
+    return ['status'=>'ok','fetchedAt'=>time(),'image'=>base64_encode($image),'sourceYear'=>(int)date('Y')];
+}
 function loadRadar():?array{
     // WMS 1.1.1 uses lon/lat order; bounding box centered on the selected locality.
     $stamp=(int)(floor((time()-600)/300)*300);
     for($i=0;$i<2;$i++){
         $t=$stamp-$i*600;
-        $url='https://maps.dwd.de/geoserver/dwd/wms?'.http_build_query(['service'=>'WMS','version'=>'1.1.1','request'=>'GetMap','layers'=>'dwd:Niederschlagsradar','styles'=>'','srs'=>'EPSG:4326','bbox'=>'12.4833,51.8033,14.8833,53.2633','width'=>600,'height'=>600,'format'=>'image/png','transparent'=>'true','time'=>gmdate('Y-m-d\TH:i:s\Z',$t)]);
+        $url='https://maps.dwd.de/geoserver/dwd/wms?'.http_build_query(['service'=>'WMS','version'=>'1.1.1','request'=>'GetMap','layers'=>'dwd:Radar_rv_product_1x1km_ger','styles'=>'','srs'=>'EPSG:4326','bbox'=>'12.4833,51.8033,14.8833,53.2633','width'=>600,'height'=>600,'format'=>'image/png','transparent'=>'true','time'=>gmdate('Y-m-d\TH:i:s\Z',$t)]);
         $image=weatherGet($url,1500000);
-        if($image!==null&&str_starts_with($image,"\x89PNG\r\n\x1a\n"))return ['status'=>'ok','fetchedAt'=>time(),'time'=>$t,'image'=>base64_encode($image)];
+        if(validMapPng($image))return ['status'=>'ok','fetchedAt'=>time(),'time'=>$t,'image'=>base64_encode($image)];
     }
     return null;
 }
@@ -90,4 +105,5 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 if(($_SERVER['REQUEST_METHOD']??'')!=='GET'){http_response_code(405);exit;}
 $radar=isset($_GET['radar']);
-echo json_encode($radar?cachedWeather('radar',300,1800,'loadRadar'):cachedWeather('weather',600,10800,'loadWeather'),JSON_INVALID_UTF8_SUBSTITUTE);
+$base=isset($_GET['basemap']);
+echo json_encode($base?cachedWeather('basemap-v1',86400,2592000,'loadBaseMap'):($radar?cachedWeather('radar-v2',300,1800,'loadRadar'):cachedWeather('weather',600,10800,'loadWeather')),JSON_INVALID_UTF8_SUBSTITUTE);

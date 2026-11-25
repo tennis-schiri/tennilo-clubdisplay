@@ -147,7 +147,7 @@ function ebusyView(){
 }
 function courtList(){return '<div class="grid">'+[1,2,3,4].map(i=>'<button class="tile" data-action="court:'+i+'" '+(i===2?'disabled':'')+'><strong>'+t().court+' '+i+'</strong><span class="'+(i===2?'occupied':'availability')+'">'+(i===2?t().busy:t().available)+'</span><small>'+t().slot+'</small></button>').join('')+'</div>'}
 
-let weatherData=null,radarData=null,weatherBusy=false,radarBusy=false,lastRadarAttempt=0;
+let weatherData=null,radarData=null,baseMapData=null,weatherBusy=false,radarBusy=false,lastRadarAttempt=0;
 const weatherLabels={'clear-day':['Sonnig','Sunny','☀'],'clear-night':['Klar','Clear','☾'],'partly-cloudy-day':['Heiter','Partly cloudy','⛅'],'partly-cloudy-night':['Teils bewölkt','Partly cloudy','☾'],'cloudy':['Bewölkt','Cloudy','☁'],'fog':['Nebel','Fog','≋'],'rain':['Regen','Rain','🌧'],'sleet':['Schneeregen','Sleet','🌨'],'snow':['Schnee','Snow','❄'],'hail':['Hagel','Hail','🌨'],'thunderstorm':['Gewitter','Thunderstorm','ϟ'],'wind':['Windig','Windy','≋']};
 function weatherLabel(icon){const p=weatherLabels[icon]||['Keine Angabe','Unknown','–'];return tr(p[0],p[1]);}
 function weatherIcon(icon){return (weatherLabels[icon]||['','','–'])[2];}
@@ -167,10 +167,31 @@ async function refreshWeather(){
   finally{weatherBusy=false;renderWeatherHeader();if(weatherActive()&&!$('admin-dialog').open)render();}
 }
 async function refreshRadar(){
-  if(radarBusy||Date.now()-lastRadarAttempt<300000)return;radarBusy=true;lastRadarAttempt=Date.now();
-  try{const r=await fetch('weather.php?radar=1',{cache:'no-store',signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error();radarData=await r.json();}
-  catch{if(radarData?.fetchedAt&&Date.now()/1000-radarData.fetchedAt<1800)radarData.status='stale';else radarData={status:'unavailable'};}
-  finally{radarBusy=false;if(weatherActive()&&!$('admin-dialog').open)render();}
+  if(radarBusy||Date.now()-lastRadarAttempt<300000)return;
+  radarBusy=true;lastRadarAttempt=Date.now();
+  async function request(kind){const r=await fetch('weather.php?'+kind+'=1',{cache:'no-store',signal:AbortSignal.timeout(40000)});if(!r.ok)throw Error();return r.json();}
+  const results=await Promise.allSettled([request('radar'),baseMapData?.image&&Date.now()/1000-baseMapData.fetchedAt<86400?Promise.resolve(baseMapData):request('basemap')]);
+  if(results[0].status==='fulfilled')radarData=results[0].value;
+  else if(radarData?.fetchedAt&&Date.now()/1000-radarData.fetchedAt<1800)radarData.status='stale';else radarData={status:'unavailable'};
+  if(results[1].status==='fulfilled')baseMapData=results[1].value;
+  else if(!baseMapData?.image)baseMapData={status:'unavailable'};
+  radarBusy=false;if(weatherActive()&&!$('admin-dialog').open)render();
+}
+function inspectRadarImage(){
+  const img=$('wx-radar-overlay'),note=$('wx-radar-note');if(!img||!note)return;
+  const check=()=>{
+    if(!img.naturalWidth||!img.naturalHeight)return;
+    try{
+      const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;
+      const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
+      const data=ctx.getImageData(0,0,c.width,c.height).data;
+      let visible=false;
+      for(let i=3;i<data.length;i+=4){if(data[i]>0){visible=true;break;}}
+      if(!visible)note.textContent=tr('In diesem Radarbild sind keine Niederschlagsechos sichtbar.','No precipitation echoes are visible in this radar image.');
+    }catch{}
+  };
+  img.addEventListener('load',check,{once:true});
+  if(img.complete)check();
 }
 function weatherView(){
   const w=weatherData,c=w?.current,s=w?.sun,d=w?.daily||[],h=w?.hourly||[];
@@ -181,9 +202,13 @@ function weatherView(){
   const current='<div class="panel wx-current"><div class="wx-now"><span class="wx-large-icon">'+esc(weatherIcon(c?.icon))+'</span><div><strong>'+wxNum(c?.temperature,'°C')+'</strong><p>'+esc(weatherLabel(c?.icon))+'</p><small>'+tr(w.observed?'Stationsmessung':'Modellwert',w.observed?'Station observation':'Model estimate')+' · '+wxTime(c?.time)+'</small></div></div><div class="wx-metrics"><div><span>'+tr('Wind','Wind')+'</span><strong>'+wxNum(c?.wind,' km/h')+'</strong></div><div><span>'+tr('Böen','Gusts')+'</span><strong>'+wxNum(c?.gust,' km/h')+'</strong></div><div><span>'+tr('Luftfeuchte','Humidity')+'</span><strong>'+wxNum(c?.humidity,'%')+'</strong></div><div><span>'+tr('Sonnenaufgang','Sunrise')+'</span><strong>↑ '+wxTime(s?.sunrise)+'</strong></div><div><span>'+tr('Sonnenuntergang','Sunset')+'</span><strong>↓ '+wxTime(s?.sunset)+'</strong></div></div></div>';
   const hourly='<section class="panel wx-hours"><h2>'+tr('Nächste 12 Stunden','Next 12 hours')+'</h2><div class="wx-hour-list">'+h.slice(0,12).map(x=>'<div class="wx-hour"><small>'+wxTime(x.time)+'</small><span class="wx-symbol" title="'+esc(weatherLabel(x.icon))+'">'+esc(weatherIcon(x.icon))+'</span><strong>'+wxNum(x.temperature,'°')+'</strong><span class="wx-rain">'+wxNum(x.chance,'%')+'</span></div>').join('')+'</div><small>'+tr('Niederschlagswahrscheinlichkeit in %','Precipitation probability in %')+'</small></section>';
   const daily='<section class="panel wx-daily"><h2>'+tr('7-Tage-Vorhersage','7-day forecast')+'</h2><div class="wx-day-list">'+d.map(x=>'<div class="wx-day"><strong>'+esc(wxDay(x.date))+'</strong><span class="wx-symbol" title="'+esc(weatherLabel(x.icon))+'">'+esc(weatherIcon(x.icon))+'</span><span>'+wxNum(x.min,'°')+' / <b>'+wxNum(x.max,'°')+'</b></span><span class="wx-rain">'+wxNum(x.chance,'%')+'</span></div>').join('')+'</div><small>'+tr('Tagesminimum / -maximum · maximale stündliche Niederschlagswahrscheinlichkeit','Daily min / max · maximum hourly precipitation probability')+'</small></section>';
-  const r=radarData;
-  const radarOk=r?.image&&/^[A-Za-z0-9+/=]+$/.test(r.image);
-  const radar='<section class="panel wx-radar"><h2>'+tr('Niederschlagsradar','Precipitation radar')+'</h2>'+(radarOk?'<div class="wx-radar-map"><img alt="'+tr('DWD-Niederschlagsradar Region Berlin-Brandenburg','DWD precipitation radar Berlin-Brandenburg')+'" src="data:image/png;base64,'+r.image+'"><span class="wx-radar-marker"><i></i>Neuenhagen</span></div><small>'+tr('Radarbild','Radar image')+' · '+wxTime(r.time)+(r.status==='stale'?' · '+tr('älterer Stand','cached'):'')+' · '+tr('Quelle: Deutscher Wetterdienst','Source: German Weather Service')+'</small>':'<div class="wx-radar-empty">'+tr(r?'Radar momentan nicht verfügbar.':'Radar wird geladen …',r?'Radar currently unavailable.':'Loading radar …')+'</div>')+'</section>';
+  const r=radarData,b=baseMapData;
+  const pngOk=x=>typeof x?.image==='string'&&x.image.length>0&&/^[A-Za-z0-9+/=]+$/.test(x.image);
+  const radarOk=pngOk(r),mapOk=pngOk(b);
+  const map=mapOk?'<div class="wx-radar-map"><img class="wx-radar-base" alt="'+tr('Amtliche Karte Berlin-Brandenburg','Official Berlin-Brandenburg map')+'" src="data:image/png;base64,'+b.image+'">'+(radarOk?'<img id="wx-radar-overlay" class="wx-radar-overlay" alt="'+tr('DWD-Niederschlagsradar','DWD precipitation radar')+'" src="data:image/png;base64,'+r.image+'">':'')+'<span class="wx-radar-marker"><i></i>Neuenhagen</span></div>':'<div class="wx-radar-empty">'+tr(b?'Grundkarte derzeit nicht verfügbar.':'Karte wird geladen …',b?'Base map currently unavailable.':'Loading map …')+'</div>';
+  const credits=mapOk?'<small class="wx-attribution">© GeoBasis-DE / '+(pilot?'BKG (www.bkg.bund.de)':'<a href="https://www.bkg.bund.de" target="_blank" rel="noopener noreferrer">BKG</a>')+' ('+esc(b.sourceYear||'')+') · '+(pilot?'CC BY 4.0 (creativecommons.org/licenses/by/4.0/)':'<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>')+' · '+tr('Radarüberlagerung und Ortsmarkierung ergänzt','Radar overlay and location marker added')+'</small>':'';
+  const note=radarOk?tr('Farbige Flächen zeigen Radarechos.','Colored areas indicate radar echoes.'):tr(r?'Radardaten momentan nicht verfügbar.':'Radar wird geladen …',r?'Radar data currently unavailable.':'Loading radar …');
+  const radar='<section class="panel wx-radar"><h2>'+tr('Niederschlagsradar','Precipitation radar')+'</h2>'+map+'<p id="wx-radar-note" class="wx-radar-note">'+note+'</p>'+(radarOk?'<small>'+tr('Radarbild','Radar image')+' · '+wxTime(r.time)+(r.status==='stale'?' · '+tr('älterer Stand','cached'):'')+' · '+tr('Quelle: Deutscher Wetterdienst','Source: German Weather Service')+'</small>':'')+credits+'</section>';
   return head+warn+'<div class="wx-layout"><div class="wx-left">'+current+hourly+daily+'</div>'+radar+'</div>'+source;
 }
 
@@ -200,7 +225,7 @@ case 'weather':html=weatherView();if(!radarBusy)refreshRadar();break;
 case 'news':html='<h1>'+l.announcements+'</h1><div class="grid">'+l.newsItems.map(n=>'<article class="panel"><h2>'+n+'</h2><p>'+l.newsText+'</p></article>').join('')+'</div>';break;
 case 'partner':html=hero(l.partner,l.partnerText);break;
 }
-$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';$('screen').innerHTML=html;clock();}
+$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';$('screen').innerHTML=html;if(active==='weather')inspectRadarImage();clock();}
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
 function go(next){if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
 document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-unlock'&&pilot&&view==='courts'&&courtMode==='outdoor'){openAdmin('terminal');}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
