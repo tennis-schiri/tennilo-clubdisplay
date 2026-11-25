@@ -39,3 +39,23 @@ $news['id']=$rows[0]['id'];$news['title']='Geändert';cd_save_content($db,$news,
 foreach([['url'=>'javascript:alert(1)'],['starts'=>'2026-02-30'],['ends'=>'2026-01-01'],['club'=>'test-club']] as $bad){try{cd_save_content($db,array_replace($news,$bad),'ntc93');throw new RuntimeException('Invalid content accepted');}catch(InvalidArgumentException $e){}}
 cd_save_content($db,array_replace($news,['intent'=>'delete']),'ntc93');check(count(cd_content_rows($db,'ntc93','news'))===0);
 echo "Brand and editorial content tests passed\n";
+
+cd_save_content($db,$news=array_replace($news,['id'=>0,'intent'=>'save']),'ntc93');
+$id=(int)cd_content_rows($db,'ntc93','news')[0]['id'];
+check(cd_media_get($db,'ntc93',$id,'ntc93')===null);
+try{cd_media_get($db,'ntc93',$id,'test-club');throw new RuntimeException('Cross-club media accepted');}catch(InvalidArgumentException $e){}
+try{cd_media_get($db,'test-club',$id,'test-club');throw new RuntimeException('Foreign media accepted');}catch(InvalidArgumentException $e){}
+try{cd_media_png('<?php echo 1;');throw new RuntimeException('Non-image accepted');}catch(InvalidArgumentException $e){}
+if(function_exists('imagecreatefromstring')){
+    $im=imagecreatetruecolor(4,4);ob_start();imagepng($im);$raw=ob_get_clean();imagedestroy($im);
+    $png=cd_media_png($raw);check(getimagesizefromstring($png)['mime']==='image/png');
+    $q=$db->prepare('INSERT INTO content_media VALUES (?,?)');$q->bindValue(1,$id,PDO::PARAM_INT);$q->bindValue(2,$png,PDO::PARAM_LOB);$q->execute();
+    check(cd_media_get($db,'ntc93',$id,'ntc93')===$png);
+    check((int)cd_content_rows($db,'ntc93','news')[0]['has_image']===1);
+    cd_media_save($db,['club'=>'ntc93','id'=>$id,'intent'=>'remove'],[],'ntc93');
+    check(cd_media_get($db,'ntc93',$id,'ntc93')===null);
+    $q->execute();
+    cd_save_content($db,array_replace($news,['id'=>$id,'intent'=>'delete']),'ntc93');
+    check((int)$db->query('SELECT COUNT(*) FROM content_media')->fetchColumn()===0);
+}else{throw new RuntimeException('GD extension required for media tests');}
+echo "Media validation, scope and cascade tests passed\n";
