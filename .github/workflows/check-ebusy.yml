@@ -1,0 +1,55 @@
+# TENNILO ClubDisplay | Copyright © 2026 TENNILO | Alle Rechte vorbehalten.
+name: ClubDisplay – eBuSy API-Test
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      EBUSY_USER: ${{ secrets.EBUSY_API_USERNAME }}
+      EBUSY_PASSWORD: ${{ secrets.EBUSY_API_PASSWORD }}
+    steps:
+      - name: Leserechte für Hallen- und Freiplatzmodule prüfen
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$EBUSY_USER" || -z "$EBUSY_PASSWORD" ]]; then
+            echo "::error::EBUSY_API_USERNAME oder EBUSY_API_PASSWORD fehlt"
+            exit 1
+          fi
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          day="$(TZ=Europe/Berlin date +%F)"
+          for module in court/modules/3076 lite/modules/1731; do
+            for endpoint in courts reservations; do
+              path="$module/$endpoint"
+              if [[ "$endpoint" == reservations ]]; then
+                path="$path?fromDate=$day&toDate=$day&includeCancelled=false"
+              fi
+              status="$(curl --silent --proto '=https' --connect-timeout 10 --max-time 25 --user "$EBUSY_USER:$EBUSY_PASSWORD" --header 'Accept: application/json' --output "$tmp/body" --write-out '%{http_code}' "https://ntc93v8.ebusy.de/api/$path")"
+              if [[ "$status" != 200 ]]; then
+                echo "::error::$module/$endpoint: HTTP $status"
+                exit 1
+              fi
+              python3 - "$tmp/body" "$module/$endpoint" <<'PY'
+          import json, sys
+          try:
+              with open(sys.argv[1]) as f:
+                  data = json.load(f)
+              if isinstance(data, dict):
+                  if data.get('error'):
+                      raise ValueError()
+                  data = data.get('response')
+              if not isinstance(data, list):
+                  raise ValueError()
+          except Exception:
+              sys.exit('Unerwartete API-Antwort (Inhalt aus Datenschutzgründen unterdrückt)')
+          print(f'OK: {sys.argv[2]} – {len(data)} Datensätze')
+          PY
+            done
+          done
+          echo "Keine Buchungen erstellt oder verändert."
