@@ -1,0 +1,84 @@
+name: ClubDisplay – Verbindungstest
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-connections.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: ${{ matrix.prefix }} – Secrets, HTTPS und FTPS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - prefix: TENNILO
+            domain: clubdisplay.tennilo.de
+          - prefix: NTC
+            domain: clubdisplay.ntc93.de
+    env:
+      FTP_HOST: ${{ secrets[format('{0}_FTP_HOST', matrix.prefix)] }}
+      FTP_USER: ${{ secrets[format('{0}_FTP_USER', matrix.prefix)] }}
+      FTP_PASSWORD: ${{ secrets[format('{0}_FTP_PASSWORD', matrix.prefix)] }}
+      ADMIN_USERNAME: ${{ secrets[format('{0}_ADMIN_USERNAME', matrix.prefix)] }}
+      ADMIN_PASSWORD: ${{ secrets[format('{0}_ADMIN_PASSWORD', matrix.prefix)] }}
+      DOMAIN: ${{ matrix.domain }}
+      PREFIX: ${{ matrix.prefix }}
+    steps:
+      - name: Alle fünf Secrets auf Vorhandensein prüfen
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for key in FTP_HOST FTP_USER FTP_PASSWORD ADMIN_USERNAME ADMIN_PASSWORD; do
+            if [[ -n "${!key}" ]]; then
+              echo "OK: ${PREFIX}_${key}"
+            else
+              echo "::error::Secret ${PREFIX}_${key} fehlt oder ist leer"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: HTTPS und TLS-Zertifikat prüfen
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! status="$(curl --silent --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 25 "https://${DOMAIN}/")"; then
+            echo "::error::HTTPS-Verbindung oder Zertifikatsprüfung fehlgeschlagen"
+            exit 1
+          fi
+          echo "HTTPS erreichbar: HTTP ${status}"
+          case "$status" in
+            2*|3*|401|403|404) ;;
+            *) echo "::error::Unerwarteter HTTP-Status"; exit 1 ;;
+          esac
+
+      - name: FTPS-Login und Verzeichniszugriff prüfen (nur lesend)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$FTP_HOST" || -z "$FTP_USER" || -z "$FTP_PASSWORD" ]]; then
+            echo "::error::FTP-Secrets unvollständig"
+            exit 1
+          fi
+          if [[ ! "$FTP_HOST" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "::error::FTP_HOST muss nur den Servernamen enthalten, ohne Protokoll, Port oder Pfad"
+            exit 1
+          fi
+          if curl --fail --silent --ssl-reqd --ftp-pasv --list-only --connect-timeout 10 --max-time 30 --user "${FTP_USER}:${FTP_PASSWORD}" --output /dev/null "ftp://${FTP_HOST}:21/"; then
+            echo "OK: FTPS-Anmeldung und lesender Zugriff auf FTP-Startverzeichnis"
+          else
+            echo "::error::FTPS-Verbindung, Anmeldung oder Verzeichniszugriff fehlgeschlagen"
+            exit 1
+          fi
+          echo "Keine Dateien hochgeladen, verändert oder gelöscht."
