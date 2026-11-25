@@ -85,9 +85,12 @@ function cd_device_seen(PDO $db,array $a,string $version):void{
     $version=preg_match('/^[a-zA-Z0-9._-]{1,30}$/D',$version)?$version:'unknown';
     $q=$db->prepare('UPDATE device_access SET last_seen=?,version=? WHERE club=? AND display=? AND token_hash=?');$q->execute([time(),$version,$a['club'],$a['display'],$a['token_hash']]);
 }
-function cd_active_content(PDO $db,string $club,array $modules,string $today):array{
-    $q=$db->prepare("SELECT c.id,c.kind,c.title,c.body,c.starts,c.ends,c.url,c.updated,EXISTS(SELECT 1 FROM content_media m WHERE m.content_id=c.id) AS has_image FROM club_content c WHERE c.club=? AND c.enabled=1 AND (c.kind='calendar' OR c.starts='' OR c.starts<=?) AND (CASE WHEN c.kind='calendar' AND c.ends='' AND c.starts<>'' THEN c.starts ELSE c.ends END='' OR CASE WHEN c.kind='calendar' AND c.ends='' AND c.starts<>'' THEN c.starts ELSE c.ends END>=?) ORDER BY c.starts,c.id LIMIT 300");
-    $q->execute([$club,$today,$today]);return array_values(array_filter($q->fetchAll(),fn($r)=>in_array($r['kind'],$modules,true)));
+function cd_active_content(PDO $db,string $club,array $modules,string $today,string $slug):array{
+    $modules=array_values(array_intersect($modules,array_keys(CD_CONTENT)));
+    if(!$modules)return [];
+    $placeholders=implode(',',array_fill(0,count($modules),'?'));
+    $q=$db->prepare("SELECT c.id,c.kind,c.title,c.body,c.starts,c.ends,c.url,c.updated,EXISTS(SELECT 1 FROM content_media m WHERE m.content_id=c.id) AS has_image FROM club_content c LEFT JOIN content_audience a ON a.content_id=c.id WHERE c.club=? AND c.enabled=1 AND c.kind IN ($placeholders) AND (c.kind='calendar' OR c.starts='' OR c.starts<=?) AND (CASE WHEN c.kind='calendar' AND c.ends='' AND c.starts<>'' THEN c.starts ELSE c.ends END='' OR CASE WHEN c.kind='calendar' AND c.ends='' AND c.starts<>'' THEN c.starts ELSE c.ends END>=?) AND (a.mode IS NULL OR a.mode='all' OR (a.mode='selected' AND EXISTS(SELECT 1 FROM content_targets t WHERE t.content_id=c.id AND t.club=c.club AND t.display=?))) ORDER BY c.starts,c.id LIMIT 300");
+    $q->execute([$club,...$modules,$today,$today,$slug]);return $q->fetchAll();
 }
 function cd_dining_today(array $d,DateTimeImmutable $now):array{
     $day=(int)$now->format('N')-1;$today=$now->format('Y-m-d');
@@ -100,10 +103,14 @@ function cd_dining_today(array $d,DateTimeImmutable $now):array{
 function cd_snapshot(PDO $db,string $club,string $slug,?string $scope,?DateTimeImmutable $now=null):array{
     $c=cd_club($db,$club);$d=cd_display($db,$club,$slug,$scope);
     $modules=array_values(array_intersect(json_decode($d['modules'],true)?:[],json_decode($c['modules'],true)?:[]));
+    $layout=cd_layout($db,$club,$slug);
+    $ordered=array_values(array_intersect($layout['order'],$modules));
+    foreach($modules as $k)if(!in_array($k,$ordered,true))$ordered[]=$k;
+    $modules=$ordered;
     $now??=new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin'));$today=$now->format('Y-m-d');
     $b=cd_brand($db,$club);$sources=cd_sources($db,$club,$scope);$activeSources=[];
     foreach($sources as $kind=>$row)if(in_array($kind,$modules,true))$activeSources[$kind]=$row['provider'];
-    return ['club'=>$c['name'],'screen'=>$d['name'],'mode'=>$d['mode'],'language'=>$d['language'],'dwell'=>(int)$d['dwell'],'color'=>$c['color'],'modules'=>$modules,'welcome'=>$b['welcome'],'has_logo'=>(bool)$b['logo_size'],'brand_revision'=>$c['updated'],'date'=>$today,'content'=>cd_active_content($db,$club,$modules,$today),'dining'=>in_array('restaurant',$modules,true)?cd_dining_today(cd_dining_get($db,$club,$scope),$now):null,'sources'=>$activeSources];
+    return ['club'=>$c['name'],'screen'=>$d['name'],'mode'=>$d['mode'],'language'=>$d['language'],'dwell'=>(int)$d['dwell'],'module_dwell'=>(object)array_intersect_key($layout['dwell'],array_flip($modules)),'color'=>$c['color'],'modules'=>$modules,'welcome'=>$layout['welcome']!==''?$layout['welcome']:$b['welcome'],'has_logo'=>(bool)$b['logo_size'],'brand_revision'=>$c['updated'],'date'=>$today,'content'=>cd_active_content($db,$club,$modules,$today,$slug),'dining'=>in_array('restaurant',$modules,true)?cd_dining_today(cd_dining_get($db,$club,$scope),$now):null,'sources'=>$activeSources];
 }
 function cd_snapshot_image(PDO $db,string $club,string $slug,?string $scope,mixed $id):?string{
     $snapshot=cd_snapshot($db,$club,$slug,$scope);
