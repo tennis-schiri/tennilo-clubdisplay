@@ -71,4 +71,11 @@ jobs:
           grep -Fq 'Administrator-Anmeldung' "$tmp/login"
           ! grep -Fq 'TENNILO · Kundenverwaltung' "$tmp/login"
           ! grep -Fq 'Bildschirm anlegen' "$tmp/login"
-          echo 'Admin login reachable; authenticated browser test still required.'
+          for query in 'portal=club' 'portal=club&verein=ntc93'; do
+            curl --fail --silent --show-error --max-time 30 "https://clubdisplay.tennilo.de/admin/?$query" -o "$tmp/club-login"
+            grep -Fq 'Vereinsadmin-Anmeldung' "$tmp/club-login"
+            ! grep -Fq 'TENNILO · Kundenverwaltung' "$tmp/club-login"
+            ! grep -Fq 'Administrator-Anmeldung' "$tmp/club-login"
+          done
+          grep -Fq '<p>NTC 93</p>' "$tmp/club-login"
+          echo 'Separate login pages reachable; authenticated browser test still required.'
