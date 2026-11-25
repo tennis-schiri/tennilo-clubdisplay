@@ -4,3 +4,5 @@
 .profile .full{grid-column:1/-1}.profile textarea{font:inherit;color:inherit;background:#071a2c;border:1px solid #456075;border-radius:8px;padding:10px;width:100%;resize:vertical}.brand-preview{max-width:100%;width:200px;height:100px;object-fit:contain}.entry{margin:10px 0;padding:12px;border-top:1px solid #456075}.danger{background:#512b35;color:#ffe2df;border:1px solid #af6a73}
 
 .media-form{padding:14px;margin:12px 0;border:1px dashed #456075;border-radius:10px}.media-preview{display:block;width:min(100%,360px);max-height:180px;object-fit:contain;grid-column:1/-1;background:#071a2c;border-radius:8px}
+
+.dining-form h3{margin:18px 0 0;color:#21d5db}.dining-form p{margin:0}.dining-row,.dining-offer{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));align-items:end;gap:8px;padding:12px;border:1px solid #456075;border-radius:8px}.dining-row strong{align-self:center}.dining-offer{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}.dining-row label,.dining-offer label{font-size:.85rem;min-width:0}.dining-row input,.dining-row select,.dining-offer input{min-width:0;padding:6px}.dining-row .full{grid-column:1/-1}
