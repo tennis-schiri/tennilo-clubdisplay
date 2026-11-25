@@ -469,7 +469,7 @@ function restaurantView(){
   const festive=date<='2027-01-01';
   const event=date<='2026-12-06';
   const holidays=festive?'<section class="df-info-panel df-holiday-panel"><h2>'+tr('Sonderöffnungszeiten','Holiday opening hours')+'</h2>'+row(tr('24.12. · Heiligabend','24 Dec · Christmas Eve'),tr('Geschlossen','Closed'),true)+row('25. / 26.12.','12:00–22:00')+row('31.12. / 01.01.','14:00–22:00')+(event?'<aside class="df-event-note"><div class="df-event-date"><strong>06.12.</strong><small>'+tr('Sonntag','Sunday')+'</small></div><div class="df-event-copy"><span>'+tr('Geschlossene Veranstaltung bis ca. 16 Uhr','Private event until approximately 16:00')+'</span><strong>'+tr('Reservierungen ab 16 Uhr','Reservations from 16:00')+'</strong></div></aside>':'')+'</section>':'';
-  return '<article class="df-simple-display"><header class="df-simple-header"><div class="df-simple-logo"><img src="https://neu.due-fratelli-neuenhagen.de/media/logo.jpg" alt="Trattoria Due Fratelli" referrerpolicy="no-referrer"></div><div class="df-simple-phone"><span>'+tr('Tischreservierung','Table reservations')+'</span><strong>03342 203823</strong><span class="df-reservation-options">'+tr('Vor Ort · telefonisch · online','In person · by phone · online')+'</span></div><strong class="df-website-address">due-fratelli-neuenhagen.de</strong></header><div class="df-simple-panels'+(festive?'':' df-no-holidays')+'"><section class="df-info-panel df-offer-panel"><h2>'+tr('Wochenaktion','Weekly offer')+'</h2><div class="df-offer'+(weekday==='Tuesday'?' is-today':'')+'"><img class="df-offer-dish" src="https://neu.due-fratelli-neuenhagen.de/media/gericht-pizza.jpg" alt="'+tr('Pizza aus der Küche von Due Fratelli','Pizza from Due Fratelli')+'" decoding="async" referrerpolicy="no-referrer"><span>MARTEDÌ '+today('Tuesday')+'</span><strong>'+tr('Pizza-Dienstag','Pizza Tuesday')+'</strong><b>9,90 €</b></div><div class="df-offer'+(weekday==='Wednesday'?' is-today':'')+'"><img class="df-offer-dish" src="https://neu.due-fratelli-neuenhagen.de/media/gericht-pasta.jpg" alt="'+tr('Pastagericht aus der Küche von Due Fratelli','Pasta from Due Fratelli')+'" decoding="async" referrerpolicy="no-referrer"><span>MERCOLEDÌ '+today('Wednesday')+'</span><strong>'+tr('Pasta-Mittwoch','Pasta Wednesday')+'</strong><b>9,90 €</b></div><p class="df-offer-note">'+tr('Welche Gerichte zur Aktion gehören, erfahrt ihr direkt im Restaurant.','Ask the restaurant which dishes are included in the offer.')+'</p></section><section class="df-info-panel df-regular-panel"><h2>'+tr('Öffnungszeiten','Opening hours')+'</h2>'+row(tr('Montag','Monday'),tr('Ruhetag','Closed'),true)+row(tr('Dienstag – Freitag','Tuesday – Friday'),'14:00–22:00')+row(tr('Samstag – Sonntag','Saturday – Sunday'),'12:00–22:00')+'<p class="df-offer-note">'+tr('An Feiertagen können die Zeiten abweichen.','Hours may vary on public holidays.')+'</p></section>'+holidays+'</div></article>';
+  return '<article class="df-simple-display"><header class="df-simple-header"><div class="df-simple-logo"><img src="https://neu.due-fratelli-neuenhagen.de/media/logo.jpg" width="300" height="74" alt="Trattoria Due Fratelli" referrerpolicy="no-referrer"></div><div class="df-simple-phone"><span>'+tr('Tischreservierung','Table reservations')+'</span><strong>03342 203823</strong><span class="df-reservation-options">'+tr('Vor Ort · telefonisch · online','In person · by phone · online')+'</span></div><strong class="df-website-address">due-fratelli-neuenhagen.de</strong></header><div class="df-simple-panels'+(festive?'':' df-no-holidays')+'"><section class="df-info-panel df-offer-panel"><h2>'+tr('Wochenaktion','Weekly offer')+'</h2><div class="df-offer'+(weekday==='Tuesday'?' is-today':'')+'"><img class="df-offer-dish" src="https://neu.due-fratelli-neuenhagen.de/media/gericht-pizza.jpg" alt="'+tr('Pizza aus der Küche von Due Fratelli','Pizza from Due Fratelli')+'" decoding="async" referrerpolicy="no-referrer"><span>MARTEDÌ '+today('Tuesday')+'</span><strong>'+tr('Pizza-Dienstag','Pizza Tuesday')+'</strong><b>9,90 €</b></div><div class="df-offer'+(weekday==='Wednesday'?' is-today':'')+'"><img class="df-offer-dish" src="https://neu.due-fratelli-neuenhagen.de/media/gericht-pasta.jpg" alt="'+tr('Pastagericht aus der Küche von Due Fratelli','Pasta from Due Fratelli')+'" decoding="async" referrerpolicy="no-referrer"><span>MERCOLEDÌ '+today('Wednesday')+'</span><strong>'+tr('Pasta-Mittwoch','Pasta Wednesday')+'</strong><b>9,90 €</b></div><p class="df-offer-note">'+tr('Welche Gerichte zur Aktion gehören, erfahrt ihr direkt im Restaurant.','Ask the restaurant which dishes are included in the offer.')+'</p></section><section class="df-info-panel df-regular-panel"><h2>'+tr('Öffnungszeiten','Opening hours')+'</h2>'+row(tr('Montag','Monday'),tr('Ruhetag','Closed'),true)+row(tr('Dienstag – Freitag','Tuesday – Friday'),'14:00–22:00')+row(tr('Samstag – Sonntag','Saturday – Sunday'),'12:00–22:00')+'<p class="df-offer-note">'+tr('An Feiertagen können die Zeiten abweichen.','Hours may vary on public holidays.')+'</p></section>'+holidays+'</div></article>';
 }
 function infoControls(){
   const visible=view==='info';
@@ -554,6 +554,20 @@ case 'partner':html=sponsorView();break;
 $('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';const embeddedBooking=pilot&&active==='courts',readingNews=active==='news'&&view==='news'&&!!openedNews;document.body.classList.toggle('news-reading',readingNews);$('screen').innerHTML=embeddedBooking||readingNews?html:'<div class="fit-content">'+html+'</div>';if(!embeddedBooking&&!readingNews)fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
 
 // Allocate space using rendered content, not viewport-size guesses. Recompute on resize and data changes.
+function fitRestaurantScreen(screen,content,available){
+  content.style.height='auto';content.style.minHeight='0';content.style.transform='';content.style.transformOrigin='top center';
+  const measure=()=>Math.max(content.scrollHeight,content.getBoundingClientRect().height);
+  content.dataset.restaurantDensity=available<420?'compact':'normal';
+  let natural=measure();
+  if(natural>available){content.dataset.restaurantDensity='compact';natural=measure();}
+  if(natural>available){content.dataset.restaurantDensity='tight';natural=measure();}
+  const scale=Math.min(1,(available-1)/Math.max(1,natural),screen.clientWidth/Math.max(1,content.scrollWidth));
+  if(scale<1)content.style.transform='scale('+Math.max(.01,scale)+')';
+  else content.style.minHeight=available+'px';
+}
+$('screen').addEventListener('load',event=>{
+  if(event.target.tagName==='IMG'&&document.body.classList.contains('restaurant-screen'))requestAnimationFrame(fitActiveScreen);
+},true);
 function fitActiveScreen(){
   const screen=$('screen'), content=screen.querySelector('.fit-content');
   if(!content)return;
@@ -561,6 +575,7 @@ function fitActiveScreen(){
   screen.dataset.weatherLayout='';
   const available=screen.clientHeight;
   if(available<=0)return;
+  if(document.body.classList.contains('restaurant-screen')){fitRestaurantScreen(screen,content,available);return;}
   if(document.body.classList.contains('match-screen')||document.body.classList.contains('event-screen')){
     const isEvent=document.body.classList.contains('event-screen'),prefix=isEvent?'event':'match';
     const list=content.querySelector('.fixture-list'),pager=content.querySelector('.match-pages');

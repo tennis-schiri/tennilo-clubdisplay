@@ -167,3 +167,6 @@ Homepage-Adresse zwischen Logo und Reservierungsfeld; auf schmalen Bildschirmen 
 
 ## 0.4.32 – TENNILO-Entwicklerhinweis im Footer
 Auf beiden Domains dauerhaft Design & Entwicklung, Original-TENNILO-Wortmarke (lokale Kopie aus tennilo-website/public/assets/tennilo-logo.png, einfarbig weiß per CSS für dunklen Footer) und tennilo.de als Text ohne externe Navigation. Deutsch/Englisch. Bestehender Footer bleibt 30 px bzw. 24 px hoch; Release-Nummer und Quellenhinweis bleiben erhalten. Logo wird beim FTP-Upload mit verifiziert. Visuelle Kontrolle ausstehend.
+
+## 0.4.33 – Restaurantfolie: intrinsische Höhenanpassung
+Die bisherige feste Boxhöhe verdeckte überlaufende Karten. Jetzt wird die natürliche Höhe vor dem Strecken gemessen. Kompakte/tight-Layouts bei knapper Fläche; proportionale Skalierung nur falls nötig. Keine ausgeblendeten Inhalte; Bildladevorgänge lösen erneute Messung aus. Fester Header/Footer unverändert. Firefox-Geometrieprüfung separat.
