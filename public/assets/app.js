@@ -148,10 +148,23 @@ function wxNum(value,unit=''){return typeof value==='number'&&Number.isFinite(va
 function wxTime(value){return typeof value==='number'?new Date(value*1000).toLocaleTimeString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}):'–';}
 function wxDay(value){return new Date(value+'T12:00:00').toLocaleDateString(lang==='de'?'de-DE':'en-GB',{weekday:'short',day:'numeric',month:'numeric'});}
 function weatherActive(){return view==='weather'||(view==='info'&&screens[slide]==='weather');}
+function headerWeatherSymbol(kind){
+  const shapes={
+    sunrise:'<path d="M2 18h20M4 21h16M6 18a6 6 0 0 1 12 0M12 2v6m-3-3 3-3 3 3M3 10l2 2m16-2-2 2"/>',
+    sunset:'<path d="M2 18h20M4 21h16M6 18a6 6 0 0 1 12 0M12 2v6m-3-3 3 3 3-3M3 10l2 2m16-2-2 2"/>',
+    wind:'<path d="M2 8h13a3 3 0 1 0-3-3M2 12h18a3 3 0 1 1-3 3M2 16h8a3 3 0 1 1-3 3"/>',
+    rain:'<path d="M12 2c-2.5 4-7 8.8-7 13a7 7 0 1 0 14 0c0-4.2-4.5-9-7-13Z"/>'
+  };
+  return '<svg class="wx-head-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(shapes[kind]||'')+'</svg>';
+}
 function renderWeatherHeader(){
-  const w=weatherData,c=w?.current,s=w?.sun;
-  $('weather-head').innerHTML='<span class="wx-head-icon">'+esc(weatherIcon(c?.icon))+'</span><span class="wx-head-summary"><strong>'+wxNum(c?.temperature,'°C')+'</strong><small>'+esc(w?.status==='stale'?tr('Ältere Daten','Cached data'):c?weatherLabel(c.icon):tr('Wetter','Weather'))+'</small></span><span class="wx-head-sun"><small>↑ '+wxTime(s?.sunrise)+'</small><small>↓ '+wxTime(s?.sunset)+'</small></span>';
+  const w=weatherData,c=w?.current,s=w?.sun,day=w?.daily?.[0];
+  const upcoming=w?.hourly?.find(x=>x.time>=Date.now()/1000);
+  const item=(kind,label,value)=>'<span class="wx-head-item">'+headerWeatherSymbol(kind)+'<span><small>'+label+'</small><b>'+value+'</b></span></span>';
+  const condition=w?.status==='stale'?tr('Ältere Daten','Cached data'):c?weatherLabel(c.icon):tr('Wetter','Weather');
+  $('weather-head').innerHTML='<span class="wx-head-main"><span class="wx-head-icon" aria-hidden="true">'+esc(weatherIcon(c?.icon))+'</span><span class="wx-head-summary"><strong>'+wxNum(c?.temperature,'°C')+'</strong><small>'+esc(condition)+'</small></span></span><span class="wx-head-range"><small>'+tr('Heute','Today')+'</small><b>'+wxNum(day?.min,'°')+' / '+wxNum(day?.max,'°')+'</b></span><span class="wx-head-extra">'+item('wind',tr('Wind','Wind'),wxNum(c?.wind,' km/h'))+item('rain',tr('Regen (nächste Std.)','Rain (next hour)'),wxNum(upcoming?.chance,'%'))+'</span><span class="wx-head-sun">'+item('sunrise',tr('Aufgang','Sunrise'),wxTime(s?.sunrise))+item('sunset',tr('Untergang','Sunset'),wxTime(s?.sunset))+'</span>';
   $('weather-head').title=tr('Wetter Neuenhagen – Details öffnen','Neuenhagen weather – details');
+  $('weather-head').setAttribute('aria-label',tr('Wetterdetails öffnen','Open weather details')+' · '+wxNum(c?.temperature,'°C')+' · '+condition);
 }
 async function refreshWeather(){
   if(weatherBusy)return;weatherBusy=true;

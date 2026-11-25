@@ -77,3 +77,6 @@ Amtliche basemap.de Web Raster (BKG) als eigene WMS-Ebene, DWD RV-Radar darüber
 
 ## 0.4.2 – Ansichten ohne vertikales Scrollen
 Mannschaften und Wetter belegen die verfügbare Viewporthöhe mit sichtbarer Kopfzeile und Navigation. Begegnungsseiten werden anhand der tatsächlich gemessenen Kartenhöhen gebildet, nicht anhand einer festen Anzahl; CD-M04c bleibt unverändert. Wetter mit kompakter Gesamtübersicht und bedarfsabhängigen Reitern für aktuell, Stunden, Tage und Radar. Radar bleibt quadratisch und passt in die Resthöhe. Sehr kleine Fenster oder außergewöhnlich lange Inhalte werden als letzte Rückfallebene proportional verkleinert. Neuberechnung bei Fenstergröße, Vollbild und Datenaktualisierung. Browserprüfung am tatsächlichen Touchscreen noch erforderlich.
+
+## 0.4.3 – Kopfzeile
+Erweiterter antippbarer Wetterblock mit Temperatur, Wetterzustand, Tagesminimum/-maximum, Wind, Niederschlagswahrscheinlichkeit der nächsten verfügbaren Stunde sowie eigenen SVG-Sonnenauf-/untergangssymbolen. Uhrzeit/Datum als eigener Block ganz rechts nach den Sprach-/Vollbild-Buttons. Auf schmalen Displays werden zunächst Zusatzwerte ausgeblendet; Sonnenzeiten bleiben sichtbar. Keine Änderung an Wetterquellen oder Spielkarten.
