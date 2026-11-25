@@ -161,3 +161,6 @@ Die beiden Wochenaktionskarten erhalten die Originalfotos aus WeeklyOffer.astro 
 
 ## 0.4.30 – Mehr Raum für Sonderöffnungszeiten
 Rechte Weihnachtsspalte leicht verbreitert. Datumsangaben und Zeiten nebeneinander statt untereinander; 06.12. als separate, goldgerahmte Hinweisfläche mit hervorgehobener Reservierungszeit. Mobile Ansicht behält kompakte Umbrüche. Originalfarben, Fotos, Aktionen und Reservierungsinformationen bleiben erhalten. Screenshot des Nutzers zeigte v0.4.28; Änderung basiert auf aktuellem v0.4.29-Code. Optische Prüfung des neuen Live-Standes ausstehend.
+
+## 0.4.31 – Restaurantfolie: Webadresse im Kopf
+Homepage-Adresse zwischen Logo und Reservierungsfeld; auf schmalen Bildschirmen direkt darunter. Fußzeile mit Trattoria-am-NTC-Hinweis vollständig entfernt, sodass die drei Informationsspalten mehr Höhe erhalten. Übriges Layout unverändert. Visuelle Live-Prüfung ausstehend.
