@@ -13,6 +13,7 @@ function cd_db(string $path): PDO {
     $db->exec('CREATE TABLE IF NOT EXISTS displays (club TEXT NOT NULL REFERENCES clubs(slug), slug TEXT NOT NULL, name TEXT NOT NULL, mode TEXT NOT NULL, language TEXT NOT NULL, dwell INTEGER NOT NULL, modules TEXT NOT NULL, enabled INTEGER NOT NULL, updated TEXT NOT NULL, PRIMARY KEY(club,slug)); CREATE TABLE IF NOT EXISTS club_accounts (club TEXT PRIMARY KEY REFERENCES clubs(slug), password_hash TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1)');
     $db->exec('CREATE TABLE IF NOT EXISTS club_brand (club TEXT PRIMARY KEY REFERENCES clubs(slug), logo BLOB, mime TEXT, welcome TEXT NOT NULL DEFAULT \'\'); CREATE TABLE IF NOT EXISTS club_content (id INTEGER PRIMARY KEY AUTOINCREMENT, club TEXT NOT NULL REFERENCES clubs(slug), kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, starts TEXT NOT NULL, ends TEXT NOT NULL, url TEXT NOT NULL, enabled INTEGER NOT NULL, updated TEXT NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS content_media (content_id INTEGER PRIMARY KEY REFERENCES club_content(id) ON DELETE CASCADE, image BLOB NOT NULL)');
+    $db->exec('CREATE TABLE IF NOT EXISTS dining (club TEXT PRIMARY KEY REFERENCES clubs(slug), config TEXT NOT NULL, updated TEXT NOT NULL)');
     return $db;
 }
 function cd_validate(array $in): array {
@@ -172,4 +173,59 @@ function cd_media_save(PDO $db,array $in,array $file,?string $scope):void{
         $q=$db->prepare('INSERT INTO content_media VALUES (?,?) ON CONFLICT(content_id) DO UPDATE SET image=excluded.image');
         $q->bindValue(1,$id,PDO::PARAM_INT);$q->bindValue(2,$png,PDO::PARAM_LOB);$q->execute();$db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+}
+
+const CD_DAYS=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+function cd_dining_scope(PDO $db,string $club,?string $scope):void{
+    cd_scope($scope,$club);$c=cd_club($db,$club);
+    if(!in_array('restaurant',json_decode($c['modules'],true)?:[],true))throw new InvalidArgumentException('Gastronomiemodul nicht freigeschaltet.');
+}
+function cd_dining_get(PDO $db,string $club,?string $scope):array{
+    cd_dining_scope($db,$club,$scope);
+    $q=$db->prepare('SELECT config FROM dining WHERE club=?');$q->execute([$club]);return json_decode($q->fetchColumn()?:'{}',true,512,JSON_THROW_ON_ERROR);
+}
+function cd_dining_link(mixed $v):string{
+    $v=cd_text($v,500);
+    if($v!==''&&(!filter_var($v,FILTER_VALIDATE_URL)||strtolower((string)parse_url($v,PHP_URL_SCHEME))!=='https'||parse_url($v,PHP_URL_USER)!==null))throw new InvalidArgumentException('Bitte gültigen HTTPS-Link angeben.');
+    return $v;
+}
+function cd_dining_hours(array $r):array{
+    $state=$r['state']??'unknown';if(!in_array($state,['unknown','closed','open'],true))throw new InvalidArgumentException('Ungültiger Öffnungsstatus.');
+    $slots=[];
+    if($state==='open'){
+        foreach([1,2] as $i){
+            $a=cd_text($r['from'.$i]??'',5);$b=cd_text($r['to'.$i]??'',5);
+            if($i===2&&$a===''&&$b==='')continue;
+            if(!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$a)||!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$b)||$a===$b)throw new InvalidArgumentException('Bitte vollständige, unterschiedliche Öffnungs- und Schließzeiten angeben.');
+            $minutes=fn($t)=>(int)substr($t,0,2)*60+(int)substr($t,3,2);
+            $start=$minutes($a);$end=$minutes($b);if($end<$start)$end+=1440;
+            if($slots&&$start<$slots[0]['end'])throw new InvalidArgumentException('Öffnungszeiträume müssen chronologisch und überschneidungsfrei sein.');
+            $slots[]=['from'=>$a,'to'=>$b,'end'=>$end];
+        }
+    }
+    return ['state'=>$state,'slots'=>array_map(fn($s)=>['from'=>$s['from'],'to'=>$s['to']],$slots)];
+}
+function cd_dining_save(PDO $db,array $in,?string $scope):void{
+    $club=cd_text($in['club']??'',50,true);cd_dining_scope($db,$club,$scope);
+    $data=['name'=>cd_text($in['name']??'',160),'phone'=>cd_text($in['phone']??'',80),'website'=>cd_dining_link($in['website']??''),'reservation_url'=>cd_dining_link($in['reservation_url']??''),'reservation_onsite'=>isset($in['reservation_onsite']),'reservation_phone'=>isset($in['reservation_phone']),'note'=>cd_text($in['note']??'',1500),'hours'=>[],'special'=>[],'offers'=>[]];
+    if($data['reservation_phone']&&$data['phone']==='')throw new InvalidArgumentException('Für telefonische Reservierung bitte Telefonnummer hinterlegen.');
+    foreach(CD_DAYS as $i=>$day)$data['hours'][]=cd_dining_hours($in['hours'][$i]??[]);
+    $seen=[];
+    $special=$in['special']??[];$offers=$in['offers']??[];
+    if(!is_array($special)||count($special)>40||!is_array($offers)||count($offers)>40)throw new InvalidArgumentException('Zu viele Einträge.');
+    foreach($special as $row){
+        $date=cd_date($row['date']??'');if($date==='')continue;
+        if(isset($seen[$date]))throw new InvalidArgumentException('Sonderöffnungszeiten: Datum doppelt.');
+        $seen[$date]=true;$data['special'][]=['date'=>$date,'note'=>cd_text($row['note']??'',300)]+cd_dining_hours($row);
+    }
+    usort($data['special'],fn($a,$b)=>strcmp($a['date'],$b['date']));
+    foreach($offers as $row){
+        $title=cd_text($row['title']??'',160);if($title==='')continue;
+        $day=filter_var($row['day']??null,FILTER_VALIDATE_INT);if($day===false||$day<0||$day>6)throw new InvalidArgumentException('Ungültiger Wochentag.');
+        $starts=cd_date($row['starts']??'');$ends=cd_date($row['ends']??'');
+        if($starts!==''&&$ends!==''&&$starts>$ends)throw new InvalidArgumentException('Angebotszeitraum ungültig.');
+        $data['offers'][]=['title'=>$title,'day'=>$day,'price'=>cd_text($row['price']??'',80),'note'=>cd_text($row['note']??'',300),'starts'=>$starts,'ends'=>$ends];
+    }
+    $q=$db->prepare('INSERT INTO dining VALUES (?,?,?) ON CONFLICT(club) DO UPDATE SET config=excluded.config,updated=excluded.updated');
+    $q->execute([$club,json_encode($data,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),gmdate('c')]);
 }
