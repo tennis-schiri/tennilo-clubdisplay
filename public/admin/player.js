@@ -19,16 +19,32 @@ async function request(action,id){
 function message(title,body){generation++;clearImage('slide');clearImage('logo');$('slide').className='welcome';$('slide').replaceChildren(node('h1',title),node('p',body));$('club').textContent='TENNILO ClubDisplay';$('screen').textContent='';$('position').textContent='–';}
 function stopAccess(){denied=true;snapshot=null;slides=[];clearTimeout(rotation);message(tr('Zugang nicht verfügbar','Access unavailable'),tr('Bitte Gerätefreigabe oder Vereinsanmeldung prüfen.','Check device access or club login.'));$('status').textContent='Zugang nicht verfügbar / Access unavailable';}
 function label(kind){return ({welcome:tr('Willkommen','Welcome'),weather:tr('Wetter','Weather'),calendar:tr('Termine','Events'),teams:tr('Mannschaften','Teams'),news:tr('Vereinsnachrichten','Club news'),partner:tr('Sponsoren','Sponsors'),restaurant:tr('Gastronomie','Dining'),courts:tr('Platzbuchung','Court booking')})[kind]||kind;}
+function groups(items,size){const pages=[];for(let i=0;i<items.length;i+=size)pages.push(items.slice(i,i+size));return pages;}
+function textPages(value){
+  const text=String(value||'');if(text.length<=500)return [text];
+  const pages=[];let rest=text;
+  while(rest.length>500){let cut=Math.max(rest.lastIndexOf(' ',500),rest.lastIndexOf('\n',500));if(cut<200)cut=500;pages.push(rest.slice(0,cut));rest=rest.slice(cut).trimStart();}
+  if(rest)pages.push(rest);return pages;
+}
 function build(s){
   const out=[{key:'welcome',kind:'welcome'}];
   for(const kind of s.modules||[]){
     if(kind==='welcome')continue;
-    if(kind==='restaurant'&&s.dining?.name)out.push({key:'dining',kind:'dining'});
-    for(const row of (s.content||[]).filter(r=>r.kind===kind))out.push({key:'entry:'+row.id,kind:'entry',row});
-    if(kind==='courts'&&s.mode==='INTERACTIVE'&&s.booking_url&&!preview)out.push({key:'booking',kind:'booking'});
-    else if(kind==='courts'&&s.mode==='INTERACTIVE'&&s.booking_url&&preview)out.push({key:'booking',kind:'booking'});
-    else if(s.feeds?.[kind])out.push({key:'feed:'+kind,kind:'feed',source:kind});
-    else if(['weather','teams','courts'].includes(kind)||s.sources?.[kind]==='pending')out.push({key:'pending:'+kind,kind:'pending',source:kind});
+    if(kind==='restaurant'&&s.dining?.name){
+      out.push({key:'dining',kind:'dining'});
+      if(s.dining.hours?.length)out.push({key:'dining-hours',kind:'hours'});
+      groups((s.dining.special||[]).filter(r=>r.date>=s.date),5).forEach((rows,i)=>out.push({key:'dining-special:'+i,kind:'special',rows}));
+      groups(s.dining.offers_today||[],4).forEach((rows,i)=>out.push({key:'dining-offers:'+i,kind:'offers',rows}));
+    }
+    for(const row of (s.content||[]).filter(r=>r.kind===kind)){
+      const pages=textPages(row.body);
+      pages.forEach((body,i)=>out.push({key:'entry:'+row.id+':'+i,kind:'entry',row:{...row,body,has_image:i===0&&row.has_image},page:i,total:pages.length}));
+    }
+    if(kind==='courts'&&s.mode==='INTERACTIVE'&&s.booking_url)out.push({key:'booking',kind:'booking'});
+    else if(s.feeds?.[kind]){
+      const pages=groups(s.feeds[kind].rows||[],5);
+      (pages.length?pages:[[]]).forEach((rows,i)=>out.push({key:'feed:'+kind+':'+i,kind:'feed',source:kind,rows}));
+    }else if(['weather','teams','courts'].includes(kind)||s.sources?.[kind]==='pending')out.push({key:'pending:'+kind,kind:'pending',source:kind});
   }
   return out;
 }
@@ -43,12 +59,12 @@ async function loadImage(img,id,seq,kind){
 }
 function render(){
  if(!snapshot||!slides.length)return;
- generation++;const seq=generation;clearImage('slide');const main=$('slide'),slide=slides[index];main.className='';main.replaceChildren();
+ generation++;const seq=generation;clearImage('slide');const main=$('slide'),slide=slides[index];main.className='';main.replaceChildren();main.scrollTop=0;
  $('club').textContent=snapshot.club;$('screen').textContent=snapshot.screen;$('position').textContent=(index+1)+' / '+slides.length;
  if(snapshot.has_logo&&!logoUrl)loadImage($('club-logo'),'logo',seq,'logo');
  if(slide.kind==='welcome'){main.className='welcome';heading(main,'welcome',snapshot.club);add(main,node('p',snapshot.welcome||tr('Herzlich willkommen!','Welcome!')));}
  else if(slide.kind==='entry'){
-  const r=slide.row;heading(main,r.kind,r.title);
+  const r=slide.row;heading(main,r.kind,r.title);if(slide.total>1)add(main,node('small',(slide.page+1)+' / '+slide.total));
   const layout=node('div',undefined,'entry-layout'+(r.has_image?'':' no-image'));
   const copy=node('div');if(r.starts||r.ends)add(copy,node('small',[r.starts,r.ends].filter(Boolean).join(' – ')));add(copy,node('p',r.body||''));if(r.url)add(copy,node('small',r.url));
   add(layout,copy);if(r.has_image){const img=node('img');img.alt=r.title;img.hidden=true;add(layout,img);loadImage(img,r.id,seq,'slide');}add(main,layout);
@@ -57,11 +73,15 @@ function render(){
   const cards=node('div',undefined,'cards');add(cards,tile(tr('Heute','Today'),hoursText(d.today)+(d.today_note?' · '+d.today_note:'')));
   if(d.phone||d.website)add(cards,tile(tr('Kontakt','Contact'),[d.phone,d.website].filter(Boolean).join('\n')));
   const ways=[];if(d.reservation_onsite)ways.push(tr('Vor Ort','On site'));if(d.reservation_phone)ways.push(tr('Telefonisch','By phone'));if(d.reservation_url)ways.push(d.reservation_url);if(ways.length)add(cards,tile(tr('Reservierung','Reservations'),ways.join('\n')));
-  for(const offer of d.offers_today||[])add(cards,tile(offer.title,[offer.price,offer.note].filter(Boolean).join(' · ')));
   add(main,cards);if(d.note)add(main,node('p',d.note));
-  const regular=node('div',undefined,'cards');const days=snapshot.language==='en'?['Mon','Tue','Wed','Thu','Fri','Sat','Sun']:['Mo','Di','Mi','Do','Fr','Sa','So'];
-  (d.hours||[]).forEach((h,i)=>add(regular,tile(days[i],hoursText(h))));if(regular.children.length)add(main,node('h2',tr('Reguläre Öffnungszeiten','Regular opening hours')),regular);
-  const specials=(d.special||[]).filter(r=>r.date>=snapshot.date).slice(0,8);if(specials.length){add(main,node('h2',tr('Sonderöffnungszeiten','Special hours')));for(const r of specials)add(main,node('div',r.date+' · '+hoursText(r)+(r.note?' · '+r.note:''),'feed-row'));}
+ }else if(slide.kind==='hours'){
+  heading(main,'restaurant',tr('Reguläre Öffnungszeiten','Regular opening hours'));const regular=node('div',undefined,'cards');
+  const days=snapshot.language==='en'?['Mon','Tue','Wed','Thu','Fri','Sat','Sun']:['Mo','Di','Mi','Do','Fr','Sa','So'];
+  (snapshot.dining.hours||[]).forEach((h,i)=>add(regular,tile(days[i],hoursText(h))));add(main,regular);
+ }else if(slide.kind==='special'){
+  heading(main,'restaurant',tr('Sonderöffnungszeiten','Special opening hours'));for(const r of slide.rows)add(main,node('div',r.date+' · '+hoursText(r)+(r.note?' · '+r.note:''),'feed-row'));
+ }else if(slide.kind==='offers'){
+  heading(main,'restaurant',tr('Heutige Angebote','Today’s offers'));const cards=node('div',undefined,'cards');for(const offer of slide.rows)add(cards,tile(offer.title,[offer.price,offer.note].filter(Boolean).join(' · ')));add(main,cards);
  }else if(slide.kind==='booking'){
   heading(main,'courts',tr('Platz buchen','Book a court'));
   add(main,node('p',tr('Reservierung im freigegebenen externen Buchungssystem.','Reservation in the approved external booking system.')));
@@ -71,7 +91,7 @@ function render(){
   const f=snapshot.feeds[slide.source];heading(main,slide.source,label(slide.source));
   if(f.status!=='ok')add(main,node('p',f.status==='stale'?tr('Zwischengespeicherte Daten','Cached data'):tr('Daten derzeit nicht verfügbar','Data currently unavailable'),'warning'));
   if(slide.source==='weather'&&f.current){const c=f.current;const tiles=node('div',undefined,'cards');for(const [k,l,u] of [['temperature',tr('Temperatur','Temperature'),' °C'],['wind',tr('Wind','Wind'),' km/h'],['rain',tr('Niederschlag','Rain'),' mm']])if(typeof c[k]==='number')add(tiles,tile(l,c[k]+u));add(main,tiles);}
-  else for(const r of (f.rows||[]).slice(0,8)){const title=r.title||[r.home||r.homeTeam,r.away||r.awayTeam].filter(Boolean).join(' – ');add(main,add(node('div',undefined,'feed-row'),node('strong',title||label(slide.source)),node('p',[r.start||r.date,r.time,r.venue,r.league,r.score,r.excerpt].filter(Boolean).join(' · '))));}
+  else for(const r of slide.rows||[]){const title=r.title||[r.home||r.homeTeam,r.away||r.awayTeam].filter(Boolean).join(' – ');add(main,add(node('div',undefined,'feed-row'),node('strong',title||label(slide.source)),node('p',[r.start||r.date,r.time,r.venue,r.league,r.score,r.excerpt].filter(Boolean).join(' · '))));}
  }else{heading(main,slide.source,label(slide.source));add(main,node('p',tr('Noch keine freigegebene Datenquelle / Funktion.','No approved data source or feature yet.')));}
 }
 function schedule(){clearTimeout(rotation);if(!paused&&snapshot&&slides.length>1)rotation=setTimeout(()=>move(1),snapshot.dwell*1000);}
@@ -84,7 +104,7 @@ async function poll(){
    lastOk=Date.now();
    const nextSignature=JSON.stringify(s);
    if(signature!==nextSignature){
-     const key=slides[index]?.key,prevLogo=snapshot?.has_logo;snapshot=s;signature=nextSignature;document.documentElement.lang=s.language==='en'?'en':'de';
+     const key=slides[index]?.key;snapshot=s;signature=nextSignature;document.documentElement.lang=s.language==='en'?'en':'de';
      document.documentElement.style.setProperty('--accent',/^#[a-f0-9]{6}$/i.test(s.color)?s.color:'#21d5db');
      clearImage('logo');slides=build(s);index=Math.max(0,slides.findIndex(x=>x.key===key));render();schedule();
    }
