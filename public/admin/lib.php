@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/managed.php';
 const CD_MODULES=['welcome','weather','calendar','teams','news','partner','restaurant','courts'];
 function cd_db(string $path): PDO {
     $db=new PDO('sqlite:'.$path,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
@@ -14,6 +15,7 @@ function cd_db(string $path): PDO {
     $db->exec('CREATE TABLE IF NOT EXISTS club_brand (club TEXT PRIMARY KEY REFERENCES clubs(slug), logo BLOB, mime TEXT, welcome TEXT NOT NULL DEFAULT \'\'); CREATE TABLE IF NOT EXISTS club_content (id INTEGER PRIMARY KEY AUTOINCREMENT, club TEXT NOT NULL REFERENCES clubs(slug), kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, starts TEXT NOT NULL, ends TEXT NOT NULL, url TEXT NOT NULL, enabled INTEGER NOT NULL, updated TEXT NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS content_media (content_id INTEGER PRIMARY KEY REFERENCES club_content(id) ON DELETE CASCADE, image BLOB NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS dining (club TEXT PRIMARY KEY REFERENCES clubs(slug), config TEXT NOT NULL, updated TEXT NOT NULL)');
+    cd_managed_schema($db);
     return $db;
 }
 function cd_validate(array $in): array {
@@ -27,7 +29,7 @@ function cd_validate(array $in): array {
 function cd_save(PDO $db,array $in,bool $create): void {
     $v=cd_validate($in);
     if($create){$q=$db->prepare('INSERT INTO clubs VALUES (?,?,?,?,?,?,?,?)');$q->execute($v);}
-    else{foreach(cd_displays($db,$v[0]) as $d){if(($v[2]==='INFO'&&$d['mode']==='INTERACTIVE')||array_diff(json_decode($d['modules'],true)?:[],json_decode($v[6],true)?:[]))throw new InvalidArgumentException('Zuerst betroffene Bildschirmprofile anpassen.');}$q=$db->prepare('UPDATE clubs SET name=?,plan=?,color=?,language=?,dwell=?,modules=?,updated=? WHERE slug=?');$slug=array_shift($v);$v[]=$slug;$q->execute($v);}
+    else{cd_club($db,$v[0]);foreach(cd_displays($db,$v[0]) as $d){if(($v[2]==='INFO'&&$d['mode']==='INTERACTIVE')||array_diff(json_decode($d['modules'],true)?:[],json_decode($v[6],true)?:[]))throw new InvalidArgumentException('Zuerst betroffene Bildschirmprofile anpassen.');}$q=$db->prepare('UPDATE clubs SET name=?,plan=?,color=?,language=?,dwell=?,modules=?,updated=? WHERE slug=?');$slug=array_shift($v);$v[]=$slug;$q->execute($v);}
 }
 function cd_h(string $s):string{return htmlspecialchars($s,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}
 
@@ -51,7 +53,7 @@ function cd_save_display(PDO $db,array $in,bool $create,?string $scope):void {
     if(array_diff(json_decode($v[6],true),$allowed))throw new InvalidArgumentException('Modul für diesen Verein nicht freigeschaltet.');
     $row=[$club,$v[0],$v[1],$mode,$v[4],$v[5],$v[6],isset($in['enabled'])?1:0,$v[7]];
     if($create){$q=$db->prepare('INSERT INTO displays VALUES (?,?,?,?,?,?,?,?,?)');$q->execute($row);}
-    else{$q=$db->prepare('UPDATE displays SET name=?,mode=?,language=?,dwell=?,modules=?,enabled=?,updated=? WHERE club=? AND slug=?');$q->execute(array_merge(array_slice($row,2),array_slice($row,0,2)));}
+    else{cd_display($db,$club,$v[0],$scope);$q=$db->prepare('UPDATE displays SET name=?,mode=?,language=?,dwell=?,modules=?,enabled=?,updated=? WHERE club=? AND slug=?');$q->execute(array_merge(array_slice($row,2),array_slice($row,0,2)));}
 }
 function cd_account(PDO $db,string $club,string $password,bool $enabled):void {
     cd_club($db,$club);
@@ -121,6 +123,7 @@ function cd_save_content(PDO $db,array $in,?string $scope):void{
     $kind=cd_text($in['kind']??'',20,true);
     if(!isset(CD_CONTENT[$kind])||!in_array($kind,json_decode($c['modules'],true)?:[],true))throw new InvalidArgumentException('Inhaltsmodul nicht freigeschaltet.');
     $id=filter_var($in['id']??0,FILTER_VALIDATE_INT);if($id===false||$id<0)throw new InvalidArgumentException('Ungültige Kennung.');
+    if($id){$q=$db->prepare('SELECT 1 FROM club_content WHERE id=? AND club=? AND kind=?');$q->execute([$id,$club,$kind]);if(!$q->fetchColumn())throw new InvalidArgumentException('Eintrag nicht gefunden.');}
     if(($in['intent']??'')==='delete'){
         if(!$id)throw new InvalidArgumentException('Ungültige Kennung.');
         $q=$db->prepare('DELETE FROM club_content WHERE id=? AND club=? AND kind=?');$q->execute([$id,$club,$kind]);return;
