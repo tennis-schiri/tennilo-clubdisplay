@@ -226,7 +226,7 @@ function weatherView(){
 
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen sind noch Beispiele · Buchung über eBuSy.','Club news is still sample data · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('fixed-screen',active==='teams'||active==='weather'||active==='courts'||active==='calendar');let html='';
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');let html='';
 switch(active){
 case 'welcome':html=hero(l.welcome,l.intro,(pilot?'<div class="panel"><h2>'+tr('Außenplätze','Outdoor courts')+'</h2><p>'+tr('Aktuelle Belegung im eBuSy-Buchungsplan.','Current availability in the eBuSy booking plan.')+'</p><div class="actions">'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary large')+'</div></div>':panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available])));break;
 case 'home':html='<h1>'+l.welcome+'</h1><p>'+l.intro+'</p><div class="grid">'+[['courts',l.booking],['calendar',l.upcoming],['teams',l.matches],['weather',tr('Wetter','Weather')],['news',l.announcements]].map(([k,v])=>button(v,k,'tile large')).join('')+'</div>';break;
@@ -237,7 +237,7 @@ case 'weather':html=weatherView();if(!radarBusy)refreshRadar();break;
 case 'news':html='<h1>'+l.announcements+'</h1><div class="grid">'+l.newsItems.map(n=>'<article class="panel"><h2>'+n+'</h2><p>'+l.newsText+'</p></article>').join('')+'</div>';break;
 case 'partner':html=hero(l.partner,l.partnerText);break;
 }
-$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';$('screen').innerHTML=(active==='teams'||active==='weather'||active==='calendar')?'<div class="fit-content">'+html+'</div>':html;if(active==='teams'||active==='weather'||active==='calendar')fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
+$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';const embeddedBooking=pilot&&active==='courts';$('screen').innerHTML=embeddedBooking?html:'<div class="fit-content">'+html+'</div>';if(!embeddedBooking)fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
 
 // Allocate space using rendered content, not viewport-size guesses. Recompute on resize and data changes.
 function fitActiveScreen(){
@@ -319,7 +319,7 @@ let fitFrame=0;
 function scheduleScreenFit(){
   cancelAnimationFrame(fitFrame);
   fitFrame=requestAnimationFrame(()=>{
-    if(document.body.classList.contains('fixed-screen')&&!document.body.classList.contains('court-screen'))render();
+    if(!(pilot&&view==='courts'))render();
   });
 }
 

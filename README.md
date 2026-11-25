@@ -92,3 +92,6 @@ Flache Kopfzeile der Wetteransicht auf allen Reitern; Logo, Datum/Uhrzeit und We
 
 ## 0.4.7 – Terminkarten
 Termine im CD-M04c-Stil mit identischem Datumsblock (ausgeschriebener Wochentag, Datum, Beginn bzw. ganztägig), linksbündigem Veranstaltungstitel und vorhandener Zeitspanne/Ort; mehrtägige Termine mit zusätzlichem Datumsbereich. Keine leeren Platz-/Ergebnisspalten. Wie Mannschaftsspiele dynamisch nach gemessener Kartenhöhe paginiert, feste Kopfzeile und Navigation. Kalenderdaten und externe Linkregeln unverändert.
+
+## 0.4.8 – Einheitlicher Seitenrahmen
+Ein einziger viewportgebundener CSS-Grid-Rahmen für sämtliche Ansichten einschließlich Start, Vereinsinfos, Sponsoren und Infomodus. Feste Kopf-, Status-, Navigations- und Fußzeilenabmessungen pro Bildschirmgröße; ausschließlich der mittlere Bereich variiert inhaltlich. Gleich breite Navigationsbuttons mit konstanter Schriftstärke/Höhe verhindern Umbrüche beim Reiterwechsel. Alle nicht eingebetteten Inhalte nutzen vorhandene Höhenanpassung, Mannschaften und Termine weiterhin dynamische Seiteneinteilung. eBuSy-Frames behalten native Größe und werden bei Größenänderungen nicht neu geladen; internes eBuSy-Scrolling bleibt außerhalb der Kontrolle. Visuelle Kontrolle am Zielgerät ausstehend.
