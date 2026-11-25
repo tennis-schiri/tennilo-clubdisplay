@@ -81,7 +81,7 @@ function cd_device_seen(PDO $db,array $a,string $version):void{
     $q=$db->prepare('UPDATE device_access SET last_seen=?,version=? WHERE club=? AND display=? AND token_hash=?');$q->execute([time(),$version,$a['club'],$a['display'],$a['token_hash']]);
 }
 function cd_active_content(PDO $db,string $club,array $modules,string $today):array{
-    $q=$db->prepare("SELECT c.id,c.kind,c.title,c.body,c.starts,c.ends,c.url,EXISTS(SELECT 1 FROM content_media m WHERE m.content_id=c.id) AS has_image FROM club_content c WHERE c.club=? AND c.enabled=1 AND (c.starts='' OR c.starts<=?) AND (c.ends='' OR c.ends>=?) ORDER BY c.starts,c.id LIMIT 300");
+    $q=$db->prepare("SELECT c.id,c.kind,c.title,c.body,c.starts,c.ends,c.url,EXISTS(SELECT 1 FROM content_media m WHERE m.content_id=c.id) AS has_image FROM club_content c WHERE c.club=? AND c.enabled=1 AND (c.kind='calendar' OR c.starts='' OR c.starts<=?) AND (CASE WHEN c.kind='calendar' AND c.ends='' AND c.starts<>'' THEN c.starts ELSE c.ends END='' OR CASE WHEN c.kind='calendar' AND c.ends='' AND c.starts<>'' THEN c.starts ELSE c.ends END>=?) ORDER BY c.starts,c.id LIMIT 300");
     $q->execute([$club,$today,$today]);return array_values(array_filter($q->fetchAll(),fn($r)=>in_array($r['kind'],$modules,true)));
 }
 function cd_dining_today(array $d,DateTimeImmutable $now):array{
