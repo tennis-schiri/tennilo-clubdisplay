@@ -186,8 +186,10 @@ function field(array $c,bool $new,string $csrf):void{
       <button><?=$new?'Verein anlegen':'Änderungen speichern'?></button>
     </form><?php
 }
-function displayField(array $c,array $d,bool $new,string $csrf):void{
+function displayField(PDO $db,array $c,array $d,bool $new,string $csrf):void{
     $allowed=json_decode($c['modules'],true)?:[];$active=json_decode($d['modules']??'["welcome"]',true)?:[];
+    $layout=$new?['welcome'=>'','order'=>[],'dwell'=>[]]:cd_layout($db,$c['slug'],$d['slug']);
+    $ordered=array_values(array_intersect($layout['order'],$allowed));foreach($allowed as $k)if(!in_array($k,$ordered,true))$ordered[]=$k;
     $labels=['welcome'=>'Willkommen','weather'=>'Wetter','calendar'=>'Termine','teams'=>'Mannschaften','news'=>'Vereinsinfos','partner'=>'Sponsoren','restaurant'=>'Gastronomie','courts'=>'Buchung / Plätze'];
     ?><form method="post" class="profile">
     <input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="<?=$new?'display-create':'display-save'?>"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>">
@@ -197,7 +199,11 @@ function displayField(array $c,array $d,bool $new,string $csrf):void{
     <label>Sprache <select name="language"><?php foreach(['de'=>'Deutsch','en'=>'English'] as $k=>$v):?><option value="<?=$k?>" <?=$k===($d['language']??$c['language'])?'selected':''?>><?=$v?></option><?php endforeach?></select></label>
     <label>Folienwechsel (Sekunden) <input type="number" name="dwell" min="5" max="120" required value="<?=cd_h((string)($d['dwell']??$c['dwell']))?>"></label>
     <label class="check"><input type="checkbox" name="enabled" <?=($d['enabled']??1)?'checked':''?>> Profil aktiviert</label>
-    <fieldset><legend>Bildschirminhalte</legend><?php foreach($allowed as $k):?><label class="check"><input type="checkbox" name="modules[]" value="<?=cd_h($k)?>" <?=in_array($k,$active,true)?'checked':''?>><?=cd_h($labels[$k]??$k)?></label><?php endforeach?></fieldset>
+    <label class="full">Eigene Begrüßung für diesen Bildschirm <textarea name="screen_welcome" rows="3" maxlength="1000" placeholder="Leer = gemeinsame Vereinsbegrüßung"><?=cd_h($layout['welcome'])?></textarea></label>
+    <fieldset class="screen-layout"><legend>Bildschirminhalte &amp; Folienablauf</legend>
+    <p>Nur ausgewählte Module werden angezeigt. Kleinere Positionsnummern erscheinen zuerst. Eine leere Anzeigezeit übernimmt den Standardwert des Bildschirms. Willkommen ist verpflichtend; die Buchung ist nur im INTERACTIVE-Modus verfügbar.</p>
+    <div class="screen-layout-head"><span>Modul</span><span>Position</span><span>Sekunden / Folie</span></div>
+    <?php foreach($ordered as $pos=>$k):?><div class="screen-layout-row"><label class="check"><input type="checkbox" name="modules[]" value="<?=cd_h($k)?>" <?=in_array($k,$active,true)?'checked':''?>><?=cd_h($labels[$k]??$k)?></label><label><span class="screen-label-mobile">Position</span><input type="number" name="module_rank[<?=cd_h($k)?>]" aria-label="<?=cd_h($labels[$k]??$k)?>: Position" min="1" max="100" value="<?=$pos+1?>" required></label><label><span class="screen-label-mobile">Sekunden / Folie</span><input type="number" name="module_dwell[<?=cd_h($k)?>]" aria-label="<?=cd_h($labels[$k]??$k)?>: Sekunden pro Folie" min="5" max="120" placeholder="Standard" value="<?=cd_h((string)($layout['dwell'][$k]??''))?>"></label></div><?php endforeach?></fieldset>
     <button><?=$new?'Bildschirm anlegen':'Bildschirm speichern'?></button></form><?php
 }
 function accountField(array $c,?array $a,string $csrf):void{
@@ -282,8 +288,8 @@ function diningField(array $club,array $d,string $csrf):void{
     <?php $offers=$d['offers']??[];$offers=array_pad($offers,min(40,count($offers)+3),[]);foreach($offers as $i=>$row):?><div class="full dining-offer"><label>Wochentag<select name="offers[<?=$i?>][day]"><?php foreach(CD_DAYS as $k=>$day):?><option value="<?=$k?>" <?=$k===($row['day']??0)?'selected':''?>><?=cd_h($day)?></option><?php endforeach?></select></label><label>Gericht / Aktion<input name="offers[<?=$i?>][title]" maxlength="160" value="<?=cd_h($row['title']??'')?>"></label><label>Preis<input name="offers[<?=$i?>][price]" maxlength="80" value="<?=cd_h($row['price']??'')?>"></label><label>Gültig ab<input type="date" name="offers[<?=$i?>][starts]" value="<?=cd_h($row['starts']??'')?>"></label><label>Gültig bis<input type="date" name="offers[<?=$i?>][ends]" value="<?=cd_h($row['ends']??'')?>"></label><label>Hinweis<input name="offers[<?=$i?>][note]" maxlength="300" value="<?=cd_h($row['note']??'')?>"></label></div><?php endforeach?>
     <button class="full">Gastronomiedaten speichern</button></form><?php
 }
-function contentField(array $c,string $kind,array $row,string $csrf):void{
-    $existing=isset($row['id']);
+function contentField(PDO $db,array $c,string $kind,array $row,string $csrf,array $displays):void{
+    $existing=isset($row['id']);$audience=$existing?cd_content_audience($db,$c['slug'],(int)$row['id']):['mode'=>'all','targets'=>[]];
     ?><form method="post" class="profile">
     <input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="content"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>"><input type="hidden" name="kind" value="<?=cd_h($kind)?>"><input type="hidden" name="id" value="<?=(int)($row['id']??0)?>">
     <label class="full">Titel<input name="title" required maxlength="200" value="<?=cd_h($row['title']??'')?>"></label>
@@ -291,12 +297,18 @@ function contentField(array $c,string $kind,array $row,string $csrf):void{
     <label><?=$kind==='calendar'?'Termin / Beginn':'Anzeigen ab'?><input type="date" name="starts" value="<?=cd_h($row['starts']??'')?>"></label>
     <label><?=$kind==='calendar'?'Enddatum':'Anzeigen bis'?><input type="date" name="ends" value="<?=cd_h($row['ends']??'')?>"></label>
     <label class="full">Website / weiterer Link (HTTPS)<input type="url" name="url" maxlength="500" value="<?=cd_h($row['url']??'')?>"></label>
+    <fieldset class="screen-audience"><legend>Anzeigen auf</legend>
+    <label class="check"><input type="radio" name="audience" value="all" <?=$audience['mode']==='all'?'checked':''?>> Allen Displays mit diesem Modul (auch zukünftigen)</label>
+    <label class="check"><input type="radio" name="audience" value="selected" <?=$audience['mode']==='selected'?'checked':''?> <?=(!$displays&&$audience['mode']!=='selected')?'disabled':''?>> Nur ausgewählten Displays</label>
+    <?php foreach($displays as $display):$hasModule=in_array($kind,json_decode($display['modules'],true)?:[],true);?><label class="check audience-target"><input type="checkbox" name="targets[]" value="<?=cd_h($display['slug'])?>" <?=in_array($display['slug'],$audience['targets'],true)?'checked':''?>> <span><?=cd_h($display['name'])?> <small><?=!$hasModule?'Modul nicht aktiviert':(!$display['enabled']?'Profil deaktiviert':'')?></small></span></label><?php endforeach?>
+    <?php if(!$displays):?><p>Lege zuerst ein Bildschirmprofil an, um einzelne Displays auszuwählen.</p><?php endif?>
+    <p>Die Auswahl gilt nur bei „Nur ausgewählten Displays“. Zusätzlich müssen das Inhaltsmodul, das Profil und der Eintrag freigegeben sein.</p></fieldset>
     <label class="check"><input type="checkbox" name="enabled" <?=($row['enabled']??1)?'checked':''?>> Für Anzeige freigegeben</label>
     <button name="intent" value="save"><?=$existing?'Eintrag speichern':'Eintrag anlegen'?></button>
     <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
     </form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=062"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=063"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
 <?php if($auth&&!empty($_SESSION['device_link'])):$deviceLink=$_SESSION['device_link'];unset($_SESSION['device_link']);?><section class="panel"><h2>Geräteadresse · nur einmal sichtbar</h2><p>Vertraulich behandeln und am Bildschirm öffnen. Bei Verlust einen neuen Schlüssel erzeugen.</p><input readonly value="<?=cd_h($deviceLink)?>" aria-label="Geräteadresse"><a class="admin-action" href="<?=cd_h($deviceLink)?>" target="_blank" rel="noopener noreferrer">Gerät öffnen</a></section><?php endif?>
@@ -309,14 +321,14 @@ function contentField(array $c,string $kind,array $row,string $csrf):void{
 <?php if($scope===null):?><details class="panel"><summary>+ Neuen Verein anlegen</summary><?php field([],true,$csrf)?></details><?php endif?>
 <?php foreach($clubs as $club):$displays=cd_displays($db,$club['slug']);?><details class="panel" <?=$scope!==null||$focusClub===$club['slug']?'open':''?>><summary><?=cd_h($club['name'])?> <small><?=cd_h($club['plan'])?> · <?=count($displays)?> Bildschirme</small></summary>
 <?php if($scope===null):?><details class="subpanel"><summary>Vereinsprofil & Lizenz</summary><?php field($club,false,$csrf)?></details><details class="subpanel"><summary>Vereinszugang</summary><?php accountField($club,cd_account_row($db,$club['slug']),$csrf)?></details><details class="subpanel"><summary>Vertrag & Bildschirmkontingent</summary><?php contractField($club,cd_contract($db,$club['slug']),$csrf)?></details><details class="subpanel" <?=$focusAction==='billing'&&$focusClub===$club['slug']?'open':''?>><summary>Abrechnungsdaten</summary><?php billingField($club,cd_billing($db,$club['slug']),$csrf)?></details><?php endif?>
-<details class="subpanel" <?=in_array($focusAction,['sources','source-test'],true)&&$focusClub===$club['slug']?'open':''?>><summary>Datenquellen & Schnittstellen</summary><?php sourceField($club,cd_sources($db,$club['slug'],$scope),$csrf,$scope)?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="club" value="<?=cd_h($club['slug'])?>"><button name="action" value="source-test">Freigegebene Datenfeeds prüfen</button></form></details><h2>Gemeinsame Vereinsinhalte</h2><p>Einmal pflegen, später auf allen dafür konfigurierten Bildschirmen nutzen. Für gekoppelte Geräte wirksam.</p>
+<details class="subpanel" <?=in_array($focusAction,['sources','source-test'],true)&&$focusClub===$club['slug']?'open':''?>><summary>Datenquellen & Schnittstellen</summary><?php sourceField($club,cd_sources($db,$club['slug'],$scope),$csrf,$scope)?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="club" value="<?=cd_h($club['slug'])?>"><button name="action" value="source-test">Freigegebene Datenfeeds prüfen</button></form></details><h2>Gemeinsame Vereinsinhalte</h2><p>Einmal pflegen und gezielt auf allen oder ausgewählten Bildschirmen veröffentlichen. Für gekoppelte Geräte wirksam.</p>
 <details class="subpanel" <?=$focusAction==='brand'&&$focusClub===$club['slug']?'open':''?>><summary>Logo, Farben & Begrüßung</summary><?php brandField($club,cd_brand($db,$club['slug']),$csrf)?></details>
 <?php foreach(CD_CONTENT as $kind=>$label):if(!in_array($kind,json_decode($club['modules'],true)?:[],true))continue;$rows=cd_content_rows($db,$club['slug'],$kind);?><details class="subpanel"><summary><?=cd_h($label)?> <small><?=count($rows)?> Einträge</small></summary>
-<details class="entry"><summary>+ Eintrag anlegen</summary><?php contentField($club,$kind,[],$csrf)?></details>
-<?php foreach($rows as $row):?><details class="entry"><summary><?=cd_h($row['title'])?> <small><?=$row['enabled']?'Freigegeben':'Entwurf'?></small></summary><?php contentField($club,$kind,$row,$csrf);mediaField($club,$row,$csrf)?></details><?php endforeach?></details><?php endforeach?>
+<details class="entry"><summary>+ Eintrag anlegen</summary><?php contentField($db,$club,$kind,[],$csrf,$displays)?></details>
+<?php foreach($rows as $row):?><details class="entry"><summary><?=cd_h($row['title'])?> <small><?=$row['enabled']?'Freigegeben':'Entwurf'?></small></summary><?php contentField($db,$club,$kind,$row,$csrf,$displays);mediaField($club,$row,$csrf)?></details><?php endforeach?></details><?php endforeach?>
 <?php if(in_array('restaurant',json_decode($club['modules'],true)?:[],true)):?><details class="subpanel" <?=$focusAction==='dining'&&$focusClub===$club['slug']?'open':''?>><summary>Gastronomie · Öffnungszeiten & Wochenangebote</summary><?php diningField($club,cd_dining_get($db,$club['slug'],$scope),$csrf)?></details><?php endif?>
-<h2>Bildschirme</h2><p>Jeder Bildschirm erhält eigene Module, Betriebsart, Sprache und Wechselzeit. Vorschau, Gerätekopplung und letzter Kontakt je Bildschirm.</p>
-<details class="subpanel"><summary>+ Bildschirm anlegen</summary><?php displayField($club,[],true,$csrf)?></details>
-<?php foreach($displays as $d):?><details class="subpanel"><summary><?=cd_h($d['name'])?> <small><?=cd_h($d['mode'])?> · <?=$d['enabled']?'Aktiv':'Deaktiviert'?></small></summary><?php displayField($club,$d,false,$csrf);deviceField($db,$club,$d,$csrf,$portalUrl)?></details><?php endforeach?>
+<h2>Bildschirme</h2><p>Jeder Bildschirm erhält eigene Module, Folienreihenfolge, Begrüßung, Anzeigezeiten, Betriebsart und Sprache. Automatische externe Feeds werden über die Modulauswahl gesteuert.</p>
+<details class="subpanel"><summary>+ Bildschirm anlegen</summary><?php displayField($db,$club,[],true,$csrf)?></details>
+<?php foreach($displays as $d):?><details class="subpanel"><summary><?=cd_h($d['name'])?> <small><?=cd_h($d['mode'])?> · <?=$d['enabled']?'Aktiv':'Deaktiviert'?></small></summary><?php displayField($db,$club,$d,false,$csrf);deviceField($db,$club,$d,$csrf,$portalUrl)?></details><?php endforeach?>
 </details><?php endforeach?>
 <?php endif?></main></body></html>
