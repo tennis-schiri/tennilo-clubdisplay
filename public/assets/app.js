@@ -20,6 +20,45 @@ const sourceUrl='https://tvbb.liga.nu/cgi-bin/WebObjects/nuLigaTENDE.woa/wa/club
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tr=(de,en)=>lang==='de'?de:en;
 function shortClub(name){return String(name??'').replace(/^Neuenhagener\s+(?:Tennisclub|TC)\s+93(?=\s|$)/iu,'NTC 93');}
+// Fictional TENNILO demo data; never query private NTC booking data.
+const demoStart=Math.ceil(Date.now()/900000)*900000;
+function demoLeague(){
+  return {status:'ok',fetchedAt:Math.floor(Date.now()/1000),matches:[
+    {date:new Date(demoStart).toISOString(),home:'TC Demo I',away:'TC Beispielpark I',league:'H30 VL',isHome:true,score:null,courts:[1,2,3]},
+    {date:new Date(demoStart+86400000).toISOString(),home:'TC Demo I',away:'TC Musterstadt I',league:'D30 BL',isHome:true,score:null,courts:[4,5,6]},
+    {date:new Date(demoStart+172800000).toISOString(),home:'TC Beispielpark II',away:'TC Demo II',league:'H40 BL',isHome:false,score:null},
+    {date:new Date(demoStart-86400000).toISOString(),home:'TC Demo II',away:'TC Musterstadt II',league:'H BL',isHome:true,score:'6:3'}
+  ]};
+}
+function demoOccupancy(hours,now=Date.now()){
+  const labels={outdoor:[[tr('Demo-Spieler A / B','Demo players A / B'),null,null],[tr('Jugend U14','Juniors U14'),null,null],[null,null,null],[tr('Damen 30','Women 30'),null,tr('Demo-Spieler C / D','Demo players C / D')],[null,tr('Jugendtraining','Junior training'),tr('Jugendtraining','Junior training')],[tr('Platzpflege','Court maintenance'),null,null],[tr('Mixed-Training','Mixed training'),null,tr('Vereinstraining','Club training')]],indoor:[[tr('Damen 50','Women 50'),tr('Damen 50','Women 50'),null],[tr('Demo-Spieler E / F','Demo players E / F'),null,tr('Herren 40','Men 40')]]};
+  const slots=[];
+  for(const area of Object.keys(labels))labels[area].forEach((row,ci)=>hours.forEach((hour,i)=>{
+    let label=row[i],status=label?'occupied':'free',from=Date.parse(hour.start),to=Date.parse(hour.end);
+    if(area==='outdoor'&&ci<3&&from<demoStart+7200000&&to>demoStart){
+      label=tr('Herren 30 · Heimspiel (Demo)','Men 30 · home match (demo)');from=Math.max(from,demoStart);to=Math.min(to,demoStart+7200000);status=from===Date.parse(hour.start)&&to===Date.parse(hour.end)?'occupied':'partial';
+    }
+    if(area==='outdoor'&&ci===5&&i===0)status='blocked';
+    slots.push({area,court:ci+1,...hour,status,bookings:label?[{displayLabel:label,start:new Date(from).toISOString(),end:new Date(to).toISOString()}]:[]});
+  }));
+  return {status:'ok',fetchedAt:Math.floor(now/1000),slots};
+}
+function demoNews(){
+  const items=[
+    [tr('Willkommen zur neuen Saison','Welcome to the new season'),tr('Gemeinsamer Start in die Tennissaison.','Starting the tennis season together.'),tr('Zum Saisonauftakt laden wir alle Mitglieder zu einem gemeinsamen Tennisnachmittag ein. Auf den Außenplätzen finden Trainingsangebote und lockere Doppelrunden statt.','Members are invited to an afternoon of tennis, training and friendly doubles.'),tr('Gäste und neue Mitglieder erhalten eine Einführung in die Platzbuchung.','Guests and new members can learn about the booking system.'),'#b67a4c'],
+    [tr('Clubturnier steht an','Club tournament coming up'),tr('Ein Spieltag für alle Altersklassen.','A day of tennis for all age groups.'),tr('Das Beispiel-Clubturnier bietet Einzel und Doppel in verschiedenen Spielklassen. Die Begegnungen werden im Clubhaus bekannt gegeben.','The sample tournament features singles and doubles. Fixtures are announced at the clubhouse.'),tr('Die Spielleitung hilft bei Fragen zum Ablauf.','The tournament team can answer questions.'),'#18747b'],
+    [tr('Jugendtraining im Verein','Junior training at the club'),tr('Informationen zu den Trainingsgruppen.','Information about training groups.'),tr('In dieser Beispielmeldung stellen wir Trainingsangebote für Kinder und Jugendliche vor.','This sample announcement introduces training for children and juniors.'),tr('Die Gruppen werden nach Alter und Spielstärke zusammengestellt.','Groups are organized by age and experience.'),'#315a8c']
+  ];
+  return {status:'ok',posts:items.map((p,i)=>{
+    const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320"><rect width="800" height="320" fill="'+p[4]+'"/><g stroke="#fff" fill="none" stroke-width="3" opacity=".85"><rect x="90" y="35" width="620" height="250"/><path d="M90 75h620M90 245h620M280 75v170M520 75v170M280 160h240M400 20v280"/></g><circle cx="400" cy="160" r="37" fill="#d7e96b"/><path d="M374 135q38 22 4 52m45-52q-38 22-4 52" fill="none" stroke="#fff" stroke-width="4"/><text x="20" y="305" font-size="18" font-family="sans-serif" fill="white">TENNILO · DEMO</text></svg>';
+    return {date:new Date(demoStart-i*86400000).toISOString(),title:p[0],excerpt:p[1],article:'<p>'+esc(p[2])+'</p><h2>'+tr('Weitere Informationen','More information')+'</h2><p>'+esc(p[3])+'</p><p>'+tr('Fiktiver Beispielartikel der TENNILO-Produktdemo.','Fictional sample article in the TENNILO product demo.')+'</p>',image:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg),imageAlt:tr('Tennisplatz-Illustration','Court illustration'),complete:true};
+  })};
+}
+const demoSponsors=[['COURT & CO.','SPORT','#167d7f'],['MATCHPOINT','TENNIS SHOP','#30384c'],['CLUBKÜCHE','GASTRO','#a15b32'],['NETZWERK','IT','#2d6392'],['GRÜNWERK','GARTEN','#38794b'],['BASELINE','FITNESS','#b3473c'],['PUNKTGENAU','SERVICE','#484f6f'],['SPIELRAUM','DESIGN','#8f4f79'],['TENNISWERK','AUSRÜSTUNG','#bb772b'],['TEAMPLAY','SPORT','#167c84'],['AUFSCHLAG','EVENTS','#2c4961'],['COURTSIDE','MEDIA','#555'],['VEREINSWERK','PARTNER','#397657'],['TOPSPIN','TRAINING','#355ab3'],['FAIRPLAY','FÖRDERUNG','#8b633f']];
+function demoSponsorCards(){
+  return demoSponsors.map(([name,kind,color],i)=>'<figure class="sponsor-logo demo-sponsor-logo"><svg viewBox="0 0 240 115" role="img" aria-label="'+esc(name+' · Demo')+'"><g fill="'+color+'">'+(i%3===0?'<circle cx="120" cy="27" r="16"/><path d="M109 16l22 22M109 38l22-22" stroke="#fff" stroke-width="2"/>':i%3===1?'<path d="M100 42l20-31 20 31z"/><circle cx="120" cy="28" r="5" fill="white"/>':'<rect x="105" y="12" width="30" height="30" rx="7"/><path d="M111 27h18M120 18v18" stroke="white" stroke-width="2"/>')+'<text x="120" y="70" font-size="22" font-weight="850" font-family="system-ui,sans-serif" text-anchor="middle">'+esc(name)+'</text><text x="120" y="89" font-size="10" letter-spacing="2" font-family="system-ui,sans-serif" text-anchor="middle">'+esc(kind)+'</text></g><text x="120" y="107" font-size="8" fill="#777" text-anchor="middle" font-family="sans-serif">DEMO</text></svg></figure>').join('');
+}
+
 // Match welcome slides are generated only for the scheduled 60-minute window.
 function matchGreetingKey(m){
   return 'greeting:'+JSON.stringify([m.date,m.home,m.away,m.league]);
@@ -36,7 +75,7 @@ function activeMatchGreetings(data,now=Date.now()){
   return [...unique.values()].sort((a,b)=>Date.parse(a.date)-Date.parse(b.date)||String(a.league).localeCompare(String(b.league)));
 }
 function syncMatchGreetings(now=Date.now()){
-  const active=pilot?activeMatchGreetings(leagueData,now):[];
+  const active=activeMatchGreetings(leagueData,now);
   const previous=screens[slide];
   const before=greetingMatches.get(previous);
   greetingMatches=new Map(active.map(m=>[matchGreetingKey(m),m]));
@@ -61,7 +100,7 @@ function matchGreetingView(key){
   const time=new Intl.DateTimeFormat(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(m.date));
   const courts=fixtureCourtNumbers(m.courts);
   const courtList=courts.length?'<div class="greeting-courts">'+courts.map(n=>'<div class="greeting-court"><svg viewBox="0 0 120 68" aria-hidden="true"><rect x="1" y="1" width="118" height="66" rx="8" fill="#96603e"/><g fill="none" stroke="#fff" stroke-width="1.4"><rect x="8" y="8" width="104" height="52"/><path d="M8 16h104M8 52h104M32 16v36M88 16v36M32 34h56M60 4v60"/></g><circle cx="60" cy="34" r="18" fill="#073538"/><text x="60" y="35" dominant-baseline="middle" text-anchor="middle" font-size="24" font-weight="800" fill="#fff">'+esc(n)+'</text></svg><strong>'+tr('Platz ','Court ')+esc(n)+'</strong></div>').join('')+'</div>':'<p class="greeting-unassigned">'+tr('Platzzuordnung noch nicht verfügbar','Court assignment not yet available')+'</p>';
-  return '<div class="greeting-hero"><div class="greeting-kicker"><span>'+tr('HEIMSPIEL','HOME MATCH')+'</span><span>'+esc(time)+(lang==='de'?' Uhr':'')+'</span></div><div class="greeting-welcome">'+tr('Herzlich willkommen beim NTC 93!','Welcome to NTC 93!')+'</div><div class="greeting-category">'+esc(identity.team)+(identity.league?' · '+esc(identity.league):'')+'</div><div class="greeting-pair"><div class="greeting-home"><small>'+tr('Heim','Home')+'</small><strong>'+esc(shortClub(m.home))+'</strong></div><div class="greeting-versus">–</div><div class="greeting-away"><small>'+tr('Gast','Away')+'</small><strong>'+esc(shortClub(m.away))+'</strong></div></div><div class="greeting-assignment"><h2>'+tr('Eure Plätze','Your courts')+'</h2>'+courtList+'</div><p class="greeting-farewell">'+tr('Wir wünschen euch ein schönes und faires Match!','Have a great and fair match!')+'</p></div>';
+  return '<div class="greeting-hero"><div class="greeting-kicker"><span>'+tr('HEIMSPIEL','HOME MATCH')+'</span><span>'+esc(time)+(lang==='de'?' Uhr':'')+'</span></div><div class="greeting-welcome">'+(pilot?tr('Herzlich willkommen beim NTC 93!','Welcome to NTC 93!'):tr('Herzlich willkommen im Demo-Club!','Welcome to the demo club!'))+'</div><div class="greeting-category">'+esc(identity.team)+(identity.league?' · '+esc(identity.league):'')+'</div><div class="greeting-pair"><div class="greeting-home"><small>'+tr('Heim','Home')+'</small><strong>'+esc(shortClub(m.home))+'</strong></div><div class="greeting-versus">–</div><div class="greeting-away"><small>'+tr('Gast','Away')+'</small><strong>'+esc(shortClub(m.away))+'</strong></div></div><div class="greeting-assignment"><h2>'+tr('Eure Plätze','Your courts')+'</h2>'+courtList+'</div><p class="greeting-farewell">'+tr('Wir wünschen euch ein schönes und faires Match!','Have a great and fair match!')+'</p></div>';
 }
 function teamAndLeague(m){
   const full=String(m.league??'').trim();
@@ -97,7 +136,7 @@ function matchView(){
   const tabs=info?'':'<div class="tabs">'+Object.keys(headings).map(k=>'<button data-action="match:'+k+'" aria-pressed="'+(k===filter)+'">'+({home:tr('Heim','Home'),away:tr('Auswärts','Away'),all:tr('Alle','All'),results:tr('Ergebnisse','Results')}[k])+'</button>').join('')+'</div>';
   const title='<div class="match-heading"><h1>'+headings[filter]+'</h1>'+tabs+'</div>';
   if(!d)return title+'<div class="panel"><p>'+tr('nuLiga-Daten werden geladen …','Loading nuLiga data …')+'</p></div>';
-  const source='<p class="match-source">'+tr('Quelle: nuLiga · TVBB','Source: nuLiga · TVBB')+(d.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info&&!pilot?' · <a href="'+sourceUrl+'" target="_blank" rel="noopener noreferrer">'+tr('Original-Spielplan','Original schedule')+'</a>':'')+'</p>';
+  const source='<p class="match-source">'+(pilot?tr('Quelle: nuLiga · TVBB','Source: nuLiga · TVBB'):tr('Fiktive Begegnungen · TENNILO-Demo','Fictional fixtures · TENNILO demo'))+(d.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+''+'</p>';
   if(d.status==='unavailable')return title+'<div class="panel"><p>'+tr('nuLiga momentan nicht verfügbar.','nuLiga currently unavailable.')+'</p></div>'+source;
   const warning=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Daten – Aktualisierung fehlgeschlagen.','Cached data – refresh failed.')+'</p>':'';
   const dateParts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -123,6 +162,7 @@ function matchView(){
   return title+warning+'<div class="fixture-list">'+cards+'</div>'+pagination+source;
 }
 async function refreshLeague(){
+  if(!pilot){leagueData=demoLeague();syncMatchGreetings();if(view==='teams'||(view==='info'&&screens[slide]==='teams'))render();return;}
   if(fetching)return;fetching=true;
   try{
     const response=await fetch('nuliga.php',{cache:'no-store',signal:AbortSignal.timeout(25000)});
@@ -286,18 +326,17 @@ async function refreshNews(){
 }
 function newsDate(p){return new Date(p.date).toLocaleDateString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'});}
 function newsArticleView(p){
-  const source='<span class="news-origin">'+tr('Originalbeitrag: ','Original article: ')+'ntc93.com</span>';
+  const source='<span class="news-origin">'+(pilot?tr('Originalbeitrag: ','Original article: ')+'ntc93.com':tr('Beispielartikel · TENNILO','Sample article · TENNILO'))+'</span>';
   const image=p.image&&!(p.article||'').includes(esc(p.image))?'<figure class="news-cover"><img src="'+esc(p.image)+'" alt="'+esc(p.imageAlt||'')+'" referrerpolicy="no-referrer"></figure>':'';
   const warning=!p.complete?'<p class="news-article-warning">'+tr('Der vollständige Beitrag ist momentan nicht über die Schnittstelle verfügbar. Angezeigt wird der vorhandene Inhalt.','The complete article is currently unavailable through the feed. Available content is shown.')+'</p>':'';
-  return '<div class="news-reader-head"><div><time class="news-date" datetime="'+esc(p.date)+'">'+esc(newsDate(p))+'</time>'+source+'<h1>'+esc(p.title)+'</h1></div>'+button(tr('Zurück zu den Meldungen','Back to news'),'news-back','primary')+'</div><div id="news-article-scroll" class="panel news-article-scroll" tabindex="0" aria-label="'+tr('Artikelinhalt','Article content')+'">'+warning+image+(p.article||'<p>'+esc(p.excerpt)+'</p>')+'</div><div class="news-reader-foot"><span>'+tr('Quelle: ntc93.com · Originaltext','Source: ntc93.com · Original text')+'</span><div><button data-action="news-up" aria-label="'+tr('Nach oben','Scroll up')+'">↑</button><button data-action="news-down" aria-label="'+tr('Weiterlesen','Read further')+'">↓</button></div></div>';
+  return '<div class="news-reader-head"><div><time class="news-date" datetime="'+esc(p.date)+'">'+esc(newsDate(p))+'</time>'+source+'<h1>'+esc(p.title)+'</h1></div>'+button(tr('Zurück zu den Meldungen','Back to news'),'news-back','primary')+'</div><div id="news-article-scroll" class="panel news-article-scroll" tabindex="0" aria-label="'+tr('Artikelinhalt','Article content')+'">'+warning+image+(p.article||'<p>'+esc(p.excerpt)+'</p>')+'</div><div class="news-reader-foot"><span>'+(pilot?tr('Quelle: ntc93.com · Originaltext','Source: ntc93.com · Original text'):tr('Fiktiver Inhalt · TENNILO-Demo','Fictional content · TENNILO demo'))+'</span><div><button data-action="news-up" aria-label="'+tr('Nach oben','Scroll up')+'">↑</button><button data-action="news-down" aria-label="'+tr('Weiterlesen','Read further')+'">↓</button></div></div>';
 }
 function newsView(){
-  if(pilot&&view==='news'&&openedNews)return newsArticleView(openedNews);
-  const title='<div class="match-heading"><h1>'+t().announcements+'</h1><span class="news-origin">'+tr('Aktuelle Meldungen von ','Latest news from ')+'ntc93.com</span></div>';
-  if(!pilot)return '<div class="match-heading"><h1>'+t().announcements+'</h1></div><div class="grid">'+t().newsItems.map(n=>'<article class="panel"><h2>'+esc(n)+'</h2><p>'+esc(t().newsText)+'</p></article>').join('')+'</div>';
-  const d=newsData;
+  if(view==='news'&&openedNews)return newsArticleView(openedNews);
+  const title='<div class="match-heading"><h1>'+t().announcements+'</h1><span class="news-origin">'+(pilot?tr('Aktuelle Meldungen von ','Latest news from ')+'ntc93.com':tr('Fiktive Vereinsmeldungen','Fictional club news'))+'</span></div>';
+  const d=pilot?newsData:demoNews();
   const stamp=d?.fetchedAt?new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'}):'';
-  const source='<p class="match-source">'+tr('Quelle: ntc93.com','Source: ntc93.com')+(stamp?' · '+tr('Stand ','Updated ')+esc(stamp):'')+(lang==='en'?' · Original German articles':'')+'</p>';
+  const source='<p class="match-source">'+(pilot?tr('Quelle: ntc93.com','Source: ntc93.com'):tr('Beispieldaten · TENNILO','Sample data · TENNILO'))+(stamp?' · '+tr('Stand ','Updated ')+esc(stamp):'')+(pilot&&lang==='en'?' · Original German articles':'')+'</p>';
   if(!d||d.status==='unavailable')return title+'<div class="panel">'+tr(d?'Vereinsmeldungen momentan nicht verfügbar.':'Vereinsmeldungen werden geladen …',d?'Club news currently unavailable.':'Loading club news …')+'</div>'+source;
   if(!d.posts.length)return title+'<div class="panel">'+tr('Keine veröffentlichten Meldungen gefunden.','No published news found.')+'</div>'+source;
   const warn=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Meldungen – Aktualisierung fehlgeschlagen.','Cached news – refresh failed.')+'</p>':'';
@@ -368,8 +407,8 @@ const ntcSponsors=[
   }
 ];
 function sponsorView(){
-  const cards=ntcSponsors.map(s=>'<figure class="sponsor-logo'+(s.name==='Allianz Maxelon'?' sponsor-logo-allianz':'')+'"><img src="'+esc(s.url)+'" alt="'+esc(s.name)+'" decoding="async" referrerpolicy="no-referrer"></figure>').join('');
-  return '<div class="match-heading sponsor-heading"><h1>'+tr('Partner & Sponsoren','Partners & sponsors')+'</h1><span class="news-origin">'+tr('Vielen Dank für die Unterstützung!','Thank you for your support!')+'</span></div><div class="sponsor-grid">'+cards+'</div><p class="match-source sponsor-source">'+tr('Sponsoren und Partner des NTC 93 · Quelle: ntc93.com','NTC 93 sponsors and partners · Source: ntc93.com')+'</p>';
+  const cards=pilot?ntcSponsors.map(s=>'<figure class="sponsor-logo'+(s.name==='Allianz Maxelon'?' sponsor-logo-allianz':'')+'"><img src="'+esc(s.url)+'" alt="'+esc(s.name)+'" decoding="async" referrerpolicy="no-referrer"></figure>').join(''):demoSponsorCards();
+  return '<div class="match-heading sponsor-heading"><h1>'+tr('Partner & Sponsoren','Partners & sponsors')+'</h1><span class="news-origin">'+tr('Vielen Dank für die Unterstützung!','Thank you for your support!')+'</span></div><div class="sponsor-grid">'+cards+'</div><p class="match-source sponsor-source">'+(pilot?tr('Sponsoren und Partner des NTC 93 · Quelle: ntc93.com','NTC 93 sponsors and partners · Source: ntc93.com'):tr('Fiktive Logos · keine tatsächlichen Sponsoren','Fictional logos · not actual sponsors'))+'</p>';
 }
 // Court overview: only confirmed eBuSy data may mark a court free or occupied.
 const occupancyCourts={outdoor:[1,2,3,4,5,6,7],indoor:[1,2]};
@@ -412,13 +451,14 @@ function occupancyBookingText(area,court,hour){
 }
 function occupancyView(){
   const hours=occupancyHours();occupancyHourKey=hours[0].start;
+  if(!pilot)occupancyData=demoOccupancy(hours);
   const ready=hours.some(hour=>Object.keys(occupancyCourts).some(area=>occupancyCourts[area].some(court=>occupancySlot(area,court,hour)!=='unknown')));
   const header='<div class="occupancy-timeline-head"><span>'+tr('Platz','Court')+'</span>'+hours.map((hour,i)=>'<div class="occupancy-hour-head'+(i===0?' occupancy-hour-current':'')+'"><strong>'+occupancyTime(hour.start)+' – '+occupancyTime(hour.end)+'</strong><small>'+(i===0?tr('Aktuelle Stunde','Current hour'):tr('Danach','Upcoming'))+'</small></div>').join('')+'</div>';
   const group=(area,title)=>'<section class="occupancy-roster-group occupancy-roster-'+area+'"><div class="occupancy-roster-caption">'+title+'</div>'+occupancyCourts[area].map(court=>'<article class="occupancy-roster-row occupancy-court-'+area+'" aria-label="'+title+' · '+tr('Platz ','Court ')+court+'"><div class="occupancy-court-ident">'+occupancyCourtGraphic(court)+'<strong>'+tr('Platz ','Court ')+court+'</strong></div>'+hours.map(hour=>occupancyBookingText(area,court,hour)).join('')+'</article>').join('')+'</section>';
-  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(ready?tr('Buchungsübersicht · eBuSy','Booking overview · eBuSy'):tr('eBuSy-Anbindung noch ausstehend','Awaiting eBuSy integration'))+'</span></div><div class="occupancy-roster">'+header+group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts'))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.')+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
+  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(!pilot?tr('Fiktive Buchungen · TENNILO-Demo','Fictional bookings · TENNILO demo'):ready?tr('Buchungsübersicht · eBuSy','Booking overview · eBuSy'):tr('eBuSy-Anbindung noch ausstehend','Awaiting eBuSy integration'))+'</span></div><div class="occupancy-roster">'+header+group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts'))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.')+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
 }
 function refreshOccupancyHour(now){
-  if(pilot&&view==='info'&&screens[slide]==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();
+  if(view==='info'&&screens[slide]==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();
 }
 function infoControls(){
   const visible=view==='info';
@@ -476,11 +516,11 @@ function toggleInfoPause(){
   else{infoElapsed=Math.max(0,Math.min(dwell,now-started));infoPaused=true;infoPauseUntil=now+infoPauseLimit;}
   infoControls();updateInfoProgress(now);
 }
-function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();infoControls();
+function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();infoControls();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',pilot&&active==='partner');document.body.classList.toggle('occupancy-screen',pilot&&active==='welcome');document.body.classList.toggle('greeting-screen',pilot&&greetingMatches.has(active));let html='';
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active));let html='';
 if(greetingMatches.has(active))html=matchGreetingView(active);else switch(active){
-case 'welcome':html=pilot?occupancyView():hero(l.welcome,l.intro,panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available]));break;
+case 'welcome':html=occupancyView();break;
 case 'home':{
   const tiles=[
     ['courts',l.booking,pilot?tr('Außenplätze buchen und die Belegung der Hallenplätze ansehen.','Book outdoor courts and view indoor court availability.'):tr('Platzbelegung ansehen und eine Buchung ausprobieren.','View court availability and try a simulated booking.')],
@@ -497,9 +537,9 @@ case 'calendar':html=eventView();break;
 case 'teams':html=matchView();break;
 case 'weather':html=weatherView();if(!radarBusy)refreshRadar();break;
 case 'news':html=newsView();break;
-case 'partner':html=pilot?sponsorView():hero(l.partner,l.partnerText);break;
+case 'partner':html=sponsorView();break;
 }
-$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';const embeddedBooking=pilot&&active==='courts',readingNews=pilot&&active==='news'&&view==='news'&&!!openedNews;document.body.classList.toggle('news-reading',readingNews);$('screen').innerHTML=embeddedBooking||readingNews?html:'<div class="fit-content">'+html+'</div>';if(!embeddedBooking&&!readingNews)fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
+$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';const embeddedBooking=pilot&&active==='courts',readingNews=active==='news'&&view==='news'&&!!openedNews;document.body.classList.toggle('news-reading',readingNews);$('screen').innerHTML=embeddedBooking||readingNews?html:'<div class="fit-content">'+html+'</div>';if(!embeddedBooking&&!readingNews)fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
 
 // Allocate space using rendered content, not viewport-size guesses. Recompute on resize and data changes.
 function fitActiveScreen(){
@@ -587,7 +627,7 @@ function scheduleScreenFit(){
 
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
 function go(next){openedNews=null;if(next==='weather'&&view!=='weather')weatherPage='all';if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info'){slide=0;infoPaused=false;infoElapsed=0;infoPauseUntil=0;}render();}
-document.addEventListener('click',e=>{infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&pilot&&(view==='news'||(view==='info'&&screens[slide]==='news'))){const index=Number(a.split(':')[1]);const p=newsData?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
+document.addEventListener('click',e=>{infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&screens[slide]==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown','wheel','touchmove'])document.addEventListener(event,infoInput);
 $('language').addEventListener('click',()=>{if(pilot&&view==='courts'&&courtMode==='outdoor')return;lang=lang==='de'?'en':'de';message='';render();});
 const adminDialog=$('admin-dialog'), adminForm=$('admin-form'), adminPin=$('admin-pin'), adminStatus=$('admin-status');
@@ -635,4 +675,4 @@ setInterval(()=>{const now=Date.now();clock();syncMatchGreetings(now);if(adminDi
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
-render();refreshLeague();refreshEvents();refreshWeather();refreshNews();setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);
+if(!pilot)leagueData=demoLeague();syncMatchGreetings();render();refreshLeague();refreshEvents();refreshWeather();refreshNews();setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);

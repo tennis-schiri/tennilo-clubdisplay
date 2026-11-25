@@ -498,3 +498,9 @@ body.fixed-screen.greeting-screen #screen .fit-content{height:100%;display:flex;
 .greeting-unassigned{margin:0;color:var(--muted);font-size:clamp(.85rem,1.3vw,1.2rem)}
 .greeting-farewell{margin:0;color:var(--muted);font-size:clamp(.8rem,1.25vw,1.2rem)}
 @media(max-width:700px){body.fixed-screen.greeting-screen #screen .fit-content{height:auto}.greeting-hero{padding:.6rem;gap:.6rem}.greeting-pair strong{font-size:1.15rem}.greeting-home,.greeting-away{padding:.45rem .25rem}.greeting-welcome{font-size:1.6rem}}
+
+/* 0.4.24: identical layouts in TENNILO product demo, with own brand palette. */
+html:not([data-club="ntc"]) .greeting-hero{background:radial-gradient(ellipse at 50% 0%,#17485d,#102b40 55%,#071a2c)}
+html:not([data-club="ntc"]) .occupancy-roster-row .occupancy-occupied{background:#173e53;border-left-color:var(--cyan)}
+html:not([data-club="ntc"]) .occupancy-hour-current,html:not([data-club="ntc"]) .occupancy-hour-current small{color:#071a2c}
+.demo-sponsor-logo svg{display:block;width:100%;height:100%;max-width:100%;max-height:100%}

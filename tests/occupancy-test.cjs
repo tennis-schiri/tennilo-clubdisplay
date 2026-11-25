@@ -5,7 +5,7 @@ const begin=source.indexOf('const occupancyCourts='),end=source.indexOf('functio
 assert(begin>=0&&end>begin);
 const now=Date.parse('2026-11-25T13:37:22.123Z');
 class Clock extends Date{static now(){return now;}}
-const ctx=vm.createContext({Date:Clock,Intl,lang:'de',tr:(de,en)=>de,button:(label)=>label,esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')});
+const ctx=vm.createContext({Date:Clock,Intl,pilot:true,lang:'de',tr:(de,en)=>de,button:(label)=>label,esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')});
 vm.runInContext(source.slice(begin,end),ctx);
 const check=s=>vm.runInContext(s,ctx);
 assert.equal(check('occupancyHours()[0].start'),'2026-11-25T13:00:00.000Z');

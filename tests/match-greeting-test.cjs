@@ -26,5 +26,6 @@ assert.equal(ctx.screens.length,3);
 assert.equal(ctx.screens[ctx.slide],'welcome');
 assert.equal(ctx.infoPaused,false);
 run('pilot=false;syncMatchGreetings(start)');
-assert.equal(ctx.screens.length,3);
+assert.equal(ctx.screens.length,5);
+assert.ok(run('matchGreetingView(matchGreetingKey(home)).includes("Demo-Club")'));
 console.log('Match greeting tests OK');
