@@ -34,3 +34,19 @@ html[data-club="ntc"] .match-teams .own-team,html[data-club="ntc"] .match-meta .
 @media(max-width:700px){html[data-club="ntc"] .brand{column-gap:.7rem}html[data-club="ntc"] .brand img{width:68px;height:68px}html[data-club="ntc"] .brand .ntc-brand-title{font-size:1.65rem}}
 
 .event-row{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,2fr) auto;gap:1.3rem;align-items:center;padding:1rem 0;border-bottom:1px solid var(--line)}.event-row:last-child{border:0}.event-date{display:grid;gap:.2rem;color:var(--cyan)}.event-date span{font-size:.85rem;color:var(--muted)}.event-name{font-size:clamp(1.25rem,2.2vw,2.3rem);line-height:1.15;overflow-wrap:anywhere}.event-link{color:var(--cyan);padding:.6rem;min-height:48px;display:flex;align-items:center}@media(max-width:700px){.event-row{grid-template-columns:1fr;gap:.4rem}.event-link{min-height:44px}}
+
+/* Match dates and horizontal fixtures: preserve home/away order at every width. */
+.match-row{grid-template-columns:minmax(175px,.9fr) minmax(0,2.7fr);align-items:center}
+.match-meta .match-date{font-size:clamp(1.15rem,1.9vw,2rem);font-weight:750;line-height:1.2;color:var(--ink);font-variant-numeric:tabular-nums;margin-top:.25rem}
+.match-meta .match-side{font-size:.95rem;color:var(--muted)}
+.match-pair{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:clamp(.4rem,1.4vw,1.4rem);align-items:center}
+.match-pair .match-team{min-width:0;overflow-wrap:anywhere;font-size:clamp(1.2rem,2vw,2.1rem);line-height:1.15}
+.match-pair .match-team:first-child{text-align:right}
+.match-pair .match-team:last-child{text-align:left}
+.match-pair .match-versus{font-size:clamp(1.15rem,1.8vw,1.8rem);font-weight:800;color:var(--cyan);white-space:nowrap;text-align:center;font-variant-numeric:tabular-nums}
+.match-teams .match-venue,.match-teams .match-court{text-align:center}
+.booking-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.booking-head h1{margin:0}
+.booking-frame{width:100%;height:max(580px,calc(100dvh - 320px));border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:.75rem;display:block;color-scheme:light}
+.booking-fallback a{color:var(--cyan)}
+@media(max-width:700px){.match-row{grid-template-columns:minmax(0,1fr);gap:.8rem}.match-meta,.match-teams{grid-column:1}.match-meta .match-date{font-size:1.2rem}.match-pair .match-team{font-size:clamp(1rem,4vw,1.3rem)}.booking-frame{height:72dvh;min-height:500px}}
