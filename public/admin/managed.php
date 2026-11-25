@@ -7,7 +7,9 @@ function cd_managed_schema(PDO $db):void{
     $db->exec("CREATE TABLE IF NOT EXISTS source_config (club TEXT NOT NULL REFERENCES clubs(slug), kind TEXT NOT NULL, provider TEXT NOT NULL, reference TEXT NOT NULL, updated TEXT NOT NULL, PRIMARY KEY(club,kind));
     CREATE TABLE IF NOT EXISTS customer_contract (club TEXT PRIMARY KEY REFERENCES clubs(slug), screen_limit INTEGER NOT NULL, state TEXT NOT NULL, cycle TEXT NOT NULL, renewal TEXT NOT NULL, note TEXT NOT NULL, updated TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS device_access (club TEXT NOT NULL, display TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, issued INTEGER NOT NULL, last_seen INTEGER, version TEXT NOT NULL DEFAULT '', PRIMARY KEY(club,display), FOREIGN KEY(club,display) REFERENCES displays(club,slug) ON DELETE CASCADE);
-    CREATE TABLE IF NOT EXISTS source_cache (kind TEXT PRIMARY KEY, payload TEXT NOT NULL, fetched INTEGER NOT NULL, attempted INTEGER NOT NULL)");
+    CREATE TABLE IF NOT EXISTS source_cache (kind TEXT PRIMARY KEY, payload TEXT NOT NULL, fetched INTEGER NOT NULL, attempted INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS billing_profile (club TEXT PRIMARY KEY REFERENCES clubs(slug), recurring_cents INTEGER, setup_cents INTEGER, basis TEXT NOT NULL, invoice_ref TEXT NOT NULL, payment_state TEXT NOT NULL, updated TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS audit_events (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, role TEXT NOT NULL, club TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL)");
 }
 function cd_sources(PDO $db,string $club,?string $scope):array{
     cd_scope($scope,$club);cd_club($db,$club);$q=$db->prepare('SELECT * FROM source_config WHERE club=?');$q->execute([$club]);return array_column($q->fetchAll(),null,'kind');
@@ -143,4 +145,57 @@ function cd_snapshot_feeds(PDO $db,array $snapshot,string $club):array{
         }elseif(isset(CD_PROVIDER_OPTIONS[$kind][$provider])&&$kind!=='courts')$snapshot['feeds'][$kind]=cd_provider_cached($db,$club,$kind,$provider,$ref);
     }
     return $snapshot;
+}
+
+function cd_amount(mixed $value):?int{
+    $v=cd_text($value,20);if($v==='')return null;
+    if(!preg_match('/^\d{1,7}(?:[,.]\d{1,2})?$/D',$v))throw new InvalidArgumentException('Betrag bitte als Euro ohne Tausendertrennzeichen eingeben.');
+    $parts=explode('.',str_replace(',','.',$v));return (int)$parts[0]*100+(int)str_pad($parts[1]??'',2,'0');
+}
+function cd_amount_text(?int $v):string{return $v===null?'':number_format($v/100,2,',','');}
+function cd_billing(PDO $db,string $club):array{
+    $q=$db->prepare('SELECT * FROM billing_profile WHERE club=?');$q->execute([$club]);return $q->fetch()?:['recurring_cents'=>null,'setup_cents'=>null,'basis'=>'unspecified','invoice_ref'=>'','payment_state'=>'none'];
+}
+function cd_save_billing(PDO $db,array $in,?string $scope):void{
+    if($scope!==null)throw new InvalidArgumentException('Nur TENNILO darf Abrechnungsdaten ändern.');
+    $club=cd_text($in['club']??'',50,true);cd_club($db,$club);
+    $a=cd_amount($in['recurring']??'');$b=cd_amount($in['setup']??'');$basis=$in['basis']??'unspecified';$state=$in['payment_state']??'none';
+    if(!in_array($basis,['unspecified','net','gross'],true)||!in_array($state,['none','open','paid','waived'],true))throw new InvalidArgumentException('Ungültige Abrechnungsdaten.');
+    $ref=cd_text($in['invoice_ref']??'',160);
+    $q=$db->prepare('INSERT INTO billing_profile VALUES (?,?,?,?,?,?,?) ON CONFLICT(club) DO UPDATE SET recurring_cents=excluded.recurring_cents,setup_cents=excluded.setup_cents,basis=excluded.basis,invoice_ref=excluded.invoice_ref,payment_state=excluded.payment_state,updated=excluded.updated');
+    $q->execute([$club,$a,$b,$basis,$ref,$state,gmdate('c')]);
+}
+function cd_csv_text(string $v):string{return preg_match('/^[\s]*[=+\-@]/u',$v)||preg_match('/^[\t\r\n]/',$v)?"'".$v:$v;}
+function cd_billing_csv(PDO $db,$out):void{
+    fputcsv($out,['Verein','Vereinskennung','Lizenz','Gerätekontingent','Vertrag','Intervall','Verlängerung','Betrag je Intervall EUR','Einrichtung EUR','Preisbasis','Rechnungsreferenz','Zahlungsstatus'],';','"','');
+    foreach($db->query('SELECT slug,name,plan FROM clubs ORDER BY name') as $c){
+        $a=cd_contract($db,$c['slug']);$b=cd_billing($db,$c['slug']);
+        $row=[$c['name'],$c['slug'],$c['plan'],(string)$a['screen_limit'],$a['state'],$a['cycle'],$a['renewal'],cd_amount_text($b['recurring_cents']===null?null:(int)$b['recurring_cents']),cd_amount_text($b['setup_cents']===null?null:(int)$b['setup_cents']),$b['basis'],$b['invoice_ref'],$b['payment_state']];
+        fputcsv($out,array_map('cd_csv_text',$row),';','"','');
+    }
+}
+function cd_audit(PDO $db,?string $scope,string $action,mixed $club='',mixed $target=''):void{
+    try{
+        $club=$scope??(is_string($club)&&preg_match('/^[a-z0-9-]{3,50}$/D',$club)?$club:'');
+        $target=is_scalar($target)?(string)$target:'';
+        if(!preg_match('/^[a-z0-9-]{1,50}$/D',$target))$target='';
+        $q=$db->prepare('INSERT INTO audit_events(ts,role,club,action,target) VALUES (?,?,?,?,?)');$q->execute([gmdate('c'),$scope===null?'TENNILO':'Verein',$club,$action,$target]);
+        $db->exec('DELETE FROM audit_events WHERE id <= (SELECT COALESCE(MAX(id),0)-5000 FROM audit_events)');
+    }catch(Throwable $e){error_log('ClubDisplay audit write failed');}
+}
+function cd_audit_rows(PDO $db,?string $scope):array{
+    if($scope===null)return $db->query('SELECT * FROM audit_events ORDER BY id DESC LIMIT 100')->fetchAll();
+    $q=$db->prepare('SELECT * FROM audit_events WHERE club=? ORDER BY id DESC LIMIT 100');$q->execute([$scope]);return $q->fetchAll();
+}
+function cd_source_check(PDO $db,string $club,?string $scope):array{
+    $c=cd_club($db,$club);$sources=cd_sources($db,$club,$scope);$out=[];$modules=json_decode($c['modules'],true)?:[];
+    foreach($sources as $kind=>$row){
+        if(!in_array($kind,$modules,true)||$kind==='courts')continue;
+        $provider=$row['provider'];
+        if($provider==='ntc-feed'&&$club==='ntc93')$result=cd_ntc_feed($db,$kind);
+        elseif(isset(CD_PROVIDER_OPTIONS[$kind][$provider]))$result=cd_provider_cached($db,$club,$kind,$provider,$row['reference']);
+        else continue;
+        $out[]=(CD_SOURCE_MODULES[$kind]??$kind).': '.(['ok'=>'erreichbar','stale'=>'zwischengespeichert','unavailable'=>'nicht verfügbar'][$result['status']??'']??'nicht verfügbar');
+    }
+    return $out;
 }
