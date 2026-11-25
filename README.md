@@ -194,3 +194,6 @@ Kleiner Admin-Link im Footer von clubdisplay.tennilo.de öffnet /admin/ in einem
 
 ## 0.4.36 / Admin 0.5.5 – Getrennter Vereinslogin
 Produktseite und beide Display-Hosts verlinken ausschließlich den Vereinslogin /admin/?portal=club; NTC-Display mit zusätzlicher fester Vereinskennung verein=ntc93. Link im Display-Footer nur außerhalb des Vollbilds. Betreiberlogin /admin/ bleibt separat, eigene Session-Cookies, Betreiberpasswort wird am Vereinsportal nicht als Betreiberzugang akzeptiert. Vereinsrechte weiterhin serverseitig. NTC-Zugang muss durch TENNILO freigeschaltet sein. Noch keine Live-Anbindung der Inhaltsprofile.
+
+## Admin 0.5.6 – Strukturierte Gastronomie
+Pro Verein mit Gastronomiemodul: Name, Telefon, Website, Online-Reservierungslink, Reservierung vor Ort/telefonisch, Hinweise, reguläre Wochenöffnungszeiten mit bis zu zwei Zeitfenstern je Tag (auch über Mitternacht), datumsbezogene Sonderöffnungszeiten und wiederkehrende Wochenangebote mit optionalem Gültigkeitszeitraum und Preis. Neue SQLite-Tabelle; bestehende redaktionelle Restaurant-Einträge und Bilder bleiben bestehen. Bis zu 40 Sondertermine und 40 Angebote; zusätzliche Eingabezeilen nach Speichern. Keine automatische Veröffentlichung auf Displays, keine echte Reservierung, keine vorbefüllten NTC-Daten. Live-Abnahme ausstehend.
