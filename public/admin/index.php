@@ -212,10 +212,10 @@ function mediaField(array $c,array $row,string $csrf):void{ global $clubPortal,$
 function sourceField(array $c,array $rows,string $csrf,?string $scope):void{
     $modules=json_decode($c['modules'],true)?:[];
     ?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="sources"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>">
-    <p class="full">Externe Quellen werden erst nach Prüfung aktiviert. Referenzen sind nur Dokumentation; keine Zugangsdaten eintragen. Die vorhandenen NTC-Feeds können durch TENNILO freigeschaltet werden.</p>
-    <?php foreach(CD_SOURCE_MODULES as $kind=>$label):if(!in_array($kind,$modules,true))continue;$row=$rows[$kind]??[];$options=['manual'=>'Manuell / keine Schnittstelle','pending'=>'Prüfung erforderlich'];if($c['slug']==='ntc93'&&$kind!=='courts'&&($scope===null||($row['provider']??'')==='ntc-feed'))$options['ntc-feed']='NTC · vorhandener Feed';?>
+    <p class="full">Externe Quellen erst nach Freigabe durch TENNILO. Keine Zugangsdaten oder privaten Kalenderlinks eintragen. Manuelle und zur Prüfung eingereichte Referenzen werden nicht automatisch abgerufen. Öffentliche Feeds und Terminallinks sind separat konfigurierbar.</p>
+    <?php foreach(CD_SOURCE_MODULES as $kind=>$label):if(!in_array($kind,$modules,true))continue;$row=$rows[$kind]??[];$options=['manual'=>'Manuell / keine Schnittstelle','pending'=>'Prüfung erforderlich'];$external=CD_PROVIDER_OPTIONS[$kind]??[];if($c['slug']==='ntc93')$external[$kind==='courts'?'ntc-booking':'ntc-feed']=$kind==='courts'?'NTC · vorhandenes Terminal':'NTC · vorhandener Feed';foreach($external as $k=>$v)if($scope===null||($row['provider']??'')===$k)$options[$k]=$v;?>
     <label><?=cd_h($label)?><select name="sources[<?=$kind?>][provider]"><?php foreach($options as $k=>$v):?><option value="<?=$k?>" <?=($row['provider']??'manual')===$k?'selected':''?>><?=cd_h($v)?></option><?php endforeach?></select></label>
-    <label>Referenz / Vereinskennung<input name="sources[<?=$kind?>][reference]" maxlength="500" value="<?=cd_h($row['reference']??'')?>"></label><?php endforeach?>
+    <label>Referenz (URL oder Wetterkoordinaten)<input name="sources[<?=$kind?>][reference]" maxlength="500" value="<?=cd_h($row['reference']??'')?>"></label><?php endforeach?>
     <button>Quellen speichern</button></form><?php
 }
 function contractField(array $c,array $a,string $csrf):void{
@@ -268,7 +268,7 @@ function contentField(array $c,string $kind,array $row,string $csrf):void{
     <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
     </form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=060"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=061"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
 <?php if($auth&&!empty($_SESSION['device_link'])):$deviceLink=$_SESSION['device_link'];unset($_SESSION['device_link']);?><section class="panel"><h2>Geräteadresse · nur einmal sichtbar</h2><p>Vertraulich behandeln und am Bildschirm öffnen. Bei Verlust einen neuen Schlüssel erzeugen.</p><input readonly value="<?=cd_h($deviceLink)?>" aria-label="Geräteadresse"><a class="admin-action" href="<?=cd_h($deviceLink)?>" target="_blank" rel="noopener noreferrer">Gerät öffnen</a></section><?php endif?>
