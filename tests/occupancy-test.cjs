@@ -1,0 +1,22 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('public/assets/app.js','utf8');
+const begin=source.indexOf('const occupancyCourts='),end=source.indexOf('function infoControls(){',begin);
+assert(begin>=0&&end>begin);
+const now=Date.parse('2026-11-25T13:37:22.123Z');
+class Clock extends Date{static now(){return now;}}
+const ctx=vm.createContext({Date:Clock,Intl,lang:'de',tr:(de,en)=>de,button:(label)=>label});
+vm.runInContext(source.slice(begin,end),ctx);
+const check=s=>vm.runInContext(s,ctx);
+assert.equal(check('occupancyHours()[0].start'),'2026-11-25T13:00:00.000Z');
+assert.equal(check('occupancyTime(occupancyHours()[2].end)'),'17:00');
+assert.equal(check('occupancyCourts.outdoor.length+occupancyCourts.indoor.length'),9);
+assert.equal(check("occupancySlot('outdoor',1,occupancyHours()[0])"),'unknown');
+check("occupancyData={status:'ok',fetchedAt:Date.now()/1000,slots:[{area:'outdoor',court:1,...occupancyHours()[0],status:'free'}]}");
+assert.equal(check("occupancySlot('outdoor',1,occupancyHours()[0])"),'free');
+assert.equal(check("occupancySlot('indoor',1,occupancyHours()[0])"),'unknown');
+check('occupancyData.fetchedAt-=181');
+assert.equal(check("occupancySlot('outdoor',1,occupancyHours()[0])"),'unknown');
+assert.equal(check("occupancyView().match(/class=\"occupancy-cell occupancy-unknown\"/g).length"),27);
+assert.equal(check("occupancyHours(Date.parse('2026-10-25T00:37:00Z'))[1].start"),'2026-10-25T01:00:00.000Z');
+console.log('Court occupancy tests OK');

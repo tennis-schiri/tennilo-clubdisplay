@@ -326,6 +326,36 @@ function sponsorView(){
   const cards=ntcSponsors.map(s=>'<figure class="sponsor-logo'+(s.name==='Allianz Maxelon'?' sponsor-logo-allianz':'')+'"><img src="'+esc(s.url)+'" alt="'+esc(s.name)+'" decoding="async" referrerpolicy="no-referrer"></figure>').join('');
   return '<div class="match-heading sponsor-heading"><h1>'+tr('Partner & Sponsoren','Partners & sponsors')+'</h1><span class="news-origin">'+tr('Vielen Dank für die Unterstützung!','Thank you for your support!')+'</span></div><div class="sponsor-grid">'+cards+'</div><p class="match-source sponsor-source">'+tr('Sponsoren und Partner des NTC 93 · Quelle: ntc93.com','NTC 93 sponsors and partners · Source: ntc93.com')+'</p>';
 }
+// Court overview: only confirmed eBuSy data may mark a court free or occupied.
+const occupancyCourts={outdoor:[1,2,3,4,5,6,7],indoor:[1,2]};
+let occupancyData=null,occupancyHourKey='';
+function occupancyHours(now=Date.now()){
+  // Align to the local Berlin hour and advance along the actual time axis (also at DST changes).
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',minute:'2-digit',second:'2-digit'}).formatToParts(new Date(now));
+  const part=k=>Number(parts.find(p=>p.type===k).value);
+  const start=now-part('minute')*60000-part('second')*1000-(now%1000);
+  return Array.from({length:3},(_,i)=>({start:new Date(start+i*3600000).toISOString(),end:new Date(start+(i+1)*3600000).toISOString()}));
+}
+function occupancyTime(s){
+  return new Intl.DateTimeFormat(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(s));
+}
+function occupancySlot(area,court,hour,data=occupancyData){
+  // Future adapter contract: normalized per-court/per-hour status with exact UTC interval.
+  // Missing or expired coverage is UNKNOWN, never FREE. No names or booking details.
+  if(!data||data.status!=='ok'||!Number.isFinite(data.fetchedAt)||Date.now()-data.fetchedAt*1000>180000||!Array.isArray(data.slots))return 'unknown';
+  const slot=data.slots.find(s=>s.area===area&&s.court===court&&s.start===hour.start&&s.end===hour.end);
+  return ['free','occupied','partial','blocked'].includes(slot?.status)?slot.status:'unknown';
+}
+function occupancyView(){
+  const hours=occupancyHours();occupancyHourKey=hours[0].start;
+  const labels={unknown:tr('Keine Daten','No data'),free:tr('Frei','Free'),occupied:tr('Belegt','Occupied'),partial:tr('Teilbelegt','Partly occupied'),blocked:tr('Gesperrt','Closed')};
+  const areaTable=(area,title)=>'<section class="occupancy-area"><h2>'+title+'</h2><table class="occupancy-table"><thead><tr><th scope="col">'+tr('Platz','Court')+'</th>'+hours.map((hour,i)=>'<th scope="col"'+(i===0?' class="occupancy-now"':'')+'>'+occupancyTime(hour.start)+' – '+occupancyTime(hour.end)+'</th>').join('')+'</tr></thead><tbody>'+occupancyCourts[area].map(court=>'<tr><th scope="row">'+tr('Platz ','Court ')+court+'</th>'+hours.map(hour=>{const status=occupancySlot(area,court,hour);return '<td class="occupancy-cell occupancy-'+status+'">'+(status==='unknown'?'<span aria-hidden="true">—</span><span class="occupancy-sr">'+labels[status]+'</span>':labels[status])+'</td>';}).join('')+'</tr>').join('')+'</tbody></table></section>';
+  const ready=hours.some(hour=>Object.keys(occupancyCourts).some(area=>occupancyCourts[area].some(court=>occupancySlot(area,court,hour)!=='unknown')));
+  return '<div class="match-heading occupancy-heading"><h1>'+tr('Platzbelegung','Court availability')+'</h1><span class="occupancy-status">'+(ready?tr('Quelle: eBuSy','Source: eBuSy'):tr('Live-Daten noch nicht verfügbar','Live data not yet available'))+'</span></div><div class="occupancy-areas">'+areaTable('outdoor',tr('Außenplätze','Outdoor courts'))+areaTable('indoor',tr('Hallenplätze','Indoor courts'))+'</div><div class="occupancy-footer"><div class="occupancy-legend">'+['free','occupied','partial','blocked','unknown'].map(status=>'<span><i class="occupancy-key occupancy-'+status+'"></i>'+labels[status]+'</span>').join('')+'</div>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
+}
+function refreshOccupancyHour(now){
+  if(pilot&&view==='info'&&screens[slide]==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();
+}
 function infoControls(){
   const visible=view==='info';
   $('info-controls').hidden=!visible;$('info-controls').setAttribute('aria-label',tr('Informationsmodus','Information mode'));
@@ -384,9 +414,9 @@ function toggleInfoPause(){
 }
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();infoControls();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',pilot&&active==='partner');let html='';
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',pilot&&active==='partner');document.body.classList.toggle('occupancy-screen',pilot&&active==='welcome');let html='';
 switch(active){
-case 'welcome':html=hero(l.welcome,l.intro,(pilot?'<div class="panel"><h2>'+tr('Außenplätze','Outdoor courts')+'</h2><p>'+tr('Aktuelle Belegung im eBuSy-Buchungsplan.','Current availability in the eBuSy booking plan.')+'</p><div class="actions">'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary large')+'</div></div>':panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available])));break;
+case 'welcome':html=pilot?occupancyView():hero(l.welcome,l.intro,panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available]));break;
 case 'home':{
   const tiles=[
     ['courts',l.booking,pilot?tr('Außenplätze buchen und die Belegung der Hallenplätze ansehen.','Book outdoor courts and view indoor court availability.'):tr('Platzbelegung ansehen und eine Buchung ausprobieren.','View court availability and try a simulated booking.')],
@@ -537,7 +567,7 @@ adminForm.addEventListener('submit',async e=>{
   finally{$('admin-submit').disabled=false;if(adminDialog.open)adminPin.focus();}
 });
 syncFullscreen();
-setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view==='info'){tickInfo(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);

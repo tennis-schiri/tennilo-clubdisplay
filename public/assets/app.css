@@ -389,3 +389,31 @@ body.fixed-screen>main{grid-template-rows:26px minmax(0,1fr) 42px}
 #info-controls #info-countdown{height:30px;min-width:7.4em;padding:0 .5rem;font-size:clamp(.78rem,1.05vw,.98rem);font-weight:750;background:transparent;color:var(--muted);border-color:var(--line)}
 #info-controls #info-countdown[data-paused="true"]{color:var(--cyan);border-color:var(--cyan);background:#0002}
 @media(max-width:700px){#info-controls #info-countdown{height:28px;min-width:6.7em;padding:0 .25rem;font-size:.72rem}}
+
+/* 0.4.19: NTC availability overview, actual hour plus next two hours. */
+body.fixed-screen.occupancy-screen #screen .fit-content{display:flex;flex-direction:column;height:100%;gap:.4rem}
+.occupancy-heading{flex:0 0 auto;margin:0!important}
+.occupancy-status{font-size:clamp(.75rem,1.1vw,1rem);color:var(--muted);font-weight:650}
+.occupancy-areas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:clamp(.5rem,1vw,1rem);flex:1 1 auto;min-height:0}
+.occupancy-area{display:flex;flex-direction:column;min-width:0;min-height:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.occupancy-area h2{margin:0;padding:.45rem .7rem;background:var(--cyan);color:#073538;font-size:clamp(1rem,1.6vw,1.6rem)}
+.occupancy-table{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-numeric:tabular-nums;font-size:clamp(.8rem,1.35vw,1.3rem)}
+.occupancy-table th,.occupancy-table td{padding:clamp(.2rem,.65dvh,.55rem) .2rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-align:center;line-height:1.2}
+.occupancy-table tr:last-child>*{border-bottom:0}
+.occupancy-table tr>*:last-child{border-right:0}
+.occupancy-table thead th{font-size:clamp(.65rem,1.05vw,1.05rem);font-weight:750;padding:.55rem .1rem;background:#0002;white-space:nowrap}
+.occupancy-table thead th:first-child,.occupancy-table tbody th{width:22%;text-align:left;padding-left:.6rem;font-weight:750}
+.occupancy-table thead th.occupancy-now{color:var(--cyan)}
+.occupancy-cell{font-weight:700}
+.occupancy-unknown{background:#ffffff08;color:var(--muted)}
+.occupancy-free{background:#c5ebcc;color:#154a23}
+.occupancy-occupied{background:#b34242;color:#fff}
+.occupancy-partial{background:#f0ce70;color:#543b00}
+.occupancy-blocked{background:#525e66;color:#fff}
+.occupancy-footer{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex:0 0 auto}
+.occupancy-footer button{min-height:40px;padding:.35rem .8rem;font-size:.85rem}
+.occupancy-legend{display:flex;flex-wrap:wrap;gap:.3rem .75rem;color:var(--muted);font-size:.75rem}
+.occupancy-legend>span{display:flex;align-items:center;gap:.3rem;white-space:nowrap}
+.occupancy-key{display:inline-block;width:12px;height:12px;border:1px solid var(--line);border-radius:3px}
+.occupancy-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(max-width:700px){.occupancy-areas{grid-template-columns:1fr;gap:.35rem;flex:0 0 auto}.occupancy-table th,.occupancy-table td{padding:.14rem .1rem;font-size:.72rem}.occupancy-table thead th{font-size:.62rem;padding:.23rem .1rem}.occupancy-area h2{font-size:.9rem;padding:.25rem .45rem}.occupancy-footer{flex-wrap:wrap}.occupancy-legend{font-size:.62rem;gap:.2rem .4rem}.occupancy-footer button{min-height:34px;font-size:.7rem}.occupancy-heading .occupancy-status{font-size:.7rem}}
