@@ -2,3 +2,5 @@
 .subpanel{padding:14px;margin:12px 0;border:1px solid #456075;border-radius:10px;background:#0b2234}.subpanel summary{padding:4px}.panel h2{margin:24px 0 4px;font-size:1.2rem}.login label+label{margin-top:12px}
 
 .profile .full{grid-column:1/-1}.profile textarea{font:inherit;color:inherit;background:#071a2c;border:1px solid #456075;border-radius:8px;padding:10px;width:100%;resize:vertical}.brand-preview{max-width:100%;width:200px;height:100px;object-fit:contain}.entry{margin:10px 0;padding:12px;border-top:1px solid #456075}.danger{background:#512b35;color:#ffe2df;border:1px solid #af6a73}
+
+.media-form{padding:14px;margin:12px 0;border:1px dashed #456075;border-radius:10px}.media-preview{display:block;width:min(100%,360px);max-height:180px;object-fit:contain;grid-column:1/-1;background:#071a2c;border-radius:8px}
