@@ -61,6 +61,25 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   curl --fail --silent --show-error --max-time 50 --output "$tmp/news" "https://${DOMAIN}/news.php?release=${RELEASE_ID}"
   php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!in_array($v["status"]??"",["ok","stale","unavailable"],true)||!is_array($v["posts"]??null)||count($v["posts"])>3)exit(1); echo "News feed: ".$v["status"]." / ".count($v["posts"])." posts / ".($v["source"]??"none")."\n";' "$tmp/news"
 fi
+# Match the complete Allianz card to the original image's neutral grey border.
+# Only the NTC upload needs the measured colour; a safe light-grey fallback remains in source CSS.
+if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
+  if curl --fail --silent --show-error --connect-timeout 5 --max-time 12 --max-filesize 2000000 'https://ntc93.com/wp-content/uploads/2023/07/Allianz-Maxelon-300x155.jpeg' -o "$tmp/allianz.jpeg"; then
+    if ! python3 -c 'from PIL import Image' >/dev/null 2>&1; then
+      python3 -m venv "$tmp/image-venv" && "$tmp/image-venv/bin/pip" install --quiet --disable-pip-version-check --timeout 8 --retries 1 Pillow || true
+    fi
+    image_python=python3
+    if [[ -x "$tmp/image-venv/bin/python" ]]; then image_python="$tmp/image-venv/bin/python"; fi
+    if colour="$("$image_python" scripts/allianz-background.py "$tmp/allianz.jpeg")" && [[ "$colour" =~ ^#[0-9a-f]{6}$ ]]; then
+      printf '\n.sponsor-logo-allianz{--allianz-logo-background:%s}\n' "$colour" >> public/assets/app.css
+      echo "Allianz logo background: $colour"
+    else
+      echo "::warning::Allianz background could not be sampled; using light-grey fallback."
+    fi
+  else
+    echo "::warning::Allianz original image unavailable; using light-grey fallback."
+  fi
+fi
 for f in "${files[@]}"; do
   echo "Deploy: $f"
   upload "public/$f" "$f"

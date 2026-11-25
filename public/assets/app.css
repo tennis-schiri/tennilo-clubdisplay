@@ -381,3 +381,6 @@ body.fixed-screen>main{grid-template-rows:26px minmax(0,1fr) 42px}
 #info-countdown{display:inline-flex;align-items:center;justify-content:center;min-width:3.1em;height:24px;padding:0 .35rem;border:1px solid var(--line);border-radius:6px;color:var(--cyan);font-size:.75rem;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 #info-countdown[hidden]{display:none!important}
 @media(max-width:700px){#info-countdown{height:22px;font-size:.68rem;padding:0 .25rem}}
+
+/* Allianz: background is sampled from the original JPEG during the NTC deployment. */
+.sponsor-logo-allianz{background:var(--allianz-logo-background,#ededed)}

@@ -119,3 +119,6 @@ Dezente Vor-/Zurück- und Pause/Fortsetzen-Tasten neben der Fortschrittsleiste. 
 
 ## 0.4.16 – Einheitliche Sponsorenhintergründe
 Alle Logokarten einschließlich Finwire auf reinweißem Hintergrund. Keine dunkle Sonderkarte mehr; bereits in den Originalbildern vorhandene Hintergrundfarben (z. B. Allianz) bleiben unverändert. Logos werden weder eingefärbt noch verzerrt. Raster und Reihenfolge bleiben erhalten. Bei transparenten weißen Logodetails kann eine geeignete offizielle Logoalternative nötig sein; Sichtprüfung ausstehend.
+
+## 0.4.17 – Allianz-Logokarte
+Nur Allianz erhält einen zur Originalgrafik passenden hellgrauen Hintergrund. Beim NTC-Deployment wird der dominante helle neutrale Randfarbton der offiziellen JPEG-Datei ausgelesen und als CSS-Farbwert gesetzt; bei Abruf-/Analysefehler greift ein hellgrauer Ersatzwert (#ededed). Andere Sponsorenfelder bleiben reinweiß. Layout und Bildproportionen unverändert.
