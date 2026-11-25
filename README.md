@@ -158,3 +158,6 @@ Webadresse deutlich größer in der Fußzeile der Restaurantfolie. Reservierungs
 
 ## 0.4.29 – Originale Pizza- und Pastafotos
 Die beiden Wochenaktionskarten erhalten die Originalfotos aus WeeklyOffer.astro der Due-Fratelli-Homepage (gericht-pizza.jpg, gericht-pasta.jpg). Kompakte Bildspalte neben Tag, Gericht und Preis; heutige Aktion weiterhin hervorgehoben. Keine weiteren großen Fotos, übriges Layout unverändert. Live-Bildabruf und optische Prüfung stehen aus.
+
+## 0.4.30 – Mehr Raum für Sonderöffnungszeiten
+Rechte Weihnachtsspalte leicht verbreitert. Datumsangaben und Zeiten nebeneinander statt untereinander; 06.12. als separate, goldgerahmte Hinweisfläche mit hervorgehobener Reservierungszeit. Mobile Ansicht behält kompakte Umbrüche. Originalfarben, Fotos, Aktionen und Reservierungsinformationen bleiben erhalten. Screenshot des Nutzers zeigte v0.4.28; Änderung basiert auf aktuellem v0.4.29-Code. Optische Prüfung des neuen Live-Standes ausstehend.
