@@ -103,6 +103,29 @@ cd_save_content($db,['club'=>'ntc93','kind'=>'partner','title'=>'Other module','
 $snap=cd_snapshot($db,'ntc93','managed-one','ntc93',$clock);
 check($snap['dining']['today']['state']==='closed');check($snap['dining']['today_note']==='Feiertag');
 check(array_column($snap['content'],'title')===['Visible','Upcoming']);
-check(!isset($snap['token_hash'],$snap['password_hash'],$snap['contract'],$snap['reference']));
+foreach(['token_hash','password_hash','contract','reference'] as $secret)check(!array_key_exists($secret,$snap));
 try{cd_snapshot($db,'ntc93','managed-one','test-club',$clock);throw new RuntimeException('Cross-club preview accepted');}catch(InvalidArgumentException $e){}
 echo "Managed device, contract, source and dated snapshot tests passed\n";
+
+foreach(['127.0.0.1','10.0.0.1','192.168.0.1','172.16.0.1','169.254.169.254','100.64.0.1','192.0.2.1','::1'] as $ip)check(!cd_public_ip($ip));
+check(cd_public_ip('1.1.1.1'));
+foreach([['wordpress','http://example.com/wp-json/wp/v2/posts'],['wordpress','https://127.0.0.1/wp-json/wp/v2/posts'],['wordpress','https://user@example.com/wp-json/wp/v2/posts'],['wordpress','https://example.com:8080/wp-json/wp/v2/posts'],['ical','https://example.com/secret?token=abc'],['nuliga','https://example.com/cgi-bin/WebObjects/nuLigaTENDE.woa/wa/clubMeetings?club=123'],['brightsky','91,180'],['ebusy-link','https://example.com/lite-module/1']] as [$provider,$ref]){
+    try{cd_provider_reference($provider,$ref);throw new LogicException('Unsafe reference accepted');}catch(InvalidArgumentException $e){}
+}
+check(cd_provider_reference('brightsky','52.5333, 13.6833')==='52.5333,13.6833');
+check(cd_provider_reference('nuliga','https://tvbb.liga.nu/cgi-bin/WebObjects/nuLigaTENDE.woa/wa/clubMeetings?club=123')==='https://tvbb.liga.nu/cgi-bin/WebObjects/nuLigaTENDE.woa/wa/clubMeetings?club=123');
+$generic=['club'=>'ntc93','sources'=>['news'=>['provider'=>'wordpress','reference'=>'https://example.com/wp-json/wp/v2/posts']]];
+cd_save_sources($db,$generic,null);
+cd_save_sources($db,$generic,'ntc93');
+try{cd_save_sources($db,array_replace($generic,['sources'=>['news'=>['provider'=>'wordpress','reference'=>'https://other.com/wp-json/wp/v2/posts']]]),'ntc93');throw new LogicException('Club changed approved source');}catch(InvalidArgumentException $e){}
+$posts=cd_feed_json('wordpress','[{"title":{"rendered":"Club &amp; News"},"excerpt":{"rendered":"<script>bad()</script><b>Text</b>"},"date":"2026-12-01"}]');
+check($posts['rows'][0]['title']==='Club & News'&&$posts['rows'][0]['excerpt']==='Text');
+$fixture='<table><tr><th>Datum</th><th>Liga</th><th>Heimmannschaft</th><th>Gastmannschaft</th><th>Matchpunkte</th></tr><tr><td>01.12.2026 12:00</td><td>H30</td><td>Anderer TC</td><td>Gastverein</td><td>3:3</td></tr></table>';
+check(cd_nu_parse($fixture)['matches'][0]['home']==='Anderer TC');
+$ics="BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART:20991205T180000\nSUMMARY:Clubturnier\\, Tag 1\nEND:VEVENT\nBEGIN:VEVENT\nDTSTART:20991206T180000\nSUMMARY:Abgesagt\nSTATUS:CANCELLED\nEND:VEVENT\nEND:VCALENDAR";
+check(count(cd_ical_parse($ics))===1&&cd_ical_parse($ics)[0]['title']==='Clubturnier, Tag 1');
+cd_save_sources($db,['club'=>'ntc93','sources'=>['courts'=>['provider'=>'ntc-booking']]],null);
+check(!isset(cd_snapshot_feeds($db,cd_snapshot($db,'ntc93','managed-one','ntc93'),'ntc93')['booking_url']));
+cd_save_display($db,array_replace($screen,['mode'=>'INTERACTIVE','modules'=>['welcome','courts']]),false,'ntc93');
+check(cd_snapshot_feeds($db,cd_snapshot($db,'ntc93','managed-one','ntc93'),'ntc93')['booking_url']==='https://clubdisplay.ntc93.de/terminal.php');
+echo "Provider validation, public network restrictions, generic feed parsers and interactive booking scope passed\n";
