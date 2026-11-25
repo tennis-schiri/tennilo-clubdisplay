@@ -32,6 +32,8 @@ get "$other" "$base?preview-data=1&club=ntc93&screen=hall" 403
 post "$other" "$base?device=1" 403 -H 'Content-Type: application/json' --data '{"action":"snapshot","token":"invalid"}'
 login "$op" "$base" test-operator-123456789
 grep -Fq 'TENNILO · Kundenverwaltung' "$tmp/body"
+grep -Eq '<option value="INFO"[^>]*>BASIC</option>' "$tmp/body"
+grep -Eq '<option value="INTERACTIVE"[^>]*>PLUS</option>' "$tmp/body"
 t="$(csrf)"
 post "$op" "$base" 303 --data-urlencode "csrf=$t" -d 'action=account&club=ntc93&new_password=test-club-password-123456&enabled=1'
 get "$op" "$base" 200; t="$(csrf)"
