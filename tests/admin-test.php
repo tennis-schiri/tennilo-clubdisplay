@@ -141,3 +141,33 @@ check(count(cd_audit_rows($db,'ntc93'))===1&&count(cd_audit_rows($db,'test-club'
 check(cd_audit_rows($db,'test-club')[0]['club']==='test-club');
 check(count(cd_audit_rows($db,null))===2);
 echo "Billing calculation, operator-only roles, CSV formula safety and audit isolation passed\n";
+
+$custom=array_replace($screen,['screen_welcome'=>'Willkommen im Clubhaus','module_rank'=>['welcome'=>3,'calendar'=>1,'news'=>2,'restaurant'=>4],'module_dwell'=>['calendar'=>20,'news'=>35]]);
+cd_save_display($db,$custom,false,'ntc93');
+$other=array_replace($screen,['slug'=>'managed-two','name'=>'Gastronomie','screen_welcome'=>'Willkommen im Restaurant','module_rank'=>['restaurant'=>1,'welcome'=>2,'news'=>3,'calendar'=>4],'module_dwell'=>['restaurant'=>45]]);
+cd_save_display($db,$other,false,'ntc93');
+cd_save_content($db,['club'=>'ntc93','kind'=>'news','title'=>'Nur Clubhaus','enabled'=>1,'audience'=>'selected','targets'=>['managed-one']],'ntc93');
+$private=array_values(array_filter(cd_content_rows($db,'ntc93','news'),fn($r)=>$r['title']==='Nur Clubhaus'))[0];$id=(int)$private['id'];
+$q=$db->prepare('INSERT INTO content_media VALUES (?,?)');$q->bindValue(1,$id,PDO::PARAM_INT);$q->bindValue(2,$png,PDO::PARAM_LOB);$q->execute();
+$a=cd_snapshot($db,'ntc93','managed-one','ntc93',$clock);$b=cd_snapshot($db,'ntc93','managed-two','ntc93',$clock);
+check($a['modules']===['calendar','news','welcome','restaurant']);
+check($b['modules']===['restaurant','welcome','news','calendar']);
+check($a['welcome']==='Willkommen im Clubhaus'&&$b['welcome']==='Willkommen im Restaurant');
+check($a['module_dwell']->news===35&&$b['module_dwell']->restaurant===45);
+check(in_array('Nur Clubhaus',array_column($a['content'],'title'),true)&&!in_array('Nur Clubhaus',array_column($b['content'],'title'),true));
+check(in_array('Visible',array_column($a['content'],'title'),true)&&in_array('Visible',array_column($b['content'],'title'),true));
+check(cd_snapshot_image($db,'ntc93','managed-one','ntc93',$id)===$png);
+check(cd_snapshot_image($db,'ntc93','managed-two','ntc93',$id)===null);
+foreach([['targets'=>['terrasse']],['targets'=>[]],['targets'=>'managed-one'],['audience'=>'invalid']] as $bad){
+    try{cd_save_content($db,array_replace(['club'=>'ntc93','kind'=>'news','id'=>$id,'title'=>'Changed','enabled'=>1,'audience'=>'selected','targets'=>['managed-one']],$bad),'ntc93');throw new LogicException('Invalid audience accepted');}catch(InvalidArgumentException $e){}
+}
+check(cd_content_audience($db,'ntc93',$id)===['mode'=>'selected','targets'=>['managed-one']]);
+foreach([['module_rank'=>['welcome'=>0]],['module_dwell'=>['news'=>121]]] as $bad){try{cd_save_display($db,array_replace($custom,$bad),false,'ntc93');throw new LogicException('Invalid layout accepted');}catch(InvalidArgumentException $e){}}
+cd_save_display($db,array_replace($screen,['slug'=>'managed-three']),true,'ntc93');
+check(!in_array('Nur Clubhaus',array_column(cd_snapshot($db,'ntc93','managed-three','ntc93',$clock)['content'],'title'),true));
+cd_save_content($db,['club'=>'ntc93','kind'=>'news','id'=>$id,'title'=>'Nur Clubhaus','enabled'=>1,'audience'=>'all'],'ntc93');
+check(cd_snapshot_image($db,'ntc93','managed-two','ntc93',$id)===$png);
+cd_save_content($db,['club'=>'ntc93','kind'=>'news','id'=>$id,'intent'=>'delete'],'ntc93');
+check((int)$db->query("SELECT COUNT(*) FROM content_targets WHERE content_id=".$id)->fetchColumn()===0);
+check((int)$db->query("SELECT COUNT(*) FROM content_audience WHERE content_id=".$id)->fetchColumn()===0);
+echo "Per-screen layout, audience, module intersection, media isolation and cascade tests passed\n";
