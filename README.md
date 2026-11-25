@@ -170,3 +170,6 @@ Auf beiden Domains dauerhaft Design & Entwicklung, Original-TENNILO-Wortmarke (l
 
 ## 0.4.33 – Restaurantfolie: intrinsische Höhenanpassung
 Die bisherige feste Boxhöhe verdeckte überlaufende Karten. Jetzt wird die natürliche Höhe vor dem Strecken gemessen. Kompakte/tight-Layouts bei knapper Fläche; proportionale Skalierung nur falls nötig. Keine ausgeblendeten Inhalte; Bildladevorgänge lösen erneute Messung aus. Fester Header/Footer unverändert. Firefox-Geometrieprüfung separat.
+
+## 0.4.34 – Produktseite aus der TENNILO-Demo
+Im Kopfbereich von clubdisplay.tennilo.de führt ein dauerhaft sichtbarer Link zur ClubDisplay-Produktseite (DE/EN passend zur Sprache, neuer Tab). Auf dem NTC-Terminal bleibt der Link verborgen; Buchung und Kiosk-Funktionen unverändert.
