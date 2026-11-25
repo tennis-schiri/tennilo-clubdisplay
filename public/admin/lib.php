@@ -5,7 +5,7 @@ const CD_MODULES=['welcome','weather','calendar','teams','news','partner','resta
 function cd_db(string $path): PDO {
     $db=new PDO('sqlite:'.$path,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
     $db->exec('PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON');
-    if((int)$db->query('PRAGMA user_version')->fetchColumn()===602)return $db;
+    if((int)$db->query('PRAGMA user_version')->fetchColumn()===603)return $db;
     $db->exec('CREATE TABLE IF NOT EXISTS clubs (slug TEXT PRIMARY KEY, name TEXT NOT NULL, plan TEXT NOT NULL, color TEXT NOT NULL, language TEXT NOT NULL, dwell INTEGER NOT NULL, modules TEXT NOT NULL, updated TEXT NOT NULL); CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT PRIMARY KEY, count INTEGER NOT NULL, since INTEGER NOT NULL)');
     $q=$db->prepare('INSERT OR IGNORE INTO clubs VALUES (?,?,?,?,?,?,?,?)');
     foreach([['tennilo-demo','TENNILO Demo','INTERACTIVE','#21d5db','de',12, json_encode(['welcome','weather','calendar','teams','news','partner','courts']),''],['ntc93','NTC 93','INTERACTIVE','#f7dc14','de',12,json_encode(CD_MODULES),'']] as $row){
@@ -17,7 +17,10 @@ function cd_db(string $path): PDO {
     $db->exec('CREATE TABLE IF NOT EXISTS content_media (content_id INTEGER PRIMARY KEY REFERENCES club_content(id) ON DELETE CASCADE, image BLOB NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS dining (club TEXT PRIMARY KEY REFERENCES clubs(slug), config TEXT NOT NULL, updated TEXT NOT NULL)');
     cd_managed_schema($db);
-    $db->exec('PRAGMA user_version=602');
+    $db->exec('CREATE TABLE IF NOT EXISTS display_layout (club TEXT NOT NULL, display TEXT NOT NULL, welcome TEXT NOT NULL DEFAULT \'\', module_order TEXT NOT NULL DEFAULT \'[]\', module_dwell TEXT NOT NULL DEFAULT \'{}\', PRIMARY KEY(club,display), FOREIGN KEY(club,display) REFERENCES displays(club,slug) ON DELETE CASCADE);
+    CREATE TABLE IF NOT EXISTS content_audience (content_id INTEGER PRIMARY KEY REFERENCES club_content(id) ON DELETE CASCADE, mode TEXT NOT NULL CHECK(mode IN (\'all\',\'selected\')));
+    CREATE TABLE IF NOT EXISTS content_targets (content_id INTEGER NOT NULL REFERENCES content_audience(content_id) ON DELETE CASCADE, club TEXT NOT NULL, display TEXT NOT NULL, PRIMARY KEY(content_id,club,display), FOREIGN KEY(club,display) REFERENCES displays(club,slug) ON DELETE CASCADE)');
+    $db->exec('PRAGMA user_version=603');
     return $db;
 }
 function cd_validate(array $in): array {
@@ -54,8 +57,15 @@ function cd_save_display(PDO $db,array $in,bool $create,?string $scope):void {
     $allowed=json_decode($c['modules'],true)?:[];
     if(array_diff(json_decode($v[6],true),$allowed))throw new InvalidArgumentException('Modul für diesen Verein nicht freigeschaltet.');
     $row=[$club,$v[0],$v[1],$mode,$v[4],$v[5],$v[6],isset($in['enabled'])?1:0,$v[7]];
-    if($create){$q=$db->prepare('INSERT INTO displays VALUES (?,?,?,?,?,?,?,?,?)');$q->execute($row);}
-    else{cd_display($db,$club,$v[0],$scope);$q=$db->prepare('UPDATE displays SET name=?,mode=?,language=?,dwell=?,modules=?,enabled=?,updated=? WHERE club=? AND slug=?');$q->execute(array_merge(array_slice($row,2),array_slice($row,0,2)));}
+    $layout=cd_validate_layout($in,json_decode($v[6],true),$create?[]:cd_layout($db,$club,$v[0]));
+    $db->exec('BEGIN IMMEDIATE');
+    try{
+        if($create){$q=$db->prepare('INSERT INTO displays VALUES (?,?,?,?,?,?,?,?,?)');$q->execute($row);}
+        else{cd_display($db,$club,$v[0],$scope);$q=$db->prepare('UPDATE displays SET name=?,mode=?,language=?,dwell=?,modules=?,enabled=?,updated=? WHERE club=? AND slug=?');$q->execute(array_merge(array_slice($row,2),array_slice($row,0,2)));}
+        $q=$db->prepare('INSERT INTO display_layout VALUES (?,?,?,?,?) ON CONFLICT(club,display) DO UPDATE SET welcome=excluded.welcome,module_order=excluded.module_order,module_dwell=excluded.module_dwell');
+        $q->execute([$club,$v[0],$layout['welcome'],json_encode($layout['order'],JSON_THROW_ON_ERROR),json_encode((object)$layout['dwell'],JSON_THROW_ON_ERROR)]);
+        $db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
 function cd_account(PDO $db,string $club,string $password,bool $enabled):void {
     cd_club($db,$club);
@@ -136,8 +146,16 @@ function cd_save_content(PDO $db,array $in,?string $scope):void{
     $url=cd_text($in['url']??'',500);
     if($url!==''&&(!filter_var($url,FILTER_VALIDATE_URL)||strtolower((string)parse_url($url,PHP_URL_SCHEME))!=='https'||parse_url($url,PHP_URL_USER)!==null))throw new InvalidArgumentException('Nur gültige HTTPS-Links.');
     $v=[$title,$body,$starts,$ends,$url,isset($in['enabled'])?1:0,gmdate('c')];
-    if($id){$q=$db->prepare('UPDATE club_content SET title=?,body=?,starts=?,ends=?,url=?,enabled=?,updated=? WHERE id=? AND club=? AND kind=?');$q->execute([...$v,$id,$club,$kind]);}
-    else{$q=$db->prepare('INSERT INTO club_content(club,kind,title,body,starts,ends,url,enabled,updated) VALUES (?,?,?,?,?,?,?,?,?)');$q->execute([$club,$kind,...$v]);}
+    $audience=cd_validate_audience($db,$club,$in,$id?cd_content_audience($db,$club,$id):['mode'=>'all','targets'=>[]]);
+    $db->exec('BEGIN IMMEDIATE');
+    try{
+        if($id){$q=$db->prepare('UPDATE club_content SET title=?,body=?,starts=?,ends=?,url=?,enabled=?,updated=? WHERE id=? AND club=? AND kind=?');$q->execute([...$v,$id,$club,$kind]);}
+        else{$q=$db->prepare('INSERT INTO club_content(club,kind,title,body,starts,ends,url,enabled,updated) VALUES (?,?,?,?,?,?,?,?,?)');$q->execute([$club,$kind,...$v]);$id=(int)$db->lastInsertId();}
+        $q=$db->prepare('INSERT INTO content_audience VALUES (?,?) ON CONFLICT(content_id) DO UPDATE SET mode=excluded.mode');$q->execute([$id,$audience['mode']]);
+        $q=$db->prepare('DELETE FROM content_targets WHERE content_id=?');$q->execute([$id]);
+        $q=$db->prepare('INSERT INTO content_targets VALUES (?,?,?)');foreach($audience['targets'] as $target)$q->execute([$id,$club,$target]);
+        $db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
 
 function cd_media_png(string $bytes):string{
@@ -237,4 +255,50 @@ function cd_dining_save(PDO $db,array $in,?string $scope):void{
 
 function cd_touch_content(PDO $db,int $id):void{
     $q=$db->prepare('UPDATE club_content SET updated=? WHERE id=?');$q->execute([(new DateTimeImmutable('now',new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u\Z'),$id]);
+}
+
+function cd_layout(PDO $db,string $club,string $slug):array{
+    $q=$db->prepare('SELECT * FROM display_layout WHERE club=? AND display=?');$q->execute([$club,$slug]);$r=$q->fetch();
+    return $r?['welcome'=>$r['welcome'],'order'=>json_decode($r['module_order'],true)?:[],'dwell'=>json_decode($r['module_dwell'],true)?:[]]:['welcome'=>'','order'=>[],'dwell'=>[]];
+}
+function cd_validate_layout(array $in,array $modules,array $old):array{
+    $welcome=array_key_exists('screen_welcome',$in)?cd_text($in['screen_welcome'],1000):($old['welcome']??'');
+    $order=[];$dwell=[];$ranks=$in['module_rank']??null;$times=$in['module_dwell']??null;
+    if(array_key_exists('module_rank',$in)&&!is_array($ranks))throw new InvalidArgumentException('Ungültige Folienreihenfolge.');
+    if(array_key_exists('module_dwell',$in)&&!is_array($times))throw new InvalidArgumentException('Ungültige Anzeigezeiten.');
+    if(is_array($ranks)){
+        foreach($modules as $k){
+            $rank=filter_var($ranks[$k]??100,FILTER_VALIDATE_INT);
+            if($rank===false||$rank<1||$rank>100)throw new InvalidArgumentException('Folienposition muss zwischen 1 und 100 liegen.');
+            $order[$k]=$rank;
+        }
+        asort($order,SORT_NUMERIC);$order=array_keys($order);
+    }else{$order=array_values(array_intersect($old['order']??[],$modules));foreach($modules as $k)if(!in_array($k,$order,true))$order[]=$k;}
+    foreach($modules as $k){
+        $v=is_array($times)?($times[$k]??''):($old['dwell'][$k]??'');
+        if($v==='')continue;
+        $n=filter_var($v,FILTER_VALIDATE_INT);
+        if($n===false||$n<5||$n>120)throw new InvalidArgumentException('Anzeigezeit pro Folie: 5 bis 120 Sekunden.');
+        $dwell[$k]=$n;
+    }
+    return ['welcome'=>$welcome,'order'=>$order,'dwell'=>$dwell];
+}
+function cd_content_audience(PDO $db,string $club,int $id):array{
+    $q=$db->prepare('SELECT a.mode FROM content_audience a JOIN club_content c ON c.id=a.content_id WHERE c.id=? AND c.club=?');$q->execute([$id,$club]);
+    $mode=$q->fetchColumn()?:'all';
+    $q=$db->prepare('SELECT display FROM content_targets WHERE content_id=? AND club=? ORDER BY display');$q->execute([$id,$club]);
+    return ['mode'=>$mode,'targets'=>$q->fetchAll(PDO::FETCH_COLUMN)];
+}
+function cd_validate_audience(PDO $db,string $club,array $in,array $old):array{
+    if(!array_key_exists('audience',$in))return $old;
+    $mode=$in['audience'];
+    if(!in_array($mode,['all','selected'],true))throw new InvalidArgumentException('Ungültige Bildschirmzuordnung.');
+    if($mode==='all')return ['mode'=>'all','targets'=>[]];
+    $targets=$in['targets']??[];
+    if(!is_array($targets)||count($targets)>100)throw new InvalidArgumentException('Ungültige Bildschirmauswahl.');
+    $valid=array_column(cd_displays($db,$club),'slug');
+    foreach($targets as $target)if(!is_string($target)||!in_array($target,$valid,true))throw new InvalidArgumentException('Bildschirm gehört nicht zu diesem Verein.');
+    $targets=array_values(array_unique($targets));
+    if(!$targets)throw new InvalidArgumentException('Mindestens einen Bildschirm auswählen oder alle Displays verwenden.');
+    return ['mode'=>'selected','targets'=>$targets];
 }
