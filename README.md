@@ -44,3 +44,6 @@ Externe Links aus der NTC-Buchungsansicht und den NTC-Spiel-/Terminlisten entfer
 
 ## 0.3.3 – NTC-Terminaladresse
 Offizieller vom Betreiber angegebener Pfad /court-module/3076 mit ebusy-client-Parameter. Client-ID nur als NTC_EBUSY_CLIENT_ID Secret, serverseitig in terminal.php eingefügt; keine Ausgabe in Logs. Einmalige Admin-PIN-Freigabe am vorgesehenen NTC-Gerät setzt ein Secure/HttpOnly-Cookie (365 Tage, jeweils ein Terminal; erneute Freigabe ersetzt das vorige). Öffentlich zugängliche Displays ohne Freigabe erhalten keine Client-ID. Die ID bleibt für den autorisierten Browser technisch sichtbar. Einbettung des normalen Terminalpfads sowie PIN-Buchung und Restriktionen müssen vor Ort geprüft werden. Modul 3076 war bisher als Hallenmodul bekannt; Zuordnung zur gewünschten Freiplatzbuchung vom Betreiber prüfen. TENNILO-Demo unverändert simuliert.
+
+## 0.3.4 – Freiplatzterminal
+Korrigierter Betreiberpfad /lite-module/1731 mit ebusy-client-Parameter (Außenplätze). Bestehendes NTC_EBUSY_CLIENT_ID Secret und einmalige Admin-Freigabe unverändert; keine Weiterleitung aus dem eingebetteten Frame in einen neuen Tab. Funktion der Einbettung vor Ort weiterhin zu prüfen.

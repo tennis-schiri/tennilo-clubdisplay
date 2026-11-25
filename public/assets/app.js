@@ -114,7 +114,7 @@ async function checkTerminal(){
   finally{terminalChecking=false;if(view==='courts')render();}
 }
 function ebusyView(){
-  const head='<div class="booking-head"><h1>'+tr('Platzbuchung','Court booking')+'</h1>'+button(tr('Zurück','Back'),'home','primary')+'</div>';
+  const head='<div class="booking-head"><h1>'+tr('Außenplätze buchen','Book outdoor courts')+'</h1>'+button(tr('Zurück','Back'),'home','primary')+'</div>';
   if(terminalStatus==='ready')return head+'<iframe class="booking-frame" title="'+tr('eBuSy Buchungsterminal','eBuSy booking terminal')+'" src="terminal.php" sandbox="allow-scripts allow-forms allow-same-origin" referrerpolicy="no-referrer"></iframe>';
   const label=terminalStatus==='locked'?tr('Terminal muss einmalig durch einen Administrator freigeschaltet werden.','An administrator must enable this terminal once.'):terminalStatus==='unconfigured'?tr('Terminal noch nicht eingerichtet.','Terminal not configured.'):terminalStatus==='unavailable'?tr('Terminal vorübergehend nicht verfügbar.','Terminal temporarily unavailable.'):tr('Terminal wird geprüft …','Checking terminal …');
   return head+'<div class="panel"><p>'+label+'</p>'+(terminalStatus==='locked'?button(tr('Terminal freischalten','Enable terminal'),'terminal-unlock','primary'):terminalStatus==='unavailable'?button(tr('Erneut prüfen','Retry'),'terminal-retry'):'')+'</div>';

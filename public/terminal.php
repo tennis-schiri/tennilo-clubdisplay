@@ -20,5 +20,5 @@ if(isset($_GET['status'])){
     echo json_encode(['configured'=>$configured,'ready'=>$ready]);exit;
 }
 if(!$ready){http_response_code(403);header('Content-Type: text/plain; charset=utf-8');echo 'Terminal nicht freigeschaltet.';exit;}
-header('Location: https://ntc93v8.ebusy.de/court-module/3076?ebusy-client='.rawurlencode($client),true,302);
+header('Location: https://ntc93v8.ebusy.de/lite-module/1731?ebusy-client='.rawurlencode($client),true,302);
 exit;
