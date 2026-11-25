@@ -69,29 +69,59 @@ async function refreshLeague(){
   finally{fetching=false;if(view==='teams'||(view==='info'&&screens[slide]==='teams'))render();}
 }
 setInterval(refreshLeague,300000);
+let eventData=null,eventPage=0,eventFetching=false;
+function eventView(){
+  const info=view==='info',d=eventData,title='<h1>'+t().upcoming+'</h1>';
+  const source='<p class="match-source">'+tr('Quelle: NTC-Veranstaltungskalender','Source: NTC event calendar')+(d?.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info?' · <a href="https://ntc93.com/events/" target="_blank" rel="noopener noreferrer">'+tr('Original-Kalender','Original calendar')+'</a>':'')+'</p>';
+  if(!d)return title+'<div class="panel"><p>'+tr('Termine werden geladen …','Loading events …')+'</p></div>';
+  if(d.status==='unavailable')return title+'<div class="panel"><p>'+tr('Vereinskalender momentan nicht verfügbar.','Club calendar currently unavailable.')+'</p></div>'+source;
+  const warning=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Termine – Aktualisierung fehlgeschlagen.','Cached events – refresh failed.')+'</p>':'';
+  const locale=lang==='de'?'de-DE':'en-GB', fmt=(s,options)=>new Date(s).toLocaleString(locale,{timeZone:'Europe/Berlin',...options});
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const val=k=>parts.find(p=>p.type===k)?.value;const today=val('year')+'-'+val('month')+'-'+val('day');
+  const rows=d.events.filter(e=>e.end.slice(0,10)>=today);
+  if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine kommenden Veranstaltungen im abgerufenen Zeitraum.','No upcoming events in the retrieved period.')+'</p>'+(d.to?'<p>'+tr('Zeitraum bis ','Period until ')+esc(d.to)+'</p>':'')+'</div>'+source;
+  const size=info?4:6,pages=Math.ceil(rows.length/size),page=info?0:Math.min(eventPage,pages-1);
+  const cards=rows.slice(page*size,(page+1)*size).map(e=>{
+    const multi=e.start.slice(0,10)!==e.end.slice(0,10),opts={weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'};
+    const date=fmt(e.start,opts)+(multi?' – '+fmt(e.end,opts):'');
+    const time=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+fmt(e.end,{hour:'2-digit',minute:'2-digit'});
+    const link=!info&&typeof e.url==='string'&&/^https:\/\/(?:www\.)?ntc93\.com\//i.test(e.url)?'<a class="event-link" href="'+esc(e.url)+'" target="_blank" rel="noopener noreferrer">'+tr('Details','Details')+'</a>':'';
+    return '<article class="event-row"><div class="event-date"><strong>'+esc(date)+'</strong><span>'+esc(time)+'</span></div><div><strong class="event-name">'+esc(e.title)+'</strong>'+(e.venue?'<p>'+esc(e.venue)+'</p>':'')+'</div>'+link+'</article>';
+  }).join('');
+  const paging=!info&&pages>1?'<div class="actions match-pages"><button data-action="event-prev" '+(page===0?'disabled':'')+'>‹</button><span>'+(page+1)+' / '+pages+'</span><button data-action="event-next" '+(page===pages-1?'disabled':'')+'>›</button></div>':'';
+  return title+warning+'<div class="panel">'+cards+'</div>'+paging+source;
+}
+async function refreshEvents(){
+  if(eventFetching)return;eventFetching=true;
+  try{const response=await fetch('events.php',{cache:'no-store',signal:AbortSignal.timeout(45000)});if(!response.ok)throw Error('HTTP');const data=await response.json();if(!Array.isArray(data.events)||!['ok','stale','unavailable'].includes(data.status))throw Error('feed');eventData=data;}
+  catch{eventData=eventData&&eventData.status!=='unavailable'?{...eventData,status:'stale'}:{status:'unavailable',events:[]};}
+  finally{eventFetching=false;if(view==='calendar'||(view==='info'&&screens[slide]==='calendar'))render();}
+}
+setInterval(refreshEvents,300000);
+
 function button(label,action,cls=''){return '<button type="button" class="'+cls+'" data-action="'+action+'">'+label+'</button>'}
 function line(a,b){return '<div class="line"><strong>'+a+'</strong><span class="muted">'+b+'</span></div>'}
 function panel(title,names,details){return '<div class="panel"><h2>'+title+'</h2>'+names.map((n,i)=>line(n,details[i])).join('')+'</div>'}
 function hero(title,description,extra=''){return '<div class="hero"><div><h1>'+title+'</h1><p>'+description+'</p><div class="actions">'+button(t().start,'home','primary large')+'</div></div>'+extra+'</div>'}
 function courtList(){return '<div class="grid">'+[1,2,3,4].map(i=>'<button class="tile" data-action="court:'+i+'" '+(i===2?'disabled':'')+'><strong>'+t().court+' '+i+'</strong><span class="'+(i===2?'occupied':'availability')+'">'+(i===2?t().busy:t().available)+'</span><small>'+t().slot+'</small></button>').join('')+'</div>'}
-function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=tr('Platzbuchung, Termine und Meldungen sind noch Beispiele.','Court booking, events and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';$('fullscreen').setAttribute('aria-label',lang==='de'?'Vollbild':'Fullscreen');
+function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';$('fullscreen').setAttribute('aria-label',lang==='de'?'Vollbild':'Fullscreen');
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
 const active=view==='info'?screens[slide]:view;let html='';
 switch(active){
 case 'welcome':html=hero(l.welcome,l.intro,panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available]));break;
 case 'home':html='<h1>'+l.welcome+'</h1><p>'+l.intro+'</p><div class="grid">'+[['courts',l.booking],['calendar',l.upcoming],['teams',l.matches],['news',l.announcements]].map(([k,v])=>button(v,k,'tile large')).join('')+'</div>';break;
 case 'courts':html='<h1>'+l.booking+'</h1><p>'+l.select+'</p>'+courtList();if(court!==null)html+='<div class="panel" style="margin-top:1rem"><h2>'+l.court+' '+court+'</h2><p>'+l.slot+'</p><div class="actions">'+button(l.confirm,'confirm','primary')+button(l.reset,'reset')+'</div><p role="status" class="message">'+message+'</p></div>';break;
-case 'calendar':html='<h1>'+l.upcoming+'</h1>'+panel(l.calendar,l.events,l.eventTimes);break;
+case 'calendar':html=eventView();break;
 case 'teams':html=matchView();break;
 case 'news':html='<h1>'+l.announcements+'</h1><div class="grid">'+l.newsItems.map(n=>'<article class="panel"><h2>'+n+'</h2><p>'+l.newsText+'</p></article>').join('')+'</div>';break;
 case 'partner':html=hero(l.partner,l.partnerText);break;
 }
 $('screen').innerHTML=html;clock();}
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
-function go(next){if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
-document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news'].includes(a))go(a);});
+function go(next){if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
+document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{last=Date.now();});
 $('language').addEventListener('click',()=>{lang=lang==='de'?'en':'de';message='';render();});
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{ /* Browser may block fullscreen. */ }});
 setInterval(()=>{const now=Date.now();clock();if(view==='info'){if(now-started>=dwell){slide=(slide+1)%screens.length;started=now;render();}$('progress').style.setProperty('--progress',Math.min(100,(now-started)/dwell*100)+'%');}else{if(now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
-render();refreshLeague();
+render();refreshLeague();refreshEvents();

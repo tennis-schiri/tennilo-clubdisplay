@@ -32,3 +32,5 @@ html[data-club="ntc"] .availability{color:#9ef1cc}
 html[data-club="ntc"] .occupied{color:#ffd7a3}
 html[data-club="ntc"] .match-teams .own-team,html[data-club="ntc"] .match-meta .match-league{color:#f7dc14}
 @media(max-width:700px){html[data-club="ntc"] .brand{column-gap:.7rem}html[data-club="ntc"] .brand img{width:68px;height:68px}html[data-club="ntc"] .brand .ntc-brand-title{font-size:1.65rem}}
+
+.event-row{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,2fr) auto;gap:1.3rem;align-items:center;padding:1rem 0;border-bottom:1px solid var(--line)}.event-row:last-child{border:0}.event-date{display:grid;gap:.2rem;color:var(--cyan)}.event-date span{font-size:.85rem;color:var(--muted)}.event-name{font-size:clamp(1.25rem,2.2vw,2.3rem);line-height:1.15;overflow-wrap:anywhere}.event-link{color:var(--cyan);padding:.6rem;min-height:48px;display:flex;align-items:center}@media(max-width:700px){.event-row{grid-template-columns:1fr;gap:.4rem}.event-link{min-height:44px}}

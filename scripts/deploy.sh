@@ -7,8 +7,11 @@ case "$DOMAIN" in clubdisplay.tennilo.de|clubdisplay.ntc93.de) ;; *) exit 1;; es
 node --check public/assets/app.js
 php -l public/nuliga.php
 php tests/nuliga-test.php
+php -l public/events.php
+php tests/events-test.php
 files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/app.css assets/app.js index.html)
 test -s public/nuliga.php
+test -s public/events.php
 for f in "${files[@]}"; do test -s "public/$f"; done
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -26,6 +29,9 @@ upload public/nuliga.php nuliga.php
 # Dynamic PHP must be executed, never served as source.
 curl --fail --silent --show-error --max-time 40 --output "$tmp/feed" "https://${DOMAIN}/nuliga.php?release=${RELEASE_ID}"
 php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!isset($v["status"],$v["matches"])||!is_array($v["matches"])) exit(1); echo "nuLiga feed: ".$v["status"]." / ".count($v["matches"])." matches\n";' "$tmp/feed"
+upload public/events.php events.php
+curl --fail --silent --show-error --max-time 50 --output "$tmp/events" "https://${DOMAIN}/events.php?release=${RELEASE_ID}"
+php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!isset($v["status"],$v["events"])||!is_array($v["events"])) exit(1); echo "Calendar feed: ".$v["status"]." / ".count($v["events"])." events\n";' "$tmp/events"
 for f in "${files[@]}"; do
   echo "Deploy: $f"
   upload "public/$f" "$f"
