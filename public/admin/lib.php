@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/managed.php';
+function cd_plan_label(string $key):string{return match($key){'INFO'=>'BASIC','INTERACTIVE'=>'PLUS',default=>$key};}
 const CD_MODULES=['welcome','weather','calendar','teams','news','partner','restaurant','courts'];
 function cd_db(string $path): PDO {
     $db=new PDO('sqlite:'.$path,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
@@ -28,7 +29,7 @@ function cd_validate(array $in): array {
     $plan=(string)($in['plan']??''); $color=(string)($in['color']??''); $language=(string)($in['language']??'');
     $dwell=filter_var($in['dwell']??null,FILTER_VALIDATE_INT);
     $modules=$in['modules']??[]; if(is_array($modules)&&array_filter($modules,fn($v)=>!is_string($v)))throw new InvalidArgumentException('Ungültige Module.');
-    if(!preg_match('/^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/D',$slug)||$name===''||strlen($name)>160||!preg_match('//u',$name)||preg_match('/[\x00-\x1f\x7f]/',$name)||!in_array($plan,['INFO','INTERACTIVE'],true)||!preg_match('/^#[0-9a-f]{6}$/iD',$color)||!in_array($language,['de','en'],true)||$dwell===false||$dwell<5||$dwell>120||!is_array($modules)||array_diff($modules,CD_MODULES)||!in_array('welcome',$modules,true)||($plan==='INFO'&&in_array('courts',$modules,true)))throw new InvalidArgumentException('Bitte alle Angaben prüfen. INFO erlaubt keine Buchung; Willkommen muss aktiv sein.');
+    if(!preg_match('/^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/D',$slug)||$name===''||strlen($name)>160||!preg_match('//u',$name)||preg_match('/[\x00-\x1f\x7f]/',$name)||!in_array($plan,['INFO','INTERACTIVE'],true)||!preg_match('/^#[0-9a-f]{6}$/iD',$color)||!in_array($language,['de','en'],true)||$dwell===false||$dwell<5||$dwell>120||!is_array($modules)||array_diff($modules,CD_MODULES)||!in_array('welcome',$modules,true)||($plan==='INFO'&&in_array('courts',$modules,true)))throw new InvalidArgumentException('Bitte alle Angaben prüfen. BASIC erlaubt keine Buchung; Willkommen muss aktiv sein.');
     return [$slug,$name,$plan,$color,$language,$dwell,json_encode(array_values(array_intersect(CD_MODULES,$modules)),JSON_THROW_ON_ERROR),gmdate('c')];
 }
 function cd_save(PDO $db,array $in,bool $create): void {
@@ -52,7 +53,7 @@ function cd_displays(PDO $db,string $club):array {
 function cd_save_display(PDO $db,array $in,bool $create,?string $scope):void {
     $club=(string)($in['club']??'');cd_scope($scope,$club);$c=cd_club($db,$club);
     $mode=(string)($in['mode']??'');
-    if($c['plan']==='INFO'&&$mode!=='INFO')throw new InvalidArgumentException('INTERACTIVE ist für diesen Verein nicht freigeschaltet.');
+    if($c['plan']==='INFO'&&$mode!=='INFO')throw new InvalidArgumentException('PLUS ist für diesen Verein nicht freigeschaltet.');
     $v=cd_validate(array_replace($in,['plan'=>$mode,'color'=>$c['color']]));
     $allowed=json_decode($c['modules'],true)?:[];
     if(array_diff(json_decode($v[6],true),$allowed))throw new InvalidArgumentException('Modul für diesen Verein nicht freigeschaltet.');
