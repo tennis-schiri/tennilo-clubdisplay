@@ -5,6 +5,7 @@ const CD_MODULES=['welcome','weather','calendar','teams','news','partner','resta
 function cd_db(string $path): PDO {
     $db=new PDO('sqlite:'.$path,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
     $db->exec('PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON');
+    if((int)$db->query('PRAGMA user_version')->fetchColumn()===601)return $db;
     $db->exec('CREATE TABLE IF NOT EXISTS clubs (slug TEXT PRIMARY KEY, name TEXT NOT NULL, plan TEXT NOT NULL, color TEXT NOT NULL, language TEXT NOT NULL, dwell INTEGER NOT NULL, modules TEXT NOT NULL, updated TEXT NOT NULL); CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT PRIMARY KEY, count INTEGER NOT NULL, since INTEGER NOT NULL)');
     $q=$db->prepare('INSERT OR IGNORE INTO clubs VALUES (?,?,?,?,?,?,?,?)');
     foreach([['tennilo-demo','TENNILO Demo','INTERACTIVE','#21d5db','de',12, json_encode(['welcome','weather','calendar','teams','news','partner','courts']),''],['ntc93','NTC 93','INTERACTIVE','#f7dc14','de',12,json_encode(CD_MODULES),'']] as $row){
@@ -16,6 +17,7 @@ function cd_db(string $path): PDO {
     $db->exec('CREATE TABLE IF NOT EXISTS content_media (content_id INTEGER PRIMARY KEY REFERENCES club_content(id) ON DELETE CASCADE, image BLOB NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS dining (club TEXT PRIMARY KEY REFERENCES clubs(slug), config TEXT NOT NULL, updated TEXT NOT NULL)');
     cd_managed_schema($db);
+    $db->exec('PRAGMA user_version=601');
     return $db;
 }
 function cd_validate(array $in): array {
@@ -105,7 +107,7 @@ function cd_save_brand(PDO $db,array $in,array $file,?string $scope):void{
     try{
         $q=$db->prepare('INSERT INTO club_brand(club,welcome) VALUES (?,?) ON CONFLICT(club) DO UPDATE SET welcome=excluded.welcome');$q->execute([$club,$welcome]);
         if($replace){$q=$db->prepare('UPDATE club_brand SET logo=?,mime=? WHERE club=?');$q->bindValue(1,$logo,$logo===null?PDO::PARAM_NULL:PDO::PARAM_LOB);$q->bindValue(2,$mime);$q->bindValue(3,$club);$q->execute();}
-        $q=$db->prepare('UPDATE clubs SET color=?,updated=? WHERE slug=?');$q->execute([$color,gmdate('c'),$club]);
+        $q=$db->prepare('UPDATE clubs SET color=?,updated=? WHERE slug=?');$q->execute([$color,(new DateTimeImmutable('now',new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u\Z'),$club]);
         $db->commit();
     }catch(Throwable $e){$db->rollBack();throw $e;}
 }
@@ -164,7 +166,7 @@ function cd_media_save(PDO $db,array $in,array $file,?string $scope):void{
     $club=cd_text($in['club']??'',50,true);$id=filter_var($in['id']??null,FILTER_VALIDATE_INT);
     if(!$id||$id<1)throw new InvalidArgumentException('Ungültiger Eintrag.');
     cd_media_allowed($db,$club,$id,$scope);
-    if(($in['intent']??'')==='remove'){$q=$db->prepare('DELETE FROM content_media WHERE content_id=?');$q->execute([$id]);return;}
+    if(($in['intent']??'')==='remove'){$db->beginTransaction();try{$q=$db->prepare('DELETE FROM content_media WHERE content_id=?');$q->execute([$id]);cd_touch_content($db,$id);$db->commit();}catch(Throwable $e){$db->rollBack();throw $e;}return;}
     if(($file['error']??null)!==UPLOAD_ERR_OK||!is_string($file['tmp_name']??null)||!is_uploaded_file($file['tmp_name'])||filesize($file['tmp_name'])>2000000)throw new InvalidArgumentException('Bitte ein Bild bis 2 MB auswählen.');
     $bytes=file_get_contents($file['tmp_name']);if($bytes===false)throw new InvalidArgumentException('Datei nicht lesbar.');
     $png=cd_media_png($bytes);
@@ -174,7 +176,7 @@ function cd_media_save(PDO $db,array $in,array $file,?string $scope):void{
         $q=$db->prepare('SELECT COALESCE(SUM(length(m.image)),0) FROM content_media m JOIN club_content c ON c.id=m.content_id WHERE c.club=? AND c.id<>?');$q->execute([$club,$id]);
         if((int)$q->fetchColumn()+strlen($png)>50000000)throw new InvalidArgumentException('Medienlimit pro Verein: 50 MB.');
         $q=$db->prepare('INSERT INTO content_media VALUES (?,?) ON CONFLICT(content_id) DO UPDATE SET image=excluded.image');
-        $q->bindValue(1,$id,PDO::PARAM_INT);$q->bindValue(2,$png,PDO::PARAM_LOB);$q->execute();$db->exec('COMMIT');
+        $q->bindValue(1,$id,PDO::PARAM_INT);$q->bindValue(2,$png,PDO::PARAM_LOB);$q->execute();cd_touch_content($db,$id);$db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
 
@@ -231,4 +233,8 @@ function cd_dining_save(PDO $db,array $in,?string $scope):void{
     }
     $q=$db->prepare('INSERT INTO dining VALUES (?,?,?) ON CONFLICT(club) DO UPDATE SET config=excluded.config,updated=excluded.updated');
     $q->execute([$club,json_encode($data,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),gmdate('c')]);
+}
+
+function cd_touch_content(PDO $db,int $id):void{
+    $q=$db->prepare('UPDATE club_content SET updated=? WHERE id=?');$q->execute([(new DateTimeImmutable('now',new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u\Z'),$id]);
 }
