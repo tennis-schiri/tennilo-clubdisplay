@@ -39,7 +39,27 @@ const {chromium}=require('playwright');
   await club.locator('main img:not([hidden])').waitFor({state:'visible'});
   assert.match(await club.locator('main img').getAttribute('src'),/^blob:/);
   await club.screenshot({path:'artifacts/managed-preview.png'});
+  // Edit a screen in the real admin form and verify its configured slide order and timing.
+  const clubUrl=base+'?portal=club&verein=ntc93';
+  await club.goto(clubUrl);
+  const screen=club.locator('details.subpanel').filter({has:club.locator('input[name="slug"][value="hall"]')});
+  await screen.locator(':scope > summary').click();
+  await screen.locator('textarea[name=screen_welcome]').fill('Willkommen im Clubhaus');
+  await screen.locator('input[name="module_rank[news]"]').fill('1');
+  await screen.locator('input[name="module_rank[welcome]"]').fill('2');
+  await screen.locator('input[name="module_dwell[news]"]').fill('5');
+  await screen.getByRole('button',{name:'Bildschirm speichern',exact:true}).click();
+  await club.getByText('Änderungen gespeichert.',{exact:true}).waitFor();
+  await club.goto(clubUrl+'&preview=1&club=ntc93&screen=hall');
+  await club.locator('main h1').filter({hasText:'HTTP-Test'}).waitFor();
+  assert.match(await club.locator('#position').innerText(),/^1 \/ 2$/);
+  await club.getByText('Willkommen im Clubhaus',{exact:true}).waitFor({timeout:10000});
+  assert.match(await club.locator('#position').innerText(),/^2 \/ 2$/);
+  await club.goto(clubUrl+'&preview=1&club=ntc93&screen=restaurant');
+  await club.locator('main h1').filter({hasText:'NTC 93'}).waitFor();
+  assert.equal(await club.locator('#position').innerText(),'1 / 1');
+  assert.equal(await club.getByText('Willkommen im Clubhaus',{exact:true}).count(),0);
   assert.deepEqual(errors,[]);
-  console.log('Chromium: actual player, images, mobile, preview, safe text rendering passed.');
+  console.log('Chromium: actual player, images, mobile, preview, safe text rendering, individual slide sequence, timing and audience isolation passed.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
