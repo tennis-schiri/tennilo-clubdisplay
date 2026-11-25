@@ -23,11 +23,15 @@ if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true))cd_
 umask(0077);
 try{$db=cd_db($dir.'/clubdisplay-admin.sqlite');}catch(Throwable $e){cd_unavailable('DATABASE_INIT');}
 ini_set('session.use_strict_mode','1');
-session_name('CD_ADMIN');
+$clubPortal=isset($_GET['portal'])&&$_GET['portal']==='club';
+$fixedClub=$clubPortal&&($_GET['verein']??'')==='ntc93'?'ntc93':null;
+$portalUrl=$clubPortal?'./?portal=club'.($fixedClub?'&verein=ntc93':''):'./';
+session_name($clubPortal?'CD_CLUB':'CD_ADMIN');
 session_set_cookie_params(['lifetime'=>0,'path'=>'/admin/','secure'=>true,'httponly'=>true,'samesite'=>'Strict']);
 session_start();
 if(isset($_SESSION['last'])&&time()-$_SESSION['last']>1800){$_SESSION=[];session_regenerate_id(true);}
 if(!empty($_SESSION['auth'])&&isset($_SESSION['club'])){ $account=cd_account_row($db,(string)$_SESSION['club']); if(!$account||!$account['enabled']||!hash_equals((string)($_SESSION['account_version']??''),hash('sha256',$account['password_hash']))){$_SESSION=[];session_regenerate_id(true);} }
+if(!empty($_SESSION['auth'])&&($clubPortal?(!isset($_SESSION['club'])||($fixedClub!==null&&$_SESSION['club']!==$fixedClub)):isset($_SESSION['club']))){$_SESSION=[];session_regenerate_id(true);}
 $_SESSION['csrf']??=bin2hex(random_bytes(32));
 $scope=isset($_SESSION['club'])?(string)$_SESSION['club']:null;
 $error='';$ok='';
@@ -41,21 +45,21 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             $q=$db->prepare('DELETE FROM login_attempts WHERE since < ?');$q->execute([$now-900]);
             $q=$db->prepare('SELECT count FROM login_attempts WHERE ip=?');$q->execute([$ip]);$count=(int)$q->fetchColumn();
             $allowed=$count<5;
-            $clubLogin=trim((string)($_POST['club_login']??''));
+            $clubLogin=$clubPortal?($fixedClub??trim((string)($_POST['club_login']??''))):'';
             $candidate=cd_login_hash($db,$clubLogin,$hash);
             $password=(string)($_POST['password']??'');
-            $valid=$allowed&&password_verify($password,$candidate!==''?$candidate:$hash)&&$candidate!=='';
+            $valid=$allowed&&(!$clubPortal||$clubLogin!=='')&&password_verify($password,$candidate!==''?$candidate:$hash)&&$candidate!=='';
             
             if($valid){$q=$db->prepare('DELETE FROM login_attempts WHERE ip=?');$q->execute([$ip]);}
             elseif($allowed){$q=$db->prepare('INSERT INTO login_attempts VALUES (?,1,?) ON CONFLICT(ip) DO UPDATE SET count=count+1');$q->execute([$ip,$now]);}
             $db->exec('COMMIT');
         }catch(Throwable $e){$db->exec('ROLLBACK');http_response_code(503);exit('Login momentan nicht verfügbar.');}
-        if($valid){session_regenerate_id(true);$_SESSION=['auth'=>true,'last'=>$now,'csrf'=>bin2hex(random_bytes(32))];if($clubLogin!==''){$_SESSION['club']=$clubLogin;$_SESSION['account_version']=hash('sha256',$candidate);}header('Location: ./',true,303);exit;}
+        if($valid){session_regenerate_id(true);$_SESSION=['auth'=>true,'last'=>$now,'csrf'=>bin2hex(random_bytes(32))];if($clubLogin!==''){$_SESSION['club']=$clubLogin;$_SESSION['account_version']=hash('sha256',$candidate);}header('Location: '.$portalUrl,true,303);exit;}
         $error='Anmeldung fehlgeschlagen oder vorübergehend gesperrt.';
     }elseif(!empty($_SESSION['auth'])){
-        if($action==='logout'){$_SESSION=[];session_destroy();header('Location: ./',true,303);exit;}
+        if($action==='logout'){$_SESSION=[];session_destroy();header('Location: '.$portalUrl,true,303);exit;}
         if(in_array($action,['create','save'],true)){
-            try{if($scope!==null)throw new InvalidArgumentException('Nur TENNILO darf Vereinsprofile und Lizenzen ändern.');cd_save($db,$_POST,$action==='create');$_SESSION['flash']='Vereinsprofil gespeichert.';header('Location: ./',true,303);exit;}
+            try{if($scope!==null)throw new InvalidArgumentException('Nur TENNILO darf Vereinsprofile und Lizenzen ändern.');cd_save($db,$_POST,$action==='create');$_SESSION['flash']='Vereinsprofil gespeichert.';header('Location: '.$portalUrl,true,303);exit;}
             catch(InvalidArgumentException $e){$error=$e->getMessage();}
             catch(Throwable $e){$error='Speichern fehlgeschlagen. Ist die Vereinskennung bereits vergeben?';}
         }
@@ -66,7 +70,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
                 elseif($action==='content')cd_save_content($db,$_POST,$scope);
                 elseif($action==='media')cd_media_save($db,$_POST,$_FILES['image']??[],$scope);
                 else cd_save_display($db,$_POST,$action==='display-create',$scope);
-                $_SESSION['flash']='Änderungen gespeichert.';header('Location: ./',true,303);exit;
+                $_SESSION['flash']='Änderungen gespeichert.';header('Location: '.$portalUrl,true,303);exit;
             }catch(InvalidArgumentException $e){$error=$e->getMessage();}
             catch(Throwable $e){$error='Speichern fehlgeschlagen. Kennung und Angaben prüfen.';}
         }
@@ -120,20 +124,20 @@ function accountField(array $c,?array $a,string $csrf):void{
     <label>Neues Vereinspasswort <input type="password" name="new_password" autocomplete="new-password" minlength="16" maxlength="72" <?=$a?'':'required'?> placeholder="<?=$a?'Leer lassen zum Beibehalten':'Mindestens 16 Zeichen'?>"></label>
     <label class="check"><input type="checkbox" name="enabled" <?=!empty($a['enabled'])?'checked':''?>> Vereinszugang freigeben</label><button>Zugang speichern</button></form><?php
 }
-function brandField(array $c,array $b,string $csrf):void{
+function brandField(array $c,array $b,string $csrf):void{ global $clubPortal,$fixedClub;
     ?><form method="post" enctype="multipart/form-data" class="profile">
     <input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="brand"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>">
-    <?php if($b['logo_size']):?><img class="brand-preview" src="?logo=<?=rawurlencode($c['slug'])?>" alt="Aktuelles Vereinslogo"><?php endif?>
+    <?php if($b['logo_size']):?><img class="brand-preview" src="?<?=$clubPortal?'portal=club&amp;'.($fixedClub?'verein=ntc93&amp;':''):''?>logo=<?=rawurlencode($c['slug'])?>" alt="Aktuelles Vereinslogo"><?php endif?>
     <label>Vereinslogo (PNG, JPEG, WebP; max. 2 MB)<input type="file" name="logo" accept="image/png,image/jpeg,image/webp"></label>
     <label class="check"><input type="checkbox" name="remove_logo"> Logo entfernen</label>
     <label>Akzentfarbe<input type="color" name="color" value="<?=cd_h($c['color'])?>"></label>
     <label class="full">Begrüßungstext<textarea name="welcome" maxlength="1000" rows="3"><?=cd_h($b['welcome'])?></textarea></label>
     <button>Design speichern</button></form><?php
 }
-function mediaField(array $c,array $row,string $csrf):void{
+function mediaField(array $c,array $row,string $csrf):void{ global $clubPortal,$fixedClub;
     ?><form method="post" enctype="multipart/form-data" class="profile media-form">
     <input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="media"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>"><input type="hidden" name="id" value="<?=(int)$row['id']?>">
-    <?php if($row['has_image']):?><img class="media-preview" src="?media=<?=(int)$row['id']?>&amp;club=<?=rawurlencode($c['slug'])?>" alt="Bild zu <?=cd_h($row['title'])?>" loading="lazy"><?php endif?>
+    <?php if($row['has_image']):?><img class="media-preview" src="?<?=$clubPortal?'portal=club&amp;'.($fixedClub?'verein=ntc93&amp;':''):''?>media=<?=(int)$row['id']?>&amp;club=<?=rawurlencode($c['slug'])?>" alt="Bild zu <?=cd_h($row['title'])?>" loading="lazy"><?php endif?>
     <label class="full">Bild oder Logo (PNG, JPEG, WebP; max. 2 MB)<input type="file" name="image" accept="image/png,image/jpeg,image/webp" required></label>
     <button name="intent" value="save"><?=$row['has_image']?'Bild ersetzen':'Bild hochladen'?></button>
     <?php if($row['has_image']):?><button class="danger" name="intent" value="remove" formnovalidate>Bild entfernen</button><?php endif?>
@@ -153,10 +157,10 @@ function contentField(array $c,string $kind,array $row,string $csrf):void{
     <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
     </form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=054"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong>ADMINISTRATION</strong></header><main>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=054"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
-<?php if(!$auth):?><section class="login"><h1>Administrator-Anmeldung</h1><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="login"><label>Vereinskennung (für TENNILO leer lassen) <input name="club_login" autocomplete="username"></label><label>Passwort <input type="password" name="password" autocomplete="current-password" required></label><button>Anmelden</button></form></section>
+<?php if(!$auth):?><section class="login"><h1><?=$clubPortal?'Vereinsadmin-Anmeldung':'Administrator-Anmeldung'?></h1><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="login"><?php if($clubPortal):?><?php if($fixedClub):?><p>NTC 93</p><?php else:?><label>Vereinskennung <input name="club_login" autocomplete="username" required></label><?php endif?><?php endif?><label>Passwort <input type="password" name="password" autocomplete="current-password" required></label><button>Anmelden</button></form></section>
 <?php else:$clubs=$scope===null?$db->query('SELECT * FROM clubs ORDER BY name')->fetchAll():[cd_club($db,$scope)];?>
 <div class="head"><div><h1><?=$scope===null?'TENNILO · Kundenverwaltung':'Vereinsbackend'?></h1><p><?=count($clubs)?> Vereinsprofile · Konfigurationsentwürfe</p></div><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="logout"><button>Abmelden</button></form></div>
 <p class="note">Diese Profile sind noch nicht mit den laufenden Displays verbunden. Änderungen beeinflussen weder den NTC-Piloten noch die öffentliche Demo. Es werden keine realen Buchungsdaten gespeichert.</p>
