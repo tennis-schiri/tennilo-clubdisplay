@@ -113,3 +113,6 @@ Alle 15 Bilder aus dem eindeutig ermittelten Sponsorenbereich der NTC-Startseite
 
 ## 0.4.14 – Infomodus-Steuerung
 Dezente Vor-/Zurück- und Pause/Fortsetzen-Tasten neben der Fortschrittsleiste. Die Pause hält den Fortschritt und die automatische Rotation an, manuelles Blättern bleibt möglich und startet die jeweilige Seite bei null; beim Fortsetzen läuft der verbleibende Zeitraum weiter. Seitenzahl, zweisprachige zugängliche Beschriftungen und zyklischer Wechsel. Nur im Infomodus sichtbare Buttons, in allen Ansichten gleich hohe Steuerzeile, damit Navigation und Inhaltsrahmen nicht springen. Beim erneuten Wechsel in den Infomodus beginnt die automatische Rotation wie zuvor auf der ersten Seite.
+
+## 0.4.15 – Zeitbegrenzte Infomodus-Pause
+25 Sekunden ohne Eingabe beenden die Pause automatisch; kleiner Sekunden-Countdown neben der Steuerung, nur während der Pause sichtbar. Tastendruck, Klick, Berührung und Scrollen setzen die Frist zurück; reine Mausbewegung nicht. Manuelles Fortsetzen jederzeit möglich. Nach Ablauf läuft die verbleibende Anzeigezeit der aktuellen Infoseite weiter. Fester Seitenrahmen unverändert.

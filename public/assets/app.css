@@ -377,3 +377,8 @@ body.fixed-screen>main{grid-template-rows:26px minmax(0,1fr) 42px}
 #info-controls button:hover,#info-controls button:focus-visible{color:var(--cyan);border-color:var(--cyan);outline-color:var(--cyan)}
 #info-controls #info-toggle[aria-pressed="true"]{color:var(--cyan);border-color:var(--cyan);background:transparent}
 @media(max-width:700px){body.fixed-screen>main{grid-template-rows:23px minmax(0,1fr) 36px}.info-progress-row{gap:.4rem}#info-controls button{width:36px;min-width:36px;height:34px;min-height:34px}#info-controls button svg{width:19px;height:19px}}
+
+/* 0.4.15: inactivity countdown while the automatic information rotation is paused. */
+#info-countdown{display:inline-flex;align-items:center;justify-content:center;min-width:3.1em;height:24px;padding:0 .35rem;border:1px solid var(--line);border-radius:6px;color:var(--cyan);font-size:.75rem;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+#info-countdown[hidden]{display:none!important}
+@media(max-width:700px){#info-countdown{height:22px;font-size:.68rem;padding:0 .25rem}}
