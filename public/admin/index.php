@@ -63,12 +63,13 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             catch(InvalidArgumentException $e){$error=$e->getMessage();}
             catch(Throwable $e){$error='Speichern fehlgeschlagen. Ist die Vereinskennung bereits vergeben?';}
         }
-        if(in_array($action,['display-create','display-save','account','brand','content','media'],true)){
+        if(in_array($action,['display-create','display-save','account','brand','content','media','dining'],true)){
             try{
                 if($action==='account'){if($scope!==null)throw new InvalidArgumentException('Keine Berechtigung.');cd_account($db,(string)($_POST['club']??''),(string)($_POST['new_password']??''),isset($_POST['enabled']));}
                 elseif($action==='brand')cd_save_brand($db,$_POST,$_FILES['logo']??[],$scope);
                 elseif($action==='content')cd_save_content($db,$_POST,$scope);
                 elseif($action==='media')cd_media_save($db,$_POST,$_FILES['image']??[],$scope);
+                elseif($action==='dining')cd_dining_save($db,$_POST,$scope);
                 else cd_save_display($db,$_POST,$action==='display-create',$scope);
                 $_SESSION['flash']='Änderungen gespeichert.';header('Location: '.$portalUrl,true,303);exit;
             }catch(InvalidArgumentException $e){$error=$e->getMessage();}
@@ -143,6 +144,25 @@ function mediaField(array $c,array $row,string $csrf):void{ global $clubPortal,$
     <?php if($row['has_image']):?><button class="danger" name="intent" value="remove" formnovalidate>Bild entfernen</button><?php endif?>
     </form><?php
 }
+function diningHours(string $prefix,array $row):void{
+    $state=$row['state']??'unknown';$slots=$row['slots']??[];
+    ?><label>Status<select name="<?=cd_h($prefix)?>[state]"><?php foreach(['unknown'=>'Keine Angabe','closed'=>'Geschlossen','open'=>'Geöffnet'] as $k=>$v):?><option value="<?=$k?>" <?=$state===$k?'selected':''?>><?=$v?></option><?php endforeach?></select></label>
+    <?php foreach([1,2] as $i):?><label>Von <?=$i?><input type="time" name="<?=cd_h($prefix)?>[from<?=$i?>]" value="<?=cd_h($slots[$i-1]['from']??'')?>"></label><label>Bis <?=$i?><input type="time" name="<?=cd_h($prefix)?>[to<?=$i?>]" value="<?=cd_h($slots[$i-1]['to']??'')?>"></label><?php endforeach;
+}
+function diningField(array $club,array $d,string $csrf):void{
+    ?><form method="post" class="profile dining-form"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="dining"><input type="hidden" name="club" value="<?=cd_h($club['slug'])?>">
+    <h3 class="full">Kontaktdaten und Reservierung</h3>
+    <?php foreach(['name'=>'Name der Gastronomie','phone'=>'Telefon','website'=>'Website (HTTPS)','reservation_url'=>'Online-Reservierung (HTTPS)'] as $k=>$label):?><label><?=cd_h($label)?><input name="<?=$k?>" type="<?=in_array($k,['website','reservation_url'])?'url':($k==='phone'?'tel':'text')?>" value="<?=cd_h($d[$k]??'')?>"></label><?php endforeach?>
+    <label class="check"><input type="checkbox" name="reservation_onsite" <?=!empty($d['reservation_onsite'])?'checked':''?>> Reservierung vor Ort</label><label class="check"><input type="checkbox" name="reservation_phone" <?=!empty($d['reservation_phone'])?'checked':''?>> Telefonische Reservierung</label>
+    <label class="full">Allgemeine Hinweise<textarea name="note" maxlength="1500" rows="3"><?=cd_h($d['note']??'')?></textarea></label>
+    <h3 class="full">Reguläre Öffnungszeiten</h3><p class="full">Zwei Zeitfenster pro Tag möglich. Schließzeit nach Mitternacht durch eine frühere Uhrzeit angeben.</p>
+    <?php foreach(CD_DAYS as $i=>$day):?><div class="full dining-row"><strong><?=cd_h($day)?></strong><?php diningHours("hours[$i]",$d['hours'][$i]??[])?></div><?php endforeach?>
+    <h3 class="full">Sonderöffnungszeiten</h3><p class="full">Leere Datumsfelder werden nicht gespeichert. Ein Datum überschreibt später die regulären Zeiten.</p>
+    <?php $special=$d['special']??[];$special=array_pad($special,min(40,count($special)+3),[]);foreach($special as $i=>$row):?><div class="full dining-row"><label>Datum<input type="date" name="special[<?=$i?>][date]" value="<?=cd_h($row['date']??'')?>"></label><?php diningHours("special[$i]",$row)?><label class="full">Hinweis<input name="special[<?=$i?>][note]" maxlength="300" value="<?=cd_h($row['note']??'')?>"></label></div><?php endforeach?>
+    <h3 class="full">Wochenangebote</h3><p class="full">Zum Löschen Titel leeren. Weitere Felder erscheinen nach dem Speichern. Bilder können separat in den redaktionellen Gastronomieeinträgen hinterlegt werden.</p>
+    <?php $offers=$d['offers']??[];$offers=array_pad($offers,min(40,count($offers)+3),[]);foreach($offers as $i=>$row):?><div class="full dining-offer"><label>Wochentag<select name="offers[<?=$i?>][day]"><?php foreach(CD_DAYS as $k=>$day):?><option value="<?=$k?>" <?=$k===($row['day']??0)?'selected':''?>><?=cd_h($day)?></option><?php endforeach?></select></label><label>Gericht / Aktion<input name="offers[<?=$i?>][title]" maxlength="160" value="<?=cd_h($row['title']??'')?>"></label><label>Preis<input name="offers[<?=$i?>][price]" maxlength="80" value="<?=cd_h($row['price']??'')?>"></label><label>Gültig ab<input type="date" name="offers[<?=$i?>][starts]" value="<?=cd_h($row['starts']??'')?>"></label><label>Gültig bis<input type="date" name="offers[<?=$i?>][ends]" value="<?=cd_h($row['ends']??'')?>"></label><label>Hinweis<input name="offers[<?=$i?>][note]" maxlength="300" value="<?=cd_h($row['note']??'')?>"></label></div><?php endforeach?>
+    <button class="full">Gastronomiedaten speichern</button></form><?php
+}
 function contentField(array $c,string $kind,array $row,string $csrf):void{
     $existing=isset($row['id']);
     ?><form method="post" class="profile">
@@ -157,7 +177,7 @@ function contentField(array $c,string $kind,array $row,string $csrf):void{
     <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
     </form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=054"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=056"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
 <?php if(!$auth):?><section class="login"><h1><?=$clubPortal?'Vereinsadmin-Anmeldung':'Administrator-Anmeldung'?></h1><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="login"><?php if($clubPortal):?><?php if($fixedClub):?><p>NTC 93</p><?php else:?><label>Vereinskennung <input name="club_login" autocomplete="username" required></label><?php endif?><?php endif?><label>Passwort <input type="password" name="password" autocomplete="current-password" required></label><button>Anmelden</button></form></section>
@@ -172,6 +192,7 @@ function contentField(array $c,string $kind,array $row,string $csrf):void{
 <?php foreach(CD_CONTENT as $kind=>$label):if(!in_array($kind,json_decode($club['modules'],true)?:[],true))continue;$rows=cd_content_rows($db,$club['slug'],$kind);?><details class="subpanel"><summary><?=cd_h($label)?> <small><?=count($rows)?> Einträge</small></summary>
 <details class="entry"><summary>+ Eintrag anlegen</summary><?php contentField($club,$kind,[],$csrf)?></details>
 <?php foreach($rows as $row):?><details class="entry"><summary><?=cd_h($row['title'])?> <small><?=$row['enabled']?'Freigegeben':'Entwurf'?></small></summary><?php contentField($club,$kind,$row,$csrf);mediaField($club,$row,$csrf)?></details><?php endforeach?></details><?php endforeach?>
+<?php if(in_array('restaurant',json_decode($club['modules'],true)?:[],true)):?><details class="subpanel"><summary>Gastronomie · Öffnungszeiten & Wochenangebote</summary><?php diningField($club,cd_dining_get($db,$club['slug'],$scope),$csrf)?></details><?php endif?>
 <h2>Bildschirme</h2><p>Jeder Bildschirm erhält eigene Module, Betriebsart, Sprache und Wechselzeit. Noch keine Verbindung zum Live-Gerät.</p>
 <details class="subpanel"><summary>+ Bildschirm anlegen</summary><?php displayField($club,[],true,$csrf)?></details>
 <?php foreach($displays as $d):?><details class="subpanel"><summary><?=cd_h($d['name'])?> <small><?=cd_h($d['mode'])?> · <?=$d['enabled']?'Aktiv':'Deaktiviert'?> · Entwurf</small></summary><?php displayField($club,$d,false,$csrf)?></details><?php endforeach?>
