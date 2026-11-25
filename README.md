@@ -213,3 +213,6 @@ Pro Verein mit Gastronomiemodul: Name, Telefon, Website, Online-Reservierungslin
 - Hosting: PHP 8.2+ (unterstützte Version), PDO SQLite, GD, DOM/XML, cURL, FTPS, HTTPS, Apache .htaccess-Schutz und ausreichend geschützter Speicher. Vor regulärem Verkauf: Testgerät 48–72 Stunden im Dauerbetrieb, Anbieter-/Datenschutzfreigaben, Backup-Wiederherstellung, Support-/Vertragsprozesse und Sicherheitsabnahme.
 
 Links: Admin https://github.com/tennis-schiri/tennilo-clubdisplay/actions/workflows/deploy-admin.yml · Qualitätsprüfung https://github.com/tennis-schiri/tennilo-clubdisplay/actions/workflows/check-admin.yml.
+
+## Display 0.4.37 – Vereinsadmin außerhalb des Kiosks
+Der Vereinsadmin-Link wurde vollständig aus dem Footer beider öffentlichen Display-Versionen entfernt, auch außerhalb des Browser-Vollbilds. Der Vereinslogin auf der TENNILO-Produktseite und die direkten Admin-Adressen bleiben erhalten. Admin-PIN zur Vollbild-Freigabe unverändert.
