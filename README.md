@@ -122,3 +122,6 @@ Alle Logokarten einschließlich Finwire auf reinweißem Hintergrund. Keine dunkl
 
 ## 0.4.17 – Allianz-Logokarte
 Nur Allianz erhält einen zur Originalgrafik passenden hellgrauen Hintergrund. Beim NTC-Deployment wird der dominante helle neutrale Randfarbton der offiziellen JPEG-Datei ausgelesen und als CSS-Farbwert gesetzt; bei Abruf-/Analysefehler greift ein hellgrauer Ersatzwert (#ededed). Andere Sponsorenfelder bleiben reinweiß. Layout und Bildproportionen unverändert.
+
+## 0.4.18 – Sichtbarer Infomodus-Countdown
+Numerische Anzeige durchgehend sichtbar, normal „Weiter in: 12 s“, pausiert gelb/cyan hervorgehoben „Pause: 25 s“. Bei Eingabe während der Pause erneute 25 Sekunden; automatische Rückkehr zur verbleibenden Seitenzeit. Automatischer Test der tatsächlichen JS-Funktionen mit kontrollierter Uhr (Sichtbarkeit, Countdown, Zurücksetzen, Ablauf, manueller Seitenwechsel) läuft vor jedem Deployment. Grund für die bisherige fehlende sichtbare Anzeige am Zielgerät nicht unabhängig reproduziert.

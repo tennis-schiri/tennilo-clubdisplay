@@ -5,6 +5,7 @@ set -euo pipefail
 case "$DOMAIN" in clubdisplay.tennilo.de|clubdisplay.ntc93.de) ;; *) exit 1;; esac
 [[ "$FTP_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'FTP host must be a hostname'; exit 1; }
 node --check public/assets/app.js
+node tests/info-countdown-test.cjs
 php -l public/nuliga.php
 php tests/nuliga-test.php
 php -l public/events.php

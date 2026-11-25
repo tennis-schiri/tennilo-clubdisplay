@@ -344,13 +344,22 @@ function infoControls(){
 }
 function updateInfoCountdown(now=Date.now()){
   const counter=$('info-countdown');
-  const remaining=Math.max(0,Math.ceil((infoPauseUntil-now)/1000));
-  counter.hidden=view!=='info'||!infoPaused;
-  if(!counter.hidden){
-    const text=remaining+' s';
-    if(counter.textContent!==text)counter.textContent=text;
-    counter.title=tr('Automatische Fortsetzung in ','Automatic resume in ')+text;
+  counter.hidden=view!=='info';
+  if(counter.hidden)return;
+  const remaining=Math.max(0,Math.ceil((infoPaused?infoPauseUntil-now:dwell-(now-started))/1000));
+  const label=infoPaused?tr('Pause','Pause'):tr('Weiter in','Next in');
+  const text=label+': '+remaining+' s';
+  if(counter.textContent!==text)counter.textContent=text;
+  counter.dataset.paused=String(infoPaused);
+  counter.title=infoPaused?tr('Automatische Fortsetzung nach 25 Sekunden ohne Eingabe','Automatically resumes after 25 seconds of inactivity'):tr('Zeit bis zur nächsten Infoseite','Time until next info page');
+}
+function tickInfo(now=Date.now()){
+  if(infoPaused&&now>=infoPauseUntil){
+    started=now-infoElapsed;infoPaused=false;infoPauseUntil=0;
+    infoControls();
   }
+  if(!infoPaused&&now-started>=dwell)stepInfo(1);
+  updateInfoProgress(now);updateInfoCountdown(now);
 }
 function infoInput(){
   last=Date.now();
@@ -364,7 +373,7 @@ function stepInfo(direction){
   if(view!=='info')return;
   slide=(slide+direction+screens.length)%screens.length;
   started=Date.now();infoElapsed=0;
-  render();updateInfoProgress(started);
+  render();updateInfoProgress(started);updateInfoCountdown(started);
 }
 function toggleInfoPause(){
   if(view!=='info')return;
@@ -528,7 +537,7 @@ adminForm.addEventListener('submit',async e=>{
   finally{$('admin-submit').disabled=false;if(adminDialog.open)adminPin.focus();}
 });
 syncFullscreen();
-setInterval(()=>{const now=Date.now();clock();if(view==='info'&&infoPaused&&now>=infoPauseUntil){toggleInfoPause();}if(adminDialog.open)return;if(view==='info'){if(!infoPaused&&now-started>=dwell){stepInfo(1);}updateInfoProgress(now);updateInfoCountdown(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view==='info'){tickInfo(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);

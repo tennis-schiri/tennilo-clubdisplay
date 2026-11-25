@@ -16,8 +16,8 @@
     document.getElementById('favicon').href = 'assets/ntc93-logo.png';
   }
 </script>
-<link rel="stylesheet" href="assets/app.css?v=0417">
-<script defer src="assets/app.js?v=0417"></script>
+<link rel="stylesheet" href="assets/app.css?v=0418">
+<script defer src="assets/app.js?v=0418"></script>
 </head>
 <body class="fixed-screen">
 <header>
@@ -33,7 +33,7 @@
     <div id="progress" aria-hidden="true"></div>
     <div id="info-controls" role="group" aria-label="Informationsmodus" hidden>
       <span id="info-position" aria-live="off"></span>
-      <span id="info-countdown" aria-live="off" hidden>25 s</span>
+      <span id="info-countdown" aria-live="off" data-paused="false">Weiter in: 12 s</span>
       <button type="button" id="info-prev" data-action="info-prev" aria-label="Vorherige Infoseite"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
       <button type="button" id="info-toggle" data-action="info-toggle" aria-label="Automatik anhalten" aria-pressed="false"><svg id="info-pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg><svg id="info-play-icon" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="m9 5 11 7-11 7z" fill="currentColor" stroke="none"/></svg></button>
       <button type="button" id="info-next" data-action="info-next" aria-label="Nächste Infoseite"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
@@ -41,7 +41,7 @@
   </div>
 </main>
 <nav id="nav" aria-label="Menü"></nav>
-<footer><span id="notice"></span><span class="version">v0.4.17</span></footer>
+<footer><span id="notice"></span><span class="version">v0.4.18</span></footer>
 <dialog id="admin-dialog" aria-labelledby="admin-title">
   <form id="admin-form">
     <h2 id="admin-title">Admin-Freigabe</h2>
