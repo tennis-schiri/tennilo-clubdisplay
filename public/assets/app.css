@@ -683,3 +683,9 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 .restaurant-screen :is([data-restaurant-density="compact"],[data-restaurant-density="tight"]) .df-simple-phone strong{font-size:18px}
 .restaurant-screen :is([data-restaurant-density="compact"],[data-restaurant-density="tight"]) .df-simple-phone span{font-size:9px}
 }
+
+/* Demo-only link to the product page, without adding a header row. */
+.brand .brand-subline{display:flex;align-items:center;flex-wrap:wrap;gap:.25rem .75rem;min-width:0}
+.brand .product-link{display:inline-flex;align-items:center;color:var(--cyan);font-size:clamp(.68rem,1vw,.9rem);font-weight:750;text-decoration:underline;text-underline-offset:3px;line-height:1.25;white-space:nowrap}
+.brand .product-link[hidden],html[data-club="ntc"] .brand .product-link{display:none!important}
+.brand .product-link:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
