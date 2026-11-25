@@ -588,3 +588,9 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:100%;display:fle
   .df-display-today{font-size:.46rem;padding:3px 4px}
   .df-holiday-panel .df-info-row{padding:.2rem .3rem;border-radius:6px}
 }
+
+/* 0.4.28: prominent homepage address and all three reservation options. */
+.df-simple-phone .df-reservation-options{font-size:clamp(.68rem,1.15vw,1.05rem);font-weight:650;color:#fff5e7;letter-spacing:0;margin-top:.22rem}
+.df-simple-footer{align-items:center;flex-wrap:wrap}
+.df-website-address{font:400 clamp(1.1rem,2.1vw,2rem)/1.15 Georgia,'Times New Roman',serif;color:var(--df-wine-dark);overflow-wrap:anywhere;text-align:right}
+@media(max-width:700px){.df-simple-phone .df-reservation-options{font-size:.58rem}.df-website-address{font-size:clamp(.85rem,3.3vw,1.15rem)}.df-simple-footer{gap:.2rem}}

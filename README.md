@@ -152,3 +152,6 @@ Keine großformatigen Fotos oder Werbeslogans. Original-Logo und Telefonnummer p
 
 ## 0.4.27 – Due Fratelli im originalen Homepage-Stil
 Drei ruhige Informationsspalten beibehalten. Originale Dolce-Vita-Farben aus der Website: Weinrot/Gold für Wochenaktionen, Creme für reguläre Zeiten, Tannengrün/Gold für den Feiertagsbereich; Georgia-Überschriften, Arial-Informationstexte, weiche Rundungen. Italienische Wochentagslabels und automatische HEUTE-Markierung wie auf der Homepage. Original-Logo jetzt von der in astro.config.mjs ausgewiesenen offiziellen Subdomain neu.due-fratelli-neuenhagen.de. Keine zusätzlichen Fotos; keine Änderung der übrigen ClubDisplay-Ansichten. Live-Sichtprüfung ausstehend.
+
+## 0.4.28 – Due Fratelli: Reservierung und Webadresse
+Webadresse deutlich größer in der Fußzeile der Restaurantfolie. Reservierungshinweis vor Ort, telefonisch oder online im bestehenden Kontaktfeld, zweisprachig. Webadresse bleibt für den Infomodus reiner Anzeigetext, ohne externe Navigation. Sonst unverändertes Layout. Visuelle Live-Prüfung ausstehend.
