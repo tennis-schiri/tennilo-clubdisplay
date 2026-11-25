@@ -43,7 +43,12 @@ jobs:
           upload public/admin/lib.php admin/lib.php
           upload public/admin/admin.css admin/admin.css
           upload "$tmp/index.php" admin/index.php
-          curl --fail --silent --show-error --max-time 30 "https://clubdisplay.tennilo.de/admin/" -o "$tmp/login"
+          status="$(curl --silent --show-error --max-time 30 --write-out '%{http_code}' "https://clubdisplay.tennilo.de/admin/?run=${GITHUB_RUN_ID}" -o "$tmp/login")"
+          if [[ "$status" != 200 ]]; then
+            diagnostic="$(grep -Ex 'CD_ADMIN_(HASH|STORAGE_CONFIG|STORAGE_DIRECTORY|STORAGE_PERMISSIONS|STORAGE_NOT_PRIVATE|SQLITE_DRIVER|DATABASE_INIT)' "$tmp/login" || true)"
+            echo "::error::Admin HTTPS status $status; diagnostic: ${diagnostic:-UNKNOWN}"
+            exit 1
+          fi
           grep -Fq 'Administrator-Anmeldung' "$tmp/login"
           ! grep -Fq 'TENNILO · Kundenverwaltung' "$tmp/login"
           ! grep -Fq 'Bildschirm anlegen' "$tmp/login"
