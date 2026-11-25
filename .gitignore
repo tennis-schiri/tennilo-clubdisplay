@@ -1,0 +1,9 @@
+# Never commit local configuration, credentials or private data.
+.env
+.env.*
+config.local.php
+data/
+*.sqlite
+*.sqlite3
+*.log
+node_modules/
