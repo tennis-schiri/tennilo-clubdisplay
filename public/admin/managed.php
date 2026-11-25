@@ -177,7 +177,7 @@ function cd_billing_csv(PDO $db,$out):void{
     fputcsv($out,['Verein','Vereinskennung','Lizenz','Gerätekontingent','Vertrag','Intervall','Verlängerung','Betrag je Intervall EUR','Einrichtung EUR','Preisbasis','Rechnungsreferenz','Zahlungsstatus'],';','"','');
     foreach($db->query('SELECT slug,name,plan FROM clubs ORDER BY name') as $c){
         $a=cd_contract($db,$c['slug']);$b=cd_billing($db,$c['slug']);
-        $row=[$c['name'],$c['slug'],$c['plan'],(string)$a['screen_limit'],$a['state'],$a['cycle'],$a['renewal'],cd_amount_text($b['recurring_cents']===null?null:(int)$b['recurring_cents']),cd_amount_text($b['setup_cents']===null?null:(int)$b['setup_cents']),$b['basis'],$b['invoice_ref'],$b['payment_state']];
+        $row=[$c['name'],$c['slug'],cd_plan_label($c['plan']),(string)$a['screen_limit'],$a['state'],$a['cycle'],$a['renewal'],cd_amount_text($b['recurring_cents']===null?null:(int)$b['recurring_cents']),cd_amount_text($b['setup_cents']===null?null:(int)$b['setup_cents']),$b['basis'],$b['invoice_ref'],$b['payment_state']];
         fputcsv($out,array_map('cd_csv_text',$row),';','"','');
     }
 }
