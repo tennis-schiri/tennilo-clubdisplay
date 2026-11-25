@@ -81,6 +81,13 @@ post "$other" "$base?device=1" 403 -H 'Content-Type: application/json' --data "{
 get "$op" "$base" 200; t="$(csrf)"
 post "$op" "$base" 200 --data-urlencode "csrf=$t" -d 'action=backup'
 php -r '$d=new PDO("sqlite:".$argv[1]);if($d->query("PRAGMA integrity_check")->fetchColumn()!=="ok")exit(1);' "$tmp/body"
+mkdir -p "$tmp/private-backups"
+cp deploy/backup-admin.php "$tmp/www/clubdisplay-admin/backup-admin.php"
+php "$tmp/www/clubdisplay-admin/backup-admin.php" "$tmp/private-backups"
+backup="$(find "$tmp/private-backups" -name 'clubdisplay-*.sqlite' -print -quit)"
+[[ -n "$backup" ]]
+php -r '$d=new PDO("sqlite:".$argv[1]);if($d->query("PRAGMA integrity_check")->fetchColumn()!=="ok"||$d->query("SELECT COUNT(*) FROM club_content")->fetchColumn()!=1)exit(1);' "$backup"
+if php "$tmp/www/clubdisplay-admin/backup-admin.php" "$tmp/www" 2>/dev/null; then echo 'Backup allowed in webroot'; exit 1; fi
 get "$other" "$base?player=1" 200
 grep -Fq 'player.js' "$tmp/body"
 echo "HTTP login, CSRF, tenant isolation, real image upload, preview, pairing, revocation, backup passed."
