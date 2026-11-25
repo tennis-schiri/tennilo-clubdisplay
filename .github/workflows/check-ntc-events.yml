@@ -35,6 +35,9 @@ jobs:
               with urllib.request.urlopen(req,timeout=55) as res:
                   return json.load(res)
           from html import unescape
+          import re
+          def normalized(s):
+              return ''.join(c for c in unescape(str(s)).casefold() if c.isalnum())
           from zoneinfo import ZoneInfo
           for label,url in [
               ('WordPress','https://ntc93.com/wp-json/tribe/events/v1/events?'+urllib.parse.urlencode({'start_date':str(day)+' 00:00:00','end_date':str(day)+' 23:59:59','per_page':50})),
@@ -47,7 +50,9 @@ jobs:
                       print('Fetched at:',dt.datetime.fromtimestamp(data['fetchedAt'],ZoneInfo('Europe/Berlin')).isoformat())
                   if data.get('from') or data.get('to'):
                       print('Range:',data.get('from'),data.get('to'))
-                  matches=[e for e in events if title in unescape(str(e.get('title',''))).casefold() and str(e.get('start',e.get('start_date',''))).startswith(str(day))]
+                  for e in events[:30]:
+                      print(label, 'EVENT:',json.dumps({k:e.get(k) for k in ['title','start','start_date','end','end_date'] if k in e},ensure_ascii=False))
+                  matches=[e for e in events if normalized(title) in normalized(e.get('title','')) and str(e.get('start',e.get('start_date',''))).startswith(str(day))]
                   print(label, 'MATCH' if matches else 'NOT FOUND')
                   for e in matches:
                       print(json.dumps({k:e.get(k) for k in ['title','start','start_date','end','end_date','url'] if k in e},ensure_ascii=False))
