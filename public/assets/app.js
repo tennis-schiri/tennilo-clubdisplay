@@ -44,12 +44,6 @@ function fixtureCourtNumbers(raw){
   }
   return [...new Set(numbers)];
 }
-function matchPageSize(){
-  if(innerWidth<700)return 3;
-  if(innerHeight<760)return 4;
-  if(innerHeight<1020)return 5;
-  return 6;
-}
 function matchView(){
   const d=leagueData, info=view==='info', filter=info?'home':matchFilter;
   const headings={home:tr('Nächste Heimspiele','Upcoming home matches'),away:tr('Nächste Auswärtsspiele','Upcoming away matches'),all:tr('Alle kommenden Spiele','All upcoming matches'),results:tr('Letzte Ergebnisse','Recent results')};
@@ -65,9 +59,8 @@ function matchView(){
   const future=m=>m.date.slice(0,10)>=day;
   let rows=d.matches.filter(m=>filter==='results'?!!m.score:future(m)&&!m.score&&(filter==='all'||(filter==='home'?m.isHome:!m.isHome)));
   if(filter==='results')rows=rows.slice().reverse();
-  const size=matchPageSize(), pages=Math.max(1,Math.ceil(rows.length/size)), page=info?0:Math.min(matchPage,pages-1);
   if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine passenden Begegnungen im von nuLiga gelieferten Zeitraum.','No matching fixtures in the period supplied by nuLiga.')+'</p>'+(d.range?'<p>'+esc(d.range.from)+' – '+esc(d.range.to)+'</p>':'')+'</div>'+source;
-  const cards=rows.slice(page*size,(page+1)*size).map(m=>{
+  const cards=rows.map(m=>{
     const when=new Date(m.date),locale=lang==='de'?'de-DE':'en-GB',zone='Europe/Berlin';
     const weekday=when.toLocaleDateString(locale,{timeZone:zone,weekday:'long'});
     const dayLabel=when.toLocaleDateString(locale,{timeZone:zone,day:'2-digit',month:'2-digit'});
@@ -79,7 +72,7 @@ function matchView(){
     const meta='<span class="fixture-side">'+(m.isHome?tr('Heimspiel','Home match'):tr('Auswärtsspiel','Away match'))+'</span>'+(venueLabel?'<span>'+tr('Platzanlage','Venue')+': <strong>'+esc(venueLabel)+'</strong></span>':'');
     return '<article class="fixture-card"><time class="fixture-date-block" datetime="'+esc(m.date)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(dayLabel)+'</strong><span class="fixture-time">'+esc(timeLabel)+(lang==='de'?' Uhr':'')+'</span></time>'+courtStrip+'<div class="fixture-content"><div class="fixture-top"><span class="fixture-identity">'+esc(identity.team)+'</span>'+(identity.league?'<span class="fixture-league">'+esc(identity.league)+'</span>':'')+'</div><div class="fixture-pair"><strong class="fixture-team '+(m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.home))+'</strong><span class="fixture-versus">–</span><strong class="fixture-team '+(!m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.away))+'</strong></div><div class="fixture-details">'+meta+'</div></div><div class="fixture-result"><span>'+tr('Ergebnis','Result')+'</span><strong class="'+(m.score?'fixture-result-value':'fixture-result-pending')+'">'+(m.score?esc(m.score):'– : –')+'</strong></div></article>';
   }).join('');
-  const pagination=!info&&pages>1?'<div class="actions match-pages"><button data-action="match-prev" '+(page===0?'disabled':'')+'>‹</button><span>'+(page+1)+' / '+pages+'</span><button data-action="match-next" '+(page===pages-1?'disabled':'')+'>›</button></div>':'';
+  const pagination='<div class="actions match-pages"><button data-action="match-prev" aria-label="'+tr('Vorherige Seite','Previous page')+'">‹</button><span class="match-page-number"></span><button data-action="match-next" aria-label="'+tr('Nächste Seite','Next page')+'">›</button></div>';
   return title+warning+'<div class="fixture-list">'+cards+'</div>'+pagination+source;
 }
 async function refreshLeague(){
@@ -193,9 +186,10 @@ function inspectRadarImage(){
   img.addEventListener('load',check,{once:true});
   if(img.complete)check();
 }
+let weatherPage='all';
 function weatherView(){
   const w=weatherData,c=w?.current,s=w?.sun,d=w?.daily||[],h=w?.hourly||[];
-  const head='<div class="wx-title"><h1>'+tr('Wetter','Weather')+'</h1><span>Neuenhagen bei Berlin</span></div>';
+  const head='<div class="wx-title"><h1>'+tr('Wetter','Weather')+'</h1><span>Neuenhagen bei Berlin</span><div class="wx-pages" role="group" aria-label="'+tr('Wetteransichten','Weather views')+'">'+[['all',tr('Übersicht','Overview')],['now',tr('Aktuell','Current')],['hours',tr('12 Stunden','12 hours')],['days',tr('7 Tage','7 days')],['radar',tr('Radar','Radar')]].map(([k,label])=>'<button data-action="weather-page:'+k+'" aria-pressed="'+(weatherPage===k)+'">'+label+'</button>').join('')+'</div></div>';
   const source='<p class="match-source">'+tr('Quelle: Deutscher Wetterdienst · über Bright Sky · Sonnenzeiten berechnet','Source: German Weather Service · via Bright Sky · calculated solar times')+(w?.fetchedAt?' · '+tr('Abruf','Fetched')+' '+wxTime(w.fetchedAt):'')+'</p>';
   if(!w||w.status==='unavailable')return head+'<div class="panel">'+tr(w?'Wetterdaten derzeit nicht verfügbar.':'Wetterdaten werden geladen …',w?'Weather currently unavailable.':'Loading weather …')+'</div>'+source;
   const warn=w.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Wetterdaten – Aktualisierung fehlgeschlagen.','Cached weather – update failed.')+'</p>':'';
@@ -214,7 +208,7 @@ function weatherView(){
 
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen sind noch Beispiele · Buchung über eBuSy.','Club news is still sample data · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');let html='';
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('fixed-screen',active==='teams'||active==='weather');let html='';
 switch(active){
 case 'welcome':html=hero(l.welcome,l.intro,(pilot?'<div class="panel"><h2>'+tr('Außenplätze','Outdoor courts')+'</h2><p>'+tr('Aktuelle Belegung im eBuSy-Buchungsplan.','Current availability in the eBuSy booking plan.')+'</p><div class="actions">'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary large')+'</div></div>':panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available])));break;
 case 'home':html='<h1>'+l.welcome+'</h1><p>'+l.intro+'</p><div class="grid">'+[['courts',l.booking],['calendar',l.upcoming],['teams',l.matches],['weather',tr('Wetter','Weather')],['news',l.announcements]].map(([k,v])=>button(v,k,'tile large')).join('')+'</div>';break;
@@ -225,10 +219,94 @@ case 'weather':html=weatherView();if(!radarBusy)refreshRadar();break;
 case 'news':html='<h1>'+l.announcements+'</h1><div class="grid">'+l.newsItems.map(n=>'<article class="panel"><h2>'+n+'</h2><p>'+l.newsText+'</p></article>').join('')+'</div>';break;
 case 'partner':html=hero(l.partner,l.partnerText);break;
 }
-$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';$('screen').innerHTML=html;if(active==='weather')inspectRadarImage();clock();}
+$('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';$('screen').innerHTML=(active==='teams'||active==='weather')?'<div class="fit-content">'+html+'</div>':html;if(active==='teams'||active==='weather')fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
+
+// Allocate space using rendered content, not viewport-size guesses. Recompute on resize and data changes.
+function fitActiveScreen(){
+  const screen=$('screen'), content=screen.querySelector('.fit-content');
+  if(!content)return;
+  content.style.transform='';content.style.width='100%';
+  screen.dataset.weatherLayout='';
+  const available=screen.clientHeight;
+  if(available<=0)return;
+  if(document.body.classList.contains('match-screen')){
+    const list=content.querySelector('.fixture-list'),pager=content.querySelector('.match-pages');
+    if(list&&pager){
+      const cards=Array.from(list.children);
+      for(const card of cards)card.hidden=false;
+      pager.hidden=false;
+      const gap=parseFloat(getComputedStyle(list).rowGap)||0;
+      // Include all actual rendered chrome (heading, filter, source, pagination, margins).
+      const total=content.getBoundingClientRect().height;
+      const budget=Math.max(1,available-(total-list.getBoundingClientRect().height)-4);
+      const groups=[];let group=[],used=0;
+      for(const card of cards){
+        const height=card.getBoundingClientRect().height;
+        if(group.length&&used+gap+height>budget){groups.push(group);group=[];used=0;}
+        used+=(group.length?gap:0)+height;group.push(card);
+      }
+      if(group.length)groups.push(group);
+      const page=view==='info'?0:Math.max(0,Math.min(matchPage,groups.length-1));
+      if(view!=='info')matchPage=page;
+      const shown=new Set(groups[page]||[]);
+      for(const card of cards)card.hidden=!shown.has(card);
+      pager.hidden=groups.length<=1||view==='info';
+      pager.querySelector('.match-page-number').textContent=(page+1)+' / '+groups.length;
+      pager.querySelector('[data-action="match-prev"]').disabled=page<=0;
+      pager.querySelector('[data-action="match-next"]').disabled=page>=groups.length-1;
+    }
+  }else{
+    const layout=content.querySelector('.wx-layout'), controls=content.querySelector('.wx-pages');
+    if(layout&&controls){
+      const panels={now:layout.querySelector('.wx-current'),hours:layout.querySelector('.wx-hours'),days:layout.querySelector('.wx-daily'),radar:layout.querySelector('.wx-radar')};
+      const map=layout.querySelector('.wx-radar-map');
+      if(map){
+        map.style.width='';
+        // Size the square map by the remaining vertical space; never stretch its projection.
+        const panel=panels.radar;
+        const overhead=panel.getBoundingClientRect().height-map.getBoundingClientRect().height;
+        const chrome=content.getBoundingClientRect().height-layout.getBoundingClientRect().height;
+        map.style.width=Math.max(80,Math.min(map.clientWidth,available-chrome-overhead-8))+'px';
+      }
+      // Keep the full dashboard whenever it fits. Otherwise expose full-sized pages.
+      const needsPages=screen.clientWidth<920||content.getBoundingClientRect().height>available-2;
+      const selected=view==='info'?'all':weatherPage;
+      let shown=selected;
+      if(needsPages&&selected==='all')shown='now';
+      screen.dataset.weatherLayout=shown;
+      controls.hidden=!needsPages&&selected==='all';
+      for(const [key,panel] of Object.entries(panels))if(panel)panel.hidden=shown!=='all'&&shown!==key;
+      for(const button of controls.querySelectorAll('button')){
+        const key=button.dataset.action.split(':')[1];
+        button.hidden=key==='all'&&needsPages;
+        button.setAttribute('aria-pressed',String(key===shown));
+      }
+      if(map&&shown==='radar'){
+        map.style.width='';
+        const overhead=panels.radar.getBoundingClientRect().height-map.getBoundingClientRect().height;
+        const chrome=content.getBoundingClientRect().height-layout.getBoundingClientRect().height;
+        map.style.width=Math.max(80,Math.min(map.clientWidth,available-chrome-overhead-8))+'px';
+      }
+    }
+  }
+  // Extreme viewport sizes and unusually long names: keep all remaining content visible.
+  const natural=content.getBoundingClientRect().height;
+  if(natural>available&&natural>0){
+    const scale=available/natural;
+    content.style.transform='scale('+scale+')';
+  }
+}
+let fitFrame=0;
+function scheduleScreenFit(){
+  cancelAnimationFrame(fitFrame);
+  fitFrame=requestAnimationFrame(()=>{
+    if(document.body.classList.contains('fixed-screen'))render();
+  });
+}
+
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
-function go(next){if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
-document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-unlock'&&pilot&&view==='courts'&&courtMode==='outdoor'){openAdmin('terminal');}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
+function go(next){if(next==='weather'&&view!=='weather')weatherPage='all';if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info')slide=0;render();}
+document.addEventListener('click',e=>{last=Date.now();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-unlock'&&pilot&&view==='courts'&&courtMode==='outdoor'){openAdmin('terminal');}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{last=Date.now();});
 $('language').addEventListener('click',()=>{if(pilot&&view==='courts'&&courtMode==='outdoor')return;lang=lang==='de'?'en':'de';message='';render();});
 const adminDialog=$('admin-dialog'), adminForm=$('admin-form'), adminPin=$('admin-pin'), adminStatus=$('admin-status');
@@ -274,6 +352,7 @@ adminForm.addEventListener('submit',async e=>{
 });
 syncFullscreen();
 setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view==='info'){if(now-started>=dwell){slide=(slide+1)%screens.length;started=now;render();}$('progress').style.setProperty('--progress',Math.min(100,(now-started)/dwell*100)+'%');}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
-let lastMatchSize=matchPageSize();
-window.addEventListener('resize',()=>{const size=matchPageSize();if(size!==lastMatchSize){lastMatchSize=size;if(view==='teams'||(view==='info'&&screens[slide]==='teams')){matchPage=0;render();}}});
+window.addEventListener('resize',scheduleScreenFit);
+document.addEventListener('fullscreenchange',scheduleScreenFit);
+if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
 render();refreshLeague();refreshEvents();refreshWeather();setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);

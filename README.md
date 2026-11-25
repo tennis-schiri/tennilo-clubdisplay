@@ -74,3 +74,6 @@ Fest eingestellter Demo-/Pilotstandort Neuenhagen bei Berlin (52.5333, 13.6833; 
 
 ## 0.4.1 – Radar mit Grundkarte
 Amtliche basemap.de Web Raster (BKG) als eigene WMS-Ebene, DWD RV-Radar darüber. Identische EPSG:4326-Box und PNG-Abmessungen, sichtbare Namensnennung und Standortmarkierung. Getrennte Servercaches (Karte 24h, Radar 5 min); expliziter Fehlerstatus statt grauer Fläche. Vollständig transparente Radarbilder werden als ohne sichtbare Echos gekennzeichnet, nicht als garantierte Regenfreiheit. Keine externen Navigationslinks im NTC-Kiosk; Quellen-URLs dort als Text. Live-Erreichbarkeit beider WMS-Dienste und Kartenbild noch zu prüfen.
+
+## 0.4.2 – Ansichten ohne vertikales Scrollen
+Mannschaften und Wetter belegen die verfügbare Viewporthöhe mit sichtbarer Kopfzeile und Navigation. Begegnungsseiten werden anhand der tatsächlich gemessenen Kartenhöhen gebildet, nicht anhand einer festen Anzahl; CD-M04c bleibt unverändert. Wetter mit kompakter Gesamtübersicht und bedarfsabhängigen Reitern für aktuell, Stunden, Tage und Radar. Radar bleibt quadratisch und passt in die Resthöhe. Sehr kleine Fenster oder außergewöhnlich lange Inhalte werden als letzte Rückfallebene proportional verkleinert. Neuberechnung bei Fenstergröße, Vollbild und Datenaktualisierung. Browserprüfung am tatsächlichen Touchscreen noch erforderlich.
