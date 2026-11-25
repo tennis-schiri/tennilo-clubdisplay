@@ -1,0 +1,56 @@
+name: NTC – Terminübernahme prüfen (kein Upload)
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Termindatum (YYYY-MM-DD)'
+        required: true
+        default: '2027-03-04'
+      title:
+        description: 'Suchwort im Titel'
+        required: true
+        default: 'Regelworkshop'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-ntc-events.yml'
+permissions:
+  contents: read
+jobs:
+  calendar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: WordPress-Quelle und Display-Feed vergleichen
+        env:
+          EVENT_DATE: ${{ inputs.date || '2027-03-04' }}
+          EVENT_TITLE: ${{ inputs.title || 'Regelworkshop' }}
+        run: |
+          python3 - <<'PY'
+          import datetime as dt, json, os, urllib.request, urllib.parse
+          day=dt.date.fromisoformat(os.environ['EVENT_DATE'])
+          title=os.environ['EVENT_TITLE'].casefold()
+          def fetch(url):
+              req=urllib.request.Request(url,headers={'User-Agent':'TENNILO ClubDisplay calendar diagnostic','Cache-Control':'no-cache'})
+              with urllib.request.urlopen(req,timeout=55) as res:
+                  return json.load(res)
+          from html import unescape
+          from zoneinfo import ZoneInfo
+          for label,url in [
+              ('WordPress','https://ntc93.com/wp-json/tribe/events/v1/events?'+urllib.parse.urlencode({'start_date':str(day)+' 00:00:00','end_date':str(day)+' 23:59:59','per_page':50})),
+              ('ClubDisplay','https://clubdisplay.ntc93.de/events.php')]:
+              try:
+                  data=fetch(url)
+                  events=data.get('events',[])
+                  print(label, 'status:',data.get('status','HTTP 200'),'method:',data.get('method','REST'),'count:',len(events))
+                  if data.get('fetchedAt'):
+                      print('Fetched at:',dt.datetime.fromtimestamp(data['fetchedAt'],ZoneInfo('Europe/Berlin')).isoformat())
+                  if data.get('from') or data.get('to'):
+                      print('Range:',data.get('from'),data.get('to'))
+                  matches=[e for e in events if title in unescape(str(e.get('title',''))).casefold() and str(e.get('start',e.get('start_date',''))).startswith(str(day))]
+                  print(label, 'MATCH' if matches else 'NOT FOUND')
+                  for e in matches:
+                      print(json.dumps({k:e.get(k) for k in ['title','start','start_date','end','end_date','url'] if k in e},ensure_ascii=False))
+              except Exception as e:
+                  print(label, 'CHECK ERROR:', type(e).__name__,str(e)[:200])
+          PY
