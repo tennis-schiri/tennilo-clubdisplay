@@ -36,6 +36,8 @@ t="$(csrf)"
 post "$op" "$base" 303 --data-urlencode "csrf=$t" -d 'action=account&club=ntc93&new_password=test-club-password-123456&enabled=1'
 get "$op" "$base" 200; t="$(csrf)"
 post "$op" "$base" 303 --data-urlencode "csrf=$t" -d 'action=display-create&club=ntc93&slug=hall&name=Hall&mode=INFO&language=de&dwell=12&enabled=1&modules[]=welcome&modules[]=news'
+get "$op" "$base" 200; t="$(csrf)"
+post "$op" "$base" 303 --data-urlencode "csrf=$t" -d 'action=display-create&club=ntc93&slug=restaurant&name=Restaurant&mode=INFO&language=de&dwell=12&enabled=1&modules[]=welcome&modules[]=news'
 # Operator cookie must not grant access to the club portal.
 get "$op" "$base?portal=club" 200
 grep -Fq 'Vereinsadmin-Anmeldung' "$tmp/body"
@@ -50,7 +52,7 @@ post "$club" "$url" 200 --data-urlencode "csrf=$t" -d 'action=contract&club=ntc9
 grep -Fq 'Nur TENNILO darf Vertragsdaten ändern.' "$tmp/body"
 post "$club" "$url" 403 -d 'action=logout&csrf=wrong'
 get "$club" "$url" 200; t="$(csrf)"
-post "$club" "$url" 303 --data-urlencode "csrf=$t" -d 'action=content&club=ntc93&kind=news&id=0&title=HTTP-Test&body=%3Cscript%3Eexample%3C%2Fscript%3E&enabled=1'
+post "$club" "$url" 303 --data-urlencode "csrf=$t" -d 'action=content&club=ntc93&kind=news&id=0&title=HTTP-Test&body=%3Cscript%3Eexample%3C%2Fscript%3E&enabled=1&audience=selected&targets[]=hall'
 get "$club" "$url" 200; t="$(csrf)"
 id="$(php -r '$db=new PDO("sqlite:".$argv[1]);echo $db->query("SELECT id FROM club_content")->fetchColumn();' "$tmp/www/clubdisplay-admin/clubdisplay-admin.sqlite")"
 php -r '$i=imagecreatetruecolor(10,10);imagepng($i,$argv[1]);' "$tmp/image.png"
@@ -58,6 +60,9 @@ post "$club" "$url" 303 -F "csrf=$t" -F action=media -F club=ntc93 -F "id=$id" -
 get "$club" "$url&media=$id&club=ntc93" 200
 cmp "$tmp/body" "$tmp/image.png" >/dev/null || php -r 'if(getimagesize($argv[1])["mime"]!=="image/png")exit(1);' "$tmp/body"
 get "$club" "$url&preview-data=1&club=tennilo-demo&screen=hall" 404
+get "$club" "$url&preview-data=1&club=ntc93&screen=restaurant" 200
+php -r '$s=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if($s["screen"]!=="Restaurant"||count($s["content"])!==0)exit(1);' "$tmp/body"
+get "$club" "$url&preview-data=1&club=ntc93&screen=restaurant&image=$id" 404
 get "$club" "$url&preview-data=1&club=ntc93&screen=hall" 200
 php -r '$s=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if($s["screen"]!=="Hall"||$s["content"][0]["title"]!=="HTTP-Test"||!$s["content"][0]["has_image"])exit(1);' "$tmp/body"
 get "$club" "$url" 200; t="$(csrf)"
