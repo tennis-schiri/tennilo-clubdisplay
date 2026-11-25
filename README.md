@@ -53,3 +53,6 @@ NTC: Außenplätze bleiben interaktives PIN-Buchungsterminal (1731). Halle (3076
 
 ## 0.3.6 – Begegnungsansicht
 Einheitliche, volle Breite nutzende Spielkarten: gut lesbares Datum und Uhrzeit oben, Liga und Heim/Auswärts rechts, Mannschaft und horizontale Begegnung darunter, Platzanlage und verfügbare Platznummern als gemeinsame Zusatzzeile. Nicht gelieferte Platznummern werden nicht als vermeintliche Zuordnung angezeigt. Seitengröße bei Desktop abhängig von Fensterhöhe (2/3/4), mobil 3. Kompakter Kopfbereich nur in der Spielansicht. NTC- und TENNILO-Farben bleiben erhalten.
+
+## 0.3.7 – Kompakte Begegnungen
+Datum/Uhrzeit, Mannschaft, Liga und Heim/Auswärts in einer gemeinsamen Kopfzeile; Paarung und vorhandene Platzinformationen direkt darunter. Kein künstlicher Abstand zwischen den Informationsgruppen. Reduzierte Kartenabstände, 3–6 Begegnungen je Seite abhängig von der Fensterhöhe (mobil 3). Namen bleiben nebeneinander, Umbruch innerhalb langer Namen möglich.

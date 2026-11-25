@@ -95,3 +95,23 @@ html[data-club="ntc"] .fixture-card{background:linear-gradient(110deg,#105356,#0
 .match-screen nav{padding:.65rem 3vw}
 @media(max-width:699px){.match-heading{align-items:flex-start}.match-heading h1{font-size:1.8rem}.fixture-card{padding:.75rem}.fixture-pair{grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);font-size:clamp(1.05rem,4vw,1.4rem)}.fixture-date{font-size:1.15rem}.fixture-tags{margin-left:0}.match-screen header{padding:.7rem 1rem}.match-screen main{padding:.8rem 1rem}.match-screen nav{padding:.5rem 1rem}}
 @media(min-width:700px) and (max-height:849px){.match-screen header{padding:.55rem 3vw}.match-screen main{padding:.65rem 3vw .4rem}.match-heading{margin-bottom:.55rem}.fixture-card{padding:.65rem 1rem}.fixture-list{gap:.6rem}.match-screen nav{padding:.5rem 3vw}}
+
+/* 0.3.7: dense two-line fixtures, without isolated metadata columns. */
+.match-screen main{padding:.7rem 3vw .45rem;gap:.4rem}
+.match-heading{margin-bottom:.55rem}
+.fixture-list{gap:.45rem}
+.fixture-card{padding:.5rem .9rem;gap:.4rem;border-radius:10px;box-shadow:none}
+.fixture-top{justify-content:flex-start;gap:.35rem .85rem;align-items:center}
+.fixture-date{font-size:clamp(1.15rem,1.65vw,1.75rem);line-height:1.15;flex-shrink:0}
+.fixture-identity{font-size:clamp(1.05rem,1.55vw,1.55rem);color:var(--ink);font-weight:750;line-height:1.15;border-left:1px solid var(--line);padding-left:.8rem}
+.fixture-tags{gap:.35rem}
+.fixture-tag{padding:.1rem .45rem}
+.fixture-bottom{display:flex;align-items:baseline;flex-wrap:wrap;gap:.25rem 1.1rem;min-width:0}
+.fixture-pair{display:flex;flex:0 1 auto;min-width:0;align-items:baseline;gap:clamp(.4rem,.85vw,.85rem);font-size:clamp(1.3rem,2vw,2.15rem);line-height:1.13}
+.fixture-team{flex:0 1 auto;min-width:0;overflow-wrap:anywhere;hyphens:auto}
+.fixture-versus{flex:0 0 auto}
+.fixture-details{margin:0;align-items:baseline;gap:.2rem .85rem;font-size:clamp(.85rem,1.05vw,1.05rem);line-height:1.2}
+.fixture-details:not(:empty){padding-left:1rem;border-left:1px solid var(--line)}
+.match-screen .match-pages{margin:.4rem 0 .1rem}
+.match-screen .match-source{margin:.15rem 0}
+@media(max-width:699px){.match-screen main{padding:.7rem 1rem}.fixture-card{padding:.6rem .75rem}.fixture-top{gap:.35rem .5rem}.fixture-date{font-size:1.12rem}.fixture-identity{font-size:1.05rem;padding-left:.5rem}.fixture-pair{font-size:clamp(1.1rem,4vw,1.4rem);width:100%}.fixture-details:not(:empty){border:0;padding:0}}
