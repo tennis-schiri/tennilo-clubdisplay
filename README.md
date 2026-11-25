@@ -86,3 +86,6 @@ Logo/Vereinsname, umrandeter Datums-/Uhrzeitblock, Wetterblock, Sprach- und Voll
 
 ## 0.4.5 – Direkte Außenplatzbuchung
 Zusätzliche ClubDisplay-Terminalfreigabe entfernt. Bei gesetztem NTC_EBUSY_CLIENT_ID wird das eBuSy-Freiplatzterminal 1731 direkt eingebettet, die Mitgliederanmeldung übernimmt eBuSy. Admin-PIN nur zum Verlassen des Vollbildmodus. Keine Client-ID im Git-Quellcode; bei öffentlich erreichbarer NTC-Seite ist die Terminaladresse jedoch für jeden Besucher technisch abrufbar. Vor regulärem Einsatz eBuSy-seitige Beschränkung der Terminal-ID auf den Vereinsstandort bzw. Schutz des NTC-Displays auf Netzwerkebene prüfen. Hallenansicht unverändert.
+
+## 0.4.6 – Einheitlicher Kopf und Platzansicht
+Flache Kopfzeile der Wetteransicht auf allen Reitern; Logo, Datum/Uhrzeit und Wetter unverändert angeordnet. Plätze belegen exakt den verbleibenden Flex-Bereich zwischen Kopf und Navigation, ohne bisherige feste Mindesthöhe des iframes. Kompakte Umschaltung und Hallen-Statuszeile. Fenstergrößenänderungen passen den iframe per CSS an, ohne laufende Buchungen neu zu laden. Kein vertikales Scrollen der ClubDisplay-Hülle; Scrollverhalten innerhalb der fremden eBuSy-Seite ist durch deren eigenes Layout bestimmt. Buchungsfunktion und Hallen-Anzeigesperre unverändert.

@@ -66,8 +66,8 @@ html[data-club="ntc"] .match-teams .own-team,html[data-club="ntc"] .match-meta .
 
 
 /* 0.3.9: approved CD-M04, full-width match cards with date block and result. */
-.match-screen header{padding:.65rem 3vw}
-html[data-club="ntc"] .match-screen .brand img{width:clamp(64px,5.5vw,90px);height:clamp(64px,5.5vw,90px)}
+header{padding:.65rem 3vw}
+html[data-club="ntc"] .brand img{width:clamp(64px,5.5vw,90px);height:clamp(64px,5.5vw,90px)}
 .match-screen main{padding:.75rem 3vw .45rem;gap:.45rem}
 .match-screen #screen{min-height:0}
 .match-heading{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin:0 0 .65rem}
@@ -103,7 +103,7 @@ html[data-club="ntc"] .fixture-date-block{background:#f7dc14;color:#073538}
 .match-screen .match-pages button{min-height:44px;padding:.3rem .9rem}
 .match-screen .match-source{margin:.15rem 0;font-size:.72rem}
 .match-screen nav{padding:.5rem 3vw}
-@media(max-width:699px){.match-screen header{padding:.65rem 1rem}.match-screen main{padding:.7rem 1rem}.match-screen nav{padding:.5rem 1rem}.match-heading h1{font-size:1.8rem}.fixture-card{grid-template-columns:clamp(64px,21vw,105px) minmax(0,1fr) clamp(55px,16vw,80px)}.fixture-date-block{padding:.45rem .15rem}.fixture-weekday{font-size:clamp(.5rem,2.25vw,.75rem)}.fixture-day{font-size:clamp(1.05rem,4.7vw,1.8rem)}.fixture-time{font-size:clamp(.68rem,2.8vw,1rem)}.fixture-content{padding:.5rem .4rem;gap:.35rem}.fixture-identity{font-size:.95rem}.fixture-league{font-size:.75rem}.fixture-pair{font-size:clamp(.85rem,3.4vw,1.25rem);gap:.25rem}.fixture-details{font-size:.7rem;justify-content:flex-start}.fixture-result{padding:.25rem;gap:.2rem}.fixture-result span{font-size:.65rem}.fixture-result strong{font-size:clamp(.9rem,3.5vw,1.35rem)}}
+@media(max-width:699px){header{padding:.65rem 1rem}.match-screen main{padding:.7rem 1rem}.match-screen nav{padding:.5rem 1rem}.match-heading h1{font-size:1.8rem}.fixture-card{grid-template-columns:clamp(64px,21vw,105px) minmax(0,1fr) clamp(55px,16vw,80px)}.fixture-date-block{padding:.45rem .15rem}.fixture-weekday{font-size:clamp(.5rem,2.25vw,.75rem)}.fixture-day{font-size:clamp(1.05rem,4.7vw,1.8rem)}.fixture-time{font-size:clamp(.68rem,2.8vw,1rem)}.fixture-content{padding:.5rem .4rem;gap:.35rem}.fixture-identity{font-size:.95rem}.fixture-league{font-size:.75rem}.fixture-pair{font-size:clamp(.85rem,3.4vw,1.25rem);gap:.25rem}.fixture-details{font-size:.7rem;justify-content:flex-start}.fixture-result{padding:.25rem;gap:.2rem}.fixture-result span{font-size:.65rem}.fixture-result strong{font-size:clamp(.9rem,3.5vw,1.35rem)}}
 
 
 /* 0.3.11: approved CD-M04c. Compact four-part fixture with separate court strip. */
@@ -156,9 +156,9 @@ html[data-club="ntc"] .fixture-court-strip{background:#c6ae10;color:#073538;--co
 /* 0.4.2: viewport-fitted kiosk screens; pagination instead of vertical scrolling. */
 body.fixed-screen{height:100dvh;min-height:0;overflow:hidden}
 .fixed-screen header,.fixed-screen nav,.fixed-screen footer{flex:0 0 auto}
-.fixed-screen header{padding:.55rem 3vw;gap:.7rem}
-html[data-club="ntc"] .fixed-screen .brand img{width:clamp(48px,5vw,78px);height:clamp(48px,5vw,78px)}
-html[data-club="ntc"] .fixed-screen .brand .ntc-brand-title{font-size:clamp(1.3rem,2.5vw,2.65rem)}
+header{padding:.55rem 3vw;gap:.7rem}
+html[data-club="ntc"] .brand img{width:clamp(48px,5vw,78px);height:clamp(48px,5vw,78px)}
+html[data-club="ntc"] .brand .ntc-brand-title{font-size:clamp(1.3rem,2.5vw,2.65rem)}
 .fixed-screen main{flex:1 1 0;min-height:0;padding:.5rem 3vw .35rem;gap:.3rem}
 .fixed-screen main>.eyebrow,.fixed-screen #progress{flex:0 0 auto}
 .fixed-screen #screen{flex:1 1 0;min-height:0;position:relative;overflow:hidden}
@@ -199,7 +199,7 @@ html[data-club="ntc"] .fixed-screen .brand .ntc-brand-title{font-size:clamp(1.3r
 #screen[data-weather-layout="hours"] .wx-hour-list{grid-template-columns:repeat(6,minmax(0,1fr));row-gap:.5rem}
 #screen[data-weather-layout="days"] .wx-day-list{grid-template-columns:repeat(7,minmax(0,1fr))}
 @media(max-width:919px){.weather-screen .wx-layout{grid-template-columns:1fr}.weather-screen .wx-hour-list{grid-template-columns:repeat(6,minmax(0,1fr))}.weather-screen .wx-day-list{grid-template-columns:repeat(4,minmax(0,1fr))}#screen[data-weather-layout="days"] .wx-day-list{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:700px){.fixed-screen header{padding:.4rem .6rem;gap:.35rem}.fixed-screen .brand{flex-basis:100%}.fixed-screen main{padding:.35rem .6rem;gap:.25rem}.fixed-screen nav{padding:.3rem .6rem;gap:.25rem}.fixed-screen nav button{font-size:.75rem;min-height:36px;padding:.25rem .4rem}.fixed-screen footer{padding:.2rem .6rem;font-size:.6rem}.fixed-screen .tag{font-size:.65rem}.fixed-screen .match-heading .tabs button{min-height:36px;font-size:.8rem;padding:.3rem .5rem}.fixed-screen .fixture-content{padding:.3rem .3rem}.fixed-screen .fixture-date-block{padding:.25rem .1rem}.wx-pages{margin-left:0}.wx-pages button{font-size:.73rem;min-height:34px;padding:.2rem .4rem}.weather-screen .wx-current{grid-template-columns:1fr}.weather-screen .wx-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){header{padding:.4rem .6rem;gap:.35rem}.fixed-screen .brand{flex-basis:100%}.fixed-screen main{padding:.35rem .6rem;gap:.25rem}.fixed-screen nav{padding:.3rem .6rem;gap:.25rem}.fixed-screen nav button{font-size:.75rem;min-height:36px;padding:.25rem .4rem}.fixed-screen footer{padding:.2rem .6rem;font-size:.6rem}.fixed-screen .tag{font-size:.65rem}.fixed-screen .match-heading .tabs button{min-height:36px;font-size:.8rem;padding:.3rem .5rem}.fixed-screen .fixture-content{padding:.3rem .3rem}.fixed-screen .fixture-date-block{padding:.25rem .1rem}.wx-pages{margin-left:0}.wx-pages button{font-size:.73rem;min-height:34px;padding:.2rem .4rem}.weather-screen .wx-current{grid-template-columns:1fr}.weather-screen .wx-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* 0.4.3: expanded weather strip; date/time at the outer right, separate from controls. */
 header{gap:clamp(.6rem,1.15vw,1.25rem)}
@@ -227,3 +227,25 @@ header .clock strong{font-size:clamp(1.4rem,2.3vw,2.4rem);line-height:1.05}
 header .clock span{font-size:clamp(.65rem,.85vw,.85rem);white-space:nowrap}
 @media(max-width:1000px){header .clock{padding:.3rem .5rem}header .clock span{white-space:normal;text-align:center;max-width:145px}}
 @media(max-width:700px){header .clock{order:1;flex:0 0 auto;padding:.25rem .4rem;max-width:125px}header .clock strong{font-size:1.25rem}header .clock span{font-size:.65rem}header #weather-head{order:2;flex:1 1 auto}header .tools{order:3}}
+
+/* 0.4.6: identical compact header on every view, and remaining-height court terminal. */
+body>header{flex:0 0 auto;padding:.55rem 3vw;gap:.7rem;min-width:0}
+body>header .brand{min-width:0}
+body>header .brand img{max-height:78px}
+html[data-club="ntc"] body>header .brand img{width:clamp(48px,5vw,78px);height:clamp(48px,5vw,78px)}
+html[data-club="ntc"] body>header .brand .ntc-brand-title{font-size:clamp(1.3rem,2.5vw,2.65rem)}
+body>header .clock,body>header #weather-head{align-self:stretch}
+body.court-screen{height:100dvh;min-height:0;overflow:hidden}
+.court-screen #screen{display:flex;flex-direction:column;gap:.4rem;min-height:0;overflow:hidden}
+.court-screen .booking-head{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-start;gap:.5rem;flex-wrap:wrap}
+.court-screen .booking-head h1{font-size:clamp(1.55rem,2.7vw,2.8rem);margin:0;line-height:1.1}
+.court-screen .booking-head>button{order:2;margin-left:auto;min-height:40px;padding:.35rem .75rem}
+.court-screen .court-switch{flex:1 1 360px;max-width:700px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.35rem;margin:0}
+.court-screen .court-switch button{min-height:42px;padding:.35rem .65rem;font-size:clamp(.85rem,1.2vw,1.2rem)}
+.court-screen .booking-frame{flex:1 1 0;width:100%;height:100%;min-height:0;max-height:100%;margin:0;border-radius:10px;display:block}
+.court-screen .hall-readonly{display:flex;flex:1 1 0;min-height:0;flex-direction:column;gap:.35rem}
+.court-screen .hall-frame-wrap{flex:1 1 0;min-height:0;display:flex}
+.court-screen .hall-frame{height:100%;min-height:0}
+.court-screen .hall-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex:0 0 auto;color:var(--muted);font-size:.8rem}
+.court-screen .hall-toolbar button{min-height:38px;padding:.3rem .65rem;font-size:.8rem}
+@media(max-width:700px){body>header{padding:.4rem .6rem;gap:.35rem}.court-screen .booking-head h1{font-size:1.5rem}.court-screen .court-switch{flex-basis:100%;max-width:none;order:3}.court-screen .booking-head>button{min-height:34px}.court-screen .court-switch button{min-height:36px;font-size:.78rem;padding:.25rem .35rem}}
