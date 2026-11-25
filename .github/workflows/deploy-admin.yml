@@ -19,6 +19,7 @@ jobs:
         run: |
           php -l public/admin/index.php
           php -l public/admin/lib.php
+          php -r 'if(!extension_loaded("gd")){fwrite(STDERR,"GD required for media tests\n");exit(1);}'
           php tests/admin-test.php
       - name: Nur Admin-Dateien per FTPS übertragen
         env:
