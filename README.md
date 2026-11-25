@@ -95,3 +95,6 @@ Termine im CD-M04c-Stil mit identischem Datumsblock (ausgeschriebener Wochentag,
 
 ## 0.4.8 – Einheitlicher Seitenrahmen
 Ein einziger viewportgebundener CSS-Grid-Rahmen für sämtliche Ansichten einschließlich Start, Vereinsinfos, Sponsoren und Infomodus. Feste Kopf-, Status-, Navigations- und Fußzeilenabmessungen pro Bildschirmgröße; ausschließlich der mittlere Bereich variiert inhaltlich. Gleich breite Navigationsbuttons mit konstanter Schriftstärke/Höhe verhindern Umbrüche beim Reiterwechsel. Alle nicht eingebetteten Inhalte nutzen vorhandene Höhenanpassung, Mannschaften und Termine weiterhin dynamische Seiteneinteilung. eBuSy-Frames behalten native Größe und werden bei Größenänderungen nicht neu geladen; internes eBuSy-Scrolling bleibt außerhalb der Kontrolle. Visuelle Kontrolle am Zielgerät ausstehend.
+
+## 0.4.9 – Terminkarten: Zeitraum und Ort
+Zeitspanne bzw. Enddatum und Veranstaltungsort als eigene, leicht dunklere Felder am rechten Kartenrand. Titel bleibt links neben dem gelben Datumsblock; bei mehrtägigen Terminen bleibt der Datumsbereich zusätzlich unter dem Titel sichtbar. Mobile Ansicht stapelt die beiden Metafelder platzsparend. Keine Änderung am festen Seitenrahmen.

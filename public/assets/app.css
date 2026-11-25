@@ -294,3 +294,13 @@ body.fixed-screen .court-screen .fit-content{flex:0 0 auto}
   body.fixed-screen>nav button{height:36px;min-height:36px;font-size:.75rem;padding:.2rem}
   body.fixed-screen>footer{height:24px;min-height:24px;padding:.2rem .6rem;font-size:.6rem}
 }
+
+/* 0.4.9: event time and venue occupy lightly shaded columns at the right. */
+.event-screen .event-card{grid-template-columns:clamp(112px,14vw,190px) minmax(0,1fr) minmax(0,40%);align-items:stretch}
+.event-screen .event-card-linked{grid-template-columns:clamp(112px,14vw,190px) minmax(0,1fr) minmax(0,36%) auto}
+.event-meta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);min-width:0;border-left:1px solid var(--line);background:#0002}
+.event-meta-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;padding:.4rem .7rem;text-align:center;min-width:0}
+.event-meta-cell+.event-meta-cell{border-left:1px solid var(--line)}
+.event-meta-cell>span{font-size:clamp(.7rem,1vw,.95rem);color:var(--muted);font-weight:600}
+.event-meta-cell>strong{font-size:clamp(.9rem,1.4vw,1.45rem);line-height:1.2;color:var(--ink);font-weight:750;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+@media(max-width:699px){.event-screen .event-card,.event-screen .event-card-linked{grid-template-columns:clamp(62px,18vw,100px) minmax(0,1fr) minmax(0,40%)}.event-meta{grid-template-columns:minmax(0,1fr)}.event-meta-cell{padding:.22rem .3rem;gap:.08rem}.event-meta-cell+.event-meta-cell{border-left:0;border-top:1px solid var(--line)}.event-meta-cell>span{font-size:.6rem}.event-meta-cell>strong{font-size:.75rem}.event-card>.event-link{grid-column:2/-1;justify-self:end}}
