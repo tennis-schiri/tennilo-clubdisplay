@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'public/**'
+      - 'scripts/deploy.sh'
       - '.github/workflows/deploy-ntc.yml'
 permissions:
   contents: read
@@ -11,13 +13,8 @@ concurrency:
   group: clubdisplay-ntc
   cancel-in-progress: false
 jobs:
-  register:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    steps:
-      - run: echo 'Workflow eingerichtet. Kein automatischer Upload.'
   deploy:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

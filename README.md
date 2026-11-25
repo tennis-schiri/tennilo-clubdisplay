@@ -12,7 +12,7 @@ Copyright © 2026 TENNILO. Alle Rechte vorbehalten, soweit nicht anders angegebe
 - Admin-Backend, Schnittstellen und produktive Buchung folgen nach Abstimmung.
 
 ## Veröffentlichung
-Nur manuell über Actions: Deploy TENNILO bzw. Deploy NTC. Nur main.
+Automatischer Upload auf beide Umgebungen bei Änderungen an public/ oder dem Deployment-Skript auf main; Änderungen am jeweiligen Workflow lösen dessen Upload aus. Manueller Start über Actions weiterhin möglich (nur main).
 FTP-Zugang muss auf die jeweilige Subdomain begrenzt sein. HTTPS-Prüfung des
 Zielverzeichnisses über eine harmlose Prüfdatei vor Übertragung der Anwendung.
 Die beiden Umgebungen werden unabhängig voneinander veröffentlicht.
