@@ -22,6 +22,33 @@ if(is_link($dir.'/clubdisplay-admin.sqlite'))cd_unavailable('STORAGE_NOT_PRIVATE
 if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true))cd_unavailable('SQLITE_DRIVER');
 umask(0077);
 try{$db=cd_db($dir.'/clubdisplay-admin.sqlite');}catch(Throwable $e){cd_unavailable('DATABASE_INIT');}
+// Device traffic never uses an administrator session. The key travels in a POST body.
+if(isset($_GET['device'])){
+    header('Content-Type: application/json; charset=utf-8');
+    if($_SERVER['REQUEST_METHOD']!=='POST'||!str_starts_with($_SERVER['CONTENT_TYPE']??'','application/json')){http_response_code(405);echo '{"error":"method"}';exit;}
+    $raw=file_get_contents('php://input',false,null,0,4097);
+    if(!is_string($raw)||strlen($raw)>4096){http_response_code(413);exit;}
+    $input=json_decode($raw,true);$a=cd_device_auth($db,is_array($input)?($input['token']??null):null);
+    if(!$a){http_response_code(403);echo '{"error":"access"}';exit;}
+    try{
+        if(($input['action']??'')==='image'){
+            $image=cd_snapshot_image($db,$a['club'],$a['display'],$a['club'],$input['id']??null);
+            if($image===null){http_response_code(404);exit;}
+            header('Content-Type: image/png');echo $image;exit;
+        }
+        if(($input['action']??'')!=='snapshot'){http_response_code(400);exit;}
+        $snapshot=cd_snapshot_feeds($db,cd_snapshot($db,$a['club'],$a['display'],$a['club']),$a['club']);
+        if(!cd_device_auth($db,$input['token'])){http_response_code(403);exit;}
+        cd_device_seen($db,$a,is_string($input['version']??null)?$input['version']:'unknown');
+        echo json_encode($snapshot,JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE);
+    }catch(Throwable $e){http_response_code(503);echo '{"error":"unavailable"}';}
+    exit;
+}
+if(isset($_GET['player'])){
+    if($_SERVER['REQUEST_METHOD']!=='GET'){http_response_code(405);exit;}
+    header("Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+    require __DIR__.'/player.php';exit;
+}
 ini_set('session.use_strict_mode','1');
 $clubPortal=isset($_GET['portal'])&&$_GET['portal']==='club';
 $fixedClub=$clubPortal&&($_GET['verein']??'')==='ntc93'?'ntc93':null;
@@ -31,6 +58,7 @@ session_set_cookie_params(['lifetime'=>0,'path'=>'/admin/','secure'=>true,'httpo
 session_start();
 if(isset($_SESSION['last'])&&time()-$_SESSION['last']>1800){$_SESSION=[];session_regenerate_id(true);}
 if(!empty($_SESSION['auth'])&&isset($_SESSION['club'])){ $account=cd_account_row($db,(string)$_SESSION['club']); if(!$account||!$account['enabled']||!hash_equals((string)($_SESSION['account_version']??''),hash('sha256',$account['password_hash']))){$_SESSION=[];session_regenerate_id(true);} }
+if(!empty($_SESSION['auth'])&&!isset($_SESSION['club'])&&!hash_equals(hash('sha256',$hash),(string)($_SESSION['operator_version']??''))){$_SESSION=[];session_regenerate_id(true);}
 if(!empty($_SESSION['auth'])&&($clubPortal?(!isset($_SESSION['club'])||($fixedClub!==null&&$_SESSION['club']!==$fixedClub)):isset($_SESSION['club']))){$_SESSION=[];session_regenerate_id(true);}
 $_SESSION['csrf']??=bin2hex(random_bytes(32));
 $scope=isset($_SESSION['club'])?(string)$_SESSION['club']:null;
@@ -54,7 +82,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             elseif($allowed){$q=$db->prepare('INSERT INTO login_attempts VALUES (?,1,?) ON CONFLICT(ip) DO UPDATE SET count=count+1');$q->execute([$ip,$now]);}
             $db->exec('COMMIT');
         }catch(Throwable $e){$db->exec('ROLLBACK');http_response_code(503);exit('Login momentan nicht verfügbar.');}
-        if($valid){session_regenerate_id(true);$_SESSION=['auth'=>true,'last'=>$now,'csrf'=>bin2hex(random_bytes(32))];if($clubLogin!==''){$_SESSION['club']=$clubLogin;$_SESSION['account_version']=hash('sha256',$candidate);}header('Location: '.$portalUrl,true,303);exit;}
+        if($valid){session_regenerate_id(true);$_SESSION=['auth'=>true,'last'=>$now,'csrf'=>bin2hex(random_bytes(32))];if($clubLogin!==''){$_SESSION['club']=$clubLogin;$_SESSION['account_version']=hash('sha256',$candidate);}else{$_SESSION['operator_version']=hash('sha256',$hash);}header('Location: '.$portalUrl,true,303);exit;}
         $error='Anmeldung fehlgeschlagen oder vorübergehend gesperrt.';
     }elseif(!empty($_SESSION['auth'])){
         if($action==='logout'){$_SESSION=[];session_destroy();header('Location: '.$portalUrl,true,303);exit;}
@@ -63,13 +91,32 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             catch(InvalidArgumentException $e){$error=$e->getMessage();}
             catch(Throwable $e){$error='Speichern fehlgeschlagen. Ist die Vereinskennung bereits vergeben?';}
         }
-        if(in_array($action,['display-create','display-save','account','brand','content','media','dining'],true)){
+        if(in_array($action,['display-create','display-save','account','brand','content','media','dining','sources','contract','device-issue','device-revoke','backup'],true)){
             try{
                 if($action==='account'){if($scope!==null)throw new InvalidArgumentException('Keine Berechtigung.');cd_account($db,(string)($_POST['club']??''),(string)($_POST['new_password']??''),isset($_POST['enabled']));}
                 elseif($action==='brand')cd_save_brand($db,$_POST,$_FILES['logo']??[],$scope);
                 elseif($action==='content')cd_save_content($db,$_POST,$scope);
                 elseif($action==='media')cd_media_save($db,$_POST,$_FILES['image']??[],$scope);
                 elseif($action==='dining')cd_dining_save($db,$_POST,$scope);
+                elseif($action==='sources')cd_save_sources($db,$_POST,$scope);
+                elseif($action==='contract')cd_save_contract($db,$_POST,$scope);
+                elseif($action==='device-issue'||$action==='device-revoke'){
+                    $club=cd_text($_POST['club']??'',50,true);$slug=cd_text($_POST['slug']??'',50,true);
+                    if($action==='device-issue'){
+                        $token=cd_device_issue($db,$club,$slug,$scope);
+                        $_SESSION['device_link']='https://clubdisplay.tennilo.de/admin/?player=1#'.$token;
+                    }else cd_device_revoke($db,$club,$slug,$scope);
+                }
+                elseif($action==='backup'){
+                    if($scope!==null)throw new InvalidArgumentException('Nur TENNILO darf Sicherungen erstellen.');
+                    $file=$dir.'/backup-'.bin2hex(random_bytes(16)).'.sqlite';
+                    try{
+                        $db->exec('VACUUM INTO '.$db->quote($file));
+                        header('Content-Type: application/octet-stream');header('Content-Disposition: attachment; filename="clubdisplay-backup-'.gmdate('Y-m-d-His').'.sqlite"');header('Content-Length: '.filesize($file));
+                        readfile($file);
+                    }finally{if(is_file($file))@unlink($file);}
+                    exit;
+                }
                 else cd_save_display($db,$_POST,$action==='display-create',$scope);
                 $_SESSION['flash']='Änderungen gespeichert.';header('Location: '.$portalUrl,true,303);exit;
             }catch(InvalidArgumentException $e){$error=$e->getMessage();}
@@ -78,6 +125,24 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }
 }
 $auth=!empty($_SESSION['auth']);if($auth)$_SESSION['last']=time();
+if(isset($_GET['preview'])||isset($_GET['preview-data'])){
+    if(!$auth){http_response_code(403);exit;}
+    try{
+        $club=cd_text($_GET['club']??'',50,true);$slug=cd_text($_GET['screen']??'',50,true);cd_display($db,$club,$slug,$scope);
+        if(isset($_GET['preview-data'])){
+            if(isset($_GET['image'])){
+                $image=cd_snapshot_image($db,$club,$slug,$scope,$_GET['image']);
+                if($image===null){http_response_code(404);exit;}
+                header('Content-Type: image/png');echo $image;exit;
+            }
+            header('Content-Type: application/json; charset=utf-8');
+            session_write_close();echo json_encode(cd_snapshot_feeds($db,cd_snapshot($db,$club,$slug,$scope),$club),JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE);exit;
+        }
+        $previewUrl=$portalUrl.($clubPortal?'&':'?').'preview-data=1&club='.rawurlencode($club).'&screen='.rawurlencode($slug);
+        header("Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+        require __DIR__.'/player.php';exit;
+    }catch(Throwable $e){http_response_code(404);exit;}
+}
 if(isset($_GET['media'])){
     if(!$auth){http_response_code(404);exit;}
     try{$club=cd_text($_GET['club']??'',50,true);$id=filter_var($_GET['media'],FILTER_VALIDATE_INT);if(!$id||$id<1)throw new RuntimeException('Bild fehlt.');$png=cd_media_get($db,$club,$id,$scope);if($png===null)throw new RuntimeException('Bild fehlt.');header('Content-Type: image/png');echo $png;exit;}
@@ -144,6 +209,32 @@ function mediaField(array $c,array $row,string $csrf):void{ global $clubPortal,$
     <?php if($row['has_image']):?><button class="danger" name="intent" value="remove" formnovalidate>Bild entfernen</button><?php endif?>
     </form><?php
 }
+function sourceField(array $c,array $rows,string $csrf,?string $scope):void{
+    $modules=json_decode($c['modules'],true)?:[];
+    ?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="sources"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>">
+    <p class="full">Externe Quellen werden erst nach Prüfung aktiviert. Referenzen sind nur Dokumentation; keine Zugangsdaten eintragen. Die vorhandenen NTC-Feeds können durch TENNILO freigeschaltet werden.</p>
+    <?php foreach(CD_SOURCE_MODULES as $kind=>$label):if(!in_array($kind,$modules,true))continue;$row=$rows[$kind]??[];$options=['manual'=>'Manuell / keine Schnittstelle','pending'=>'Prüfung erforderlich'];if($c['slug']==='ntc93'&&$kind!=='courts'&&($scope===null||($row['provider']??'')==='ntc-feed'))$options['ntc-feed']='NTC · vorhandener Feed';?>
+    <label><?=cd_h($label)?><select name="sources[<?=$kind?>][provider]"><?php foreach($options as $k=>$v):?><option value="<?=$k?>" <?=($row['provider']??'manual')===$k?'selected':''?>><?=cd_h($v)?></option><?php endforeach?></select></label>
+    <label>Referenz / Vereinskennung<input name="sources[<?=$kind?>][reference]" maxlength="500" value="<?=cd_h($row['reference']??'')?>"></label><?php endforeach?>
+    <button>Quellen speichern</button></form><?php
+}
+function contractField(array $c,array $a,string $csrf):void{
+    ?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="contract"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>">
+    <label>Freigeschaltete Geräte<input type="number" name="screen_limit" min="1" max="100" required value="<?=(int)$a['screen_limit']?>"></label>
+    <label>Vertragsstatus<select name="state"><?php foreach(['pilot'=>'Pilot','active'=>'Aktiv','paused'=>'Gesperrt'] as $k=>$v):?><option value="<?=$k?>" <?=$a['state']===$k?'selected':''?>><?=$v?></option><?php endforeach?></select></label>
+    <label>Abrechnungsintervall<select name="cycle"><?php foreach(['none'=>'Keine / Pilot','monthly'=>'Monatlich','yearly'=>'Jährlich'] as $k=>$v):?><option value="<?=$k?>" <?=$a['cycle']===$k?'selected':''?>><?=$v?></option><?php endforeach?></select></label>
+    <label>Nächste Verlängerung<input type="date" name="renewal" value="<?=cd_h($a['renewal'])?>"></label>
+    <label class="full">Interne Notiz<textarea name="note" maxlength="1000" rows="3"><?=cd_h($a['note'])?></textarea></label><p class="full">Reine Vertragsverwaltung; keine Rechnungsstellung, kein Zahlungsverkehr. Sperre stoppt neue Geräteabrufe.</p><button>Vertrag speichern</button></form><?php
+}
+function deviceField(PDO $db,array $c,array $d,string $csrf,string $portalUrl):void{
+    $a=cd_device_status($db,$c['slug'],$d['slug']);$seen=$a['last_seen']??null;$online=$seen&&time()-(int)$seen<=180;
+    $url=$portalUrl.(str_contains($portalUrl,'?')?'&':'?').'preview=1&club='.rawurlencode($c['slug']).'&screen='.rawurlencode($d['slug']);
+    ?><div class="device-panel"><p><strong><?=$a?($online?'Online':'Offline / noch nicht verbunden'):'Nicht gekoppelt'?></strong><?php if($seen):?> · Letzter Kontakt <?=cd_h((new DateTimeImmutable('@'.$seen))->setTimezone(new DateTimeZone('Europe/Berlin'))->format('d.m.Y H:i:s'))?> · Version <?=cd_h($a['version'])?><?php endif?></p>
+    <a class="admin-action" href="<?=cd_h($url)?>" target="_blank" rel="noopener noreferrer">Bildschirmvorschau öffnen</a>
+    <form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>"><input type="hidden" name="slug" value="<?=cd_h($d['slug'])?>">
+    <button name="action" value="device-issue" <?=$d['enabled']?'':'disabled'?>><?=$a?'Neuen Geräteschlüssel erzeugen':'Gerät koppeln'?></button><?php if($a):?><button class="danger" name="action" value="device-revoke">Gerätezugang widerrufen</button><?php endif?></form>
+    <p>Ein neuer Schlüssel ersetzt den alten. Die angezeigte Geräteadresse ist vertraulich und darf nur am vorgesehenen Gerät hinterlegt werden.</p></div><?php
+}
 function diningHours(string $prefix,array $row):void{
     $state=$row['state']??'unknown';$slots=$row['slots']??[];
     ?><label>Status<select name="<?=cd_h($prefix)?>[state]"><?php foreach(['unknown'=>'Keine Angabe','closed'=>'Geschlossen','open'=>'Geöffnet'] as $k=>$v):?><option value="<?=$k?>" <?=$state===$k?'selected':''?>><?=$v?></option><?php endforeach?></select></label>
@@ -177,24 +268,26 @@ function contentField(array $c,string $kind,array $row,string $csrf):void{
     <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
     </form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=056"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=060"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
+<?php if($auth&&!empty($_SESSION['device_link'])):$deviceLink=$_SESSION['device_link'];unset($_SESSION['device_link']);?><section class="panel"><h2>Geräteadresse · nur einmal sichtbar</h2><p>Vertraulich behandeln und am Bildschirm öffnen. Bei Verlust einen neuen Schlüssel erzeugen.</p><input readonly value="<?=cd_h($deviceLink)?>" aria-label="Geräteadresse"><a class="admin-action" href="<?=cd_h($deviceLink)?>" target="_blank" rel="noopener noreferrer">Gerät öffnen</a></section><?php endif?>
 <?php if(!$auth):?><section class="login"><h1><?=$clubPortal?'Vereinsadmin-Anmeldung':'Administrator-Anmeldung'?></h1><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="login"><?php if($clubPortal):?><?php if($fixedClub):?><p>NTC 93</p><?php else:?><label>Vereinskennung <input name="club_login" autocomplete="username" required></label><?php endif?><?php endif?><label>Passwort <input type="password" name="password" autocomplete="current-password" required></label><button>Anmelden</button></form></section>
 <?php else:$clubs=$scope===null?$db->query('SELECT * FROM clubs ORDER BY name')->fetchAll():[cd_club($db,$scope)];?>
 <div class="head"><div><h1><?=$scope===null?'TENNILO · Kundenverwaltung':'Vereinsbackend'?></h1><p><?=count($clubs)?> Vereinsprofile · Konfigurationsentwürfe</p></div><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="logout"><button>Abmelden</button></form></div>
-<p class="note">Diese Profile sind noch nicht mit den laufenden Displays verbunden. Änderungen beeinflussen weder den NTC-Piloten noch die öffentliche Demo. Es werden keine realen Buchungsdaten gespeichert.</p>
+<p class="note">Neue gekoppelte Geräte verwenden diese Konfiguration. Bestehende NTC- und Demo-Displays bleiben unverändert. Das verwaltete Display ist zunächst eine reine Anzeige ohne Buchungsfunktion.</p>
+<?php if($scope===null):?><details class="panel"><summary>Datensicherung</summary><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="backup"><p>Vollständige SQLite-Sicherung mit vertraulichen Daten. Verschlüsselt und zugriffsgeschützt aufbewahren.</p><button>Sicherung herunterladen</button></form></details><?php endif?>
 <?php if($scope===null):?><details class="panel"><summary>+ Neuen Verein anlegen</summary><?php field([],true,$csrf)?></details><?php endif?>
 <?php foreach($clubs as $club):$displays=cd_displays($db,$club['slug']);?><details class="panel" <?=$scope!==null?'open':''?>><summary><?=cd_h($club['name'])?> <small><?=cd_h($club['plan'])?> · <?=count($displays)?> Bildschirme</small></summary>
-<?php if($scope===null):?><details class="subpanel"><summary>Vereinsprofil & Lizenz</summary><?php field($club,false,$csrf)?></details><details class="subpanel"><summary>Vereinszugang</summary><?php accountField($club,cd_account_row($db,$club['slug']),$csrf)?></details><?php endif?>
-<h2>Gemeinsame Vereinsinhalte</h2><p>Einmal pflegen, später auf allen dafür konfigurierten Bildschirmen nutzen. Aktuell nur Entwürfe.</p>
+<?php if($scope===null):?><details class="subpanel"><summary>Vereinsprofil & Lizenz</summary><?php field($club,false,$csrf)?></details><details class="subpanel"><summary>Vereinszugang</summary><?php accountField($club,cd_account_row($db,$club['slug']),$csrf)?></details><details class="subpanel"><summary>Vertrag & Bildschirmkontingent</summary><?php contractField($club,cd_contract($db,$club['slug']),$csrf)?></details><?php endif?>
+<details class="subpanel"><summary>Datenquellen & Schnittstellen</summary><?php sourceField($club,cd_sources($db,$club['slug'],$scope),$csrf,$scope)?></details><h2>Gemeinsame Vereinsinhalte</h2><p>Einmal pflegen, später auf allen dafür konfigurierten Bildschirmen nutzen. Für gekoppelte Geräte wirksam.</p>
 <details class="subpanel"><summary>Logo, Farben & Begrüßung</summary><?php brandField($club,cd_brand($db,$club['slug']),$csrf)?></details>
 <?php foreach(CD_CONTENT as $kind=>$label):if(!in_array($kind,json_decode($club['modules'],true)?:[],true))continue;$rows=cd_content_rows($db,$club['slug'],$kind);?><details class="subpanel"><summary><?=cd_h($label)?> <small><?=count($rows)?> Einträge</small></summary>
 <details class="entry"><summary>+ Eintrag anlegen</summary><?php contentField($club,$kind,[],$csrf)?></details>
 <?php foreach($rows as $row):?><details class="entry"><summary><?=cd_h($row['title'])?> <small><?=$row['enabled']?'Freigegeben':'Entwurf'?></small></summary><?php contentField($club,$kind,$row,$csrf);mediaField($club,$row,$csrf)?></details><?php endforeach?></details><?php endforeach?>
 <?php if(in_array('restaurant',json_decode($club['modules'],true)?:[],true)):?><details class="subpanel"><summary>Gastronomie · Öffnungszeiten & Wochenangebote</summary><?php diningField($club,cd_dining_get($db,$club['slug'],$scope),$csrf)?></details><?php endif?>
-<h2>Bildschirme</h2><p>Jeder Bildschirm erhält eigene Module, Betriebsart, Sprache und Wechselzeit. Noch keine Verbindung zum Live-Gerät.</p>
+<h2>Bildschirme</h2><p>Jeder Bildschirm erhält eigene Module, Betriebsart, Sprache und Wechselzeit. Vorschau, Gerätekopplung und letzter Kontakt je Bildschirm.</p>
 <details class="subpanel"><summary>+ Bildschirm anlegen</summary><?php displayField($club,[],true,$csrf)?></details>
-<?php foreach($displays as $d):?><details class="subpanel"><summary><?=cd_h($d['name'])?> <small><?=cd_h($d['mode'])?> · <?=$d['enabled']?'Aktiv':'Deaktiviert'?> · Entwurf</small></summary><?php displayField($club,$d,false,$csrf)?></details><?php endforeach?>
+<?php foreach($displays as $d):?><details class="subpanel"><summary><?=cd_h($d['name'])?> <small><?=cd_h($d['mode'])?> · <?=$d['enabled']?'Aktiv':'Deaktiviert'?></small></summary><?php displayField($club,$d,false,$csrf);deviceField($db,$club,$d,$csrf,$portalUrl)?></details><?php endforeach?>
 </details><?php endforeach?>
 <?php endif?></main></body></html>
