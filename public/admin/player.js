@@ -1,6 +1,6 @@
 'use strict';
 (()=>{
-const $=id=>document.getElementById(id), preview=document.body.dataset.preview, token=location.hash.slice(1), VERSION='0.6.1';
+const $=id=>document.getElementById(id), preview=document.body.dataset.preview, token=location.hash.slice(1), VERSION='0.6.3';
 let snapshot=null,slides=[],index=0,rotation=null,paused=false,lastOk=0,denied=false,generation=0,logoUrl=null,slideUrl=null,polling=false,signature='';
 const tr=(de,en)=>snapshot?.language==='en'?en:de;
 const node=(tag,value,cls)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=String(value);if(cls)e.className=cls;return e;};
@@ -27,9 +27,10 @@ function textPages(value){
   if(rest)pages.push(rest);return pages;
 }
 function build(s){
-  const out=[{key:'welcome',kind:'welcome'}];
+  const out=[];
   for(const kind of s.modules||[]){
-    if(kind==='welcome')continue;
+    const start=out.length;
+    if(kind==='welcome')out.push({key:'welcome',kind:'welcome'});
     if(kind==='restaurant'&&s.dining?.name){
       out.push({key:'dining',kind:'dining'});
       if(s.dining.hours?.length)out.push({key:'dining-hours',kind:'hours'});
@@ -45,8 +46,9 @@ function build(s){
       const pages=groups(s.feeds[kind].rows||[],5);
       (pages.length?pages:[[]]).forEach((rows,i)=>out.push({key:'feed:'+kind+':'+i,kind:'feed',source:kind,rows}));
     }else if(['weather','teams','courts'].includes(kind)||s.sources?.[kind]==='pending')out.push({key:'pending:'+kind,kind:'pending',source:kind});
+    for(let i=start;i<out.length;i++)out[i].module=kind;
   }
-  return out;
+  return out.length?out:[{key:'welcome',kind:'welcome',module:'welcome'}];
 }
 const add=(el,...children)=>{children.filter(Boolean).forEach(c=>el.append(c));return el;};
 function tile(title,body){return add(node('div',undefined,'tile'),node('strong',title),node('p',body));}
@@ -94,7 +96,8 @@ function render(){
   else for(const r of slide.rows||[]){const title=r.title||[r.home||r.homeTeam,r.away||r.awayTeam].filter(Boolean).join(' – ');add(main,add(node('div',undefined,'feed-row'),node('strong',title||label(slide.source)),node('p',[r.start||r.date,r.time,r.venue,r.league,r.score,r.excerpt].filter(Boolean).join(' · '))));}
  }else{heading(main,slide.source,label(slide.source));add(main,node('p',tr('Noch keine freigegebene Datenquelle / Funktion.','No approved data source or feature yet.')));}
 }
-function schedule(){clearTimeout(rotation);if(!paused&&snapshot&&slides.length>1)rotation=setTimeout(()=>move(1),snapshot.dwell*1000);}
+function slideSeconds(s,slide){const n=Number(s.module_dwell?.[slide?.module]);return Number.isFinite(n)&&n>=5&&n<=120?n:s.dwell;}
+function schedule(){clearTimeout(rotation);if(!paused&&snapshot&&slides.length>1)rotation=setTimeout(()=>move(1),slideSeconds(snapshot,slides[index])*1000);}
 function move(delta){if(!slides.length)return;index=(index+delta+slides.length)%slides.length;render();schedule();}
 async function poll(){
  if(denied||polling)return;polling=true;
