@@ -45,3 +45,15 @@ assert.ok(ctx.screens[ctx.slide].startsWith('event-greeting:'));
 run('syncMatchGreetings(start+7200000)');
 assert.equal(ctx.screens[ctx.slide],'welcome');assert.equal(ctx.infoPaused,false);
 console.log('Event greetings: timing, duplicates, cancellation, escaping and rotation OK');
+
+ctx.eventData={status:'ok',events:[
+ {title:'Jahreswechsel',start:'2026-12-31T23:00:00+01:00',end:'2027-01-01T02:00:00+01:00'},
+ {title:'Neujahrsempfang',start:'2027-01-01T00:00:00+01:00',end:'2027-01-01T01:00:00+01:00'}
+]};
+ctx.cross=Date.parse('2027-01-01T00:15:00+01:00');
+assert.equal(run('activeEventGreetings(eventData,cross).length'),2);
+run('syncMatchGreetings(cross)');
+assert.ok(run('eventGreetingView(eventGreetingKey(eventData.events[0])).includes("31.12.2026 · 23:00 – 01.01.2027 · 02:00 Uhr")'));
+assert.equal(run('activeEventGreetings(eventData,cross+3600000).length'),1);
+assert.equal(run('activeEventGreetings({...eventData,status:"unavailable"},cross).length'),0);
+console.log('Overlapping and overnight event greetings OK');
