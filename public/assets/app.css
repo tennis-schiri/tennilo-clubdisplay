@@ -690,5 +690,5 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 .brand .product-link[hidden],html[data-club="ntc"] .brand .product-link{display:none!important}
 .brand .product-link:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 
-/* Small operator link; never shown on the NTC kiosk or in fullscreen. */
-footer .admin-link{color:var(--muted);font:inherit;white-space:nowrap;flex:none;text-decoration:underline;text-underline-offset:2px}footer .admin-link:hover,footer .admin-link:focus-visible{color:var(--cyan)}footer .admin-link[hidden],html[data-club="ntc"] footer .admin-link,:fullscreen footer .admin-link{display:none!important}
+/* Small operator link; hidden in fullscreen on both hosts. */
+footer .admin-link{color:var(--muted);font:inherit;white-space:nowrap;flex:none;text-decoration:underline;text-underline-offset:2px}footer .admin-link:hover,footer .admin-link:focus-visible{color:var(--cyan)}footer .admin-link[hidden],:fullscreen footer .admin-link{display:none!important}
