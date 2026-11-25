@@ -67,3 +67,42 @@ foreach([['club'=>'test-club'],['website'=>'javascript:alert(1)'],['phone'=>''],
 try{cd_dining_get($db,'ntc93','test-club');throw new RuntimeException('Cross-club dining read accepted');}catch(InvalidArgumentException $e){}
 check(cd_dining_get($db,'ntc93','ntc93')['name']==='Testrestaurant');
 echo "Structured dining tests passed\n";
+
+$screen=['club'=>'ntc93','slug'=>'managed-one','name'=>'Verwaltetes Gerät','mode'=>'INFO','language'=>'de','dwell'=>12,'modules'=>['welcome','calendar','news','restaurant'],'enabled'=>1];
+cd_save_display($db,$screen,true,'ntc93');
+cd_save_display($db,array_replace($screen,['slug'=>'managed-two']),true,'ntc93');
+$first=cd_device_issue($db,'ntc93','managed-one','ntc93');check(strlen($first)===64);
+check(cd_device_auth($db,$first)['display']==='managed-one');
+check(cd_device_status($db,'ntc93','managed-one')['last_seen']===null);
+cd_device_seen($db,cd_device_auth($db,$first),'0.6.0');check(cd_device_status($db,'ntc93','managed-one')['last_seen']>0);
+try{cd_device_issue($db,'ntc93','managed-two','ntc93');throw new RuntimeException('Limit ignored');}catch(InvalidArgumentException $e){}
+try{cd_device_issue($db,'ntc93','managed-one','test-club');throw new RuntimeException('Scope ignored');}catch(InvalidArgumentException $e){}
+$contract=['club'=>'ntc93','screen_limit'=>2,'state'=>'active','cycle'=>'yearly','renewal'=>'2027-12-31'];
+try{cd_save_contract($db,$contract,'ntc93');throw new RuntimeException('Contract role ignored');}catch(InvalidArgumentException $e){}
+cd_save_contract($db,$contract,null);$second=cd_device_issue($db,'ntc93','managed-two',null);
+$replacement=cd_device_issue($db,'ntc93','managed-one','ntc93');check(cd_device_auth($db,$first)===null);
+check(cd_device_auth($db,$replacement)!==null);
+cd_save_contract($db,array_replace($contract,['state'=>'paused']),null);check(cd_device_auth($db,$replacement)===null);
+cd_save_contract($db,$contract,null);
+cd_save_display($db,array_diff_key($screen,['enabled'=>true]),false,'ntc93');check(cd_device_auth($db,$replacement)===null);
+cd_save_display($db,$screen,false,'ntc93');check(cd_device_auth($db,$replacement)!==null);
+cd_device_revoke($db,'ntc93','managed-two','ntc93');check(cd_device_auth($db,$second)===null);
+$source=['club'=>'ntc93','sources'=>['calendar'=>['provider'=>'ntc-feed']]];
+try{cd_save_sources($db,$source,'ntc93');throw new RuntimeException('Unapproved feed accepted');}catch(InvalidArgumentException $e){}
+cd_save_sources($db,$source,null);check(cd_sources($db,'ntc93','ntc93')['calendar']['provider']==='ntc-feed');
+cd_save_sources($db,$source,'ntc93');
+try{cd_save_sources($db,['club'=>'ntc93','sources'=>['courts'=>['provider'=>'ntc-feed']]],null);throw new RuntimeException('Booking data activated');}catch(InvalidArgumentException $e){}
+cd_save_sources($db,['club'=>'ntc93'],null);
+$clock=new DateTimeImmutable('2026-12-24 12:00:00',new DateTimeZone('Europe/Berlin'));
+cd_save_content($db,['club'=>'ntc93','kind'=>'news','title'=>'Visible','enabled'=>1,'starts'=>'2026-12-01','ends'=>'2026-12-24'],'ntc93');
+cd_save_content($db,['club'=>'ntc93','kind'=>'news','title'=>'Future','enabled'=>1,'starts'=>'2026-12-25'],'ntc93');
+cd_save_content($db,['club'=>'ntc93','kind'=>'news','title'=>'Disabled'],'ntc93');
+cd_save_content($db,['club'=>'ntc93','kind'=>'calendar','title'=>'Upcoming','enabled'=>1,'starts'=>'2026-12-25'],'ntc93');
+cd_save_content($db,['club'=>'ntc93','kind'=>'calendar','title'=>'Past','enabled'=>1,'starts'=>'2026-12-23'],'ntc93');
+cd_save_content($db,['club'=>'ntc93','kind'=>'partner','title'=>'Other module','enabled'=>1],'ntc93');
+$snap=cd_snapshot($db,'ntc93','managed-one','ntc93',$clock);
+check($snap['dining']['today']['state']==='closed');check($snap['dining']['today_note']==='Feiertag');
+check(array_column($snap['content'],'title')===['Visible','Upcoming']);
+check(!isset($snap['token_hash'],$snap['password_hash'],$snap['contract'],$snap['reference']));
+try{cd_snapshot($db,'ntc93','managed-one','test-club',$clock);throw new RuntimeException('Cross-club preview accepted');}catch(InvalidArgumentException $e){}
+echo "Managed device, contract, source and dated snapshot tests passed\n";
