@@ -51,9 +51,11 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             catch(InvalidArgumentException $e){$error=$e->getMessage();}
             catch(Throwable $e){$error='Speichern fehlgeschlagen. Ist die Vereinskennung bereits vergeben?';}
         }
-        if(in_array($action,['display-create','display-save','account'],true)){
+        if(in_array($action,['display-create','display-save','account','brand','content'],true)){
             try{
                 if($action==='account'){if($scope!==null)throw new InvalidArgumentException('Keine Berechtigung.');cd_account($db,(string)($_POST['club']??''),(string)($_POST['new_password']??''),isset($_POST['enabled']));}
+                elseif($action==='brand')cd_save_brand($db,$_POST,$_FILES['logo']??[],$scope);
+                elseif($action==='content')cd_save_content($db,$_POST,$scope);
                 else cd_save_display($db,$_POST,$action==='display-create',$scope);
                 $_SESSION['flash']='Änderungen gespeichert.';header('Location: ./',true,303);exit;
             }catch(InvalidArgumentException $e){$error=$e->getMessage();}
@@ -62,6 +64,11 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }
 }
 $auth=!empty($_SESSION['auth']);if($auth)$_SESSION['last']=time();
+if(isset($_GET['logo'])){
+    if(!$auth){http_response_code(404);exit;}
+    try{$club=cd_text($_GET['logo'],50,true);cd_scope($scope,$club);$q=$db->prepare('SELECT logo FROM club_brand WHERE club=?');$q->execute([$club]);$logo=$q->fetchColumn();if(!is_string($logo)||$logo==='')throw new RuntimeException('Logo fehlt.');header('Content-Type: image/png');echo $logo;exit;}
+    catch(Throwable $e){http_response_code(404);exit;}
+}
 $csrf=cd_h($_SESSION['csrf']);$ok=$_SESSION['flash']??'';unset($_SESSION['flash']);
 function field(array $c,bool $new,string $csrf):void{
     $modules=json_decode($c['modules']??'["welcome"]',true)?:['welcome'];
@@ -99,7 +106,31 @@ function accountField(array $c,?array $a,string $csrf):void{
     <label>Neues Vereinspasswort <input type="password" name="new_password" autocomplete="new-password" minlength="16" maxlength="72" <?=$a?'':'required'?> placeholder="<?=$a?'Leer lassen zum Beibehalten':'Mindestens 16 Zeichen'?>"></label>
     <label class="check"><input type="checkbox" name="enabled" <?=!empty($a['enabled'])?'checked':''?>> Vereinszugang freigeben</label><button>Zugang speichern</button></form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong>ADMINISTRATION</strong></header><main>
+function brandField(array $c,array $b,string $csrf):void{
+    ?><form method="post" enctype="multipart/form-data" class="profile">
+    <input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="brand"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>">
+    <?php if($b['logo_size']):?><img class="brand-preview" src="?logo=<?=rawurlencode($c['slug'])?>" alt="Aktuelles Vereinslogo"><?php endif?>
+    <label>Vereinslogo (PNG, JPEG, WebP; max. 2 MB)<input type="file" name="logo" accept="image/png,image/jpeg,image/webp"></label>
+    <label class="check"><input type="checkbox" name="remove_logo"> Logo entfernen</label>
+    <label>Akzentfarbe<input type="color" name="color" value="<?=cd_h($c['color'])?>"></label>
+    <label class="full">Begrüßungstext<textarea name="welcome" maxlength="1000" rows="3"><?=cd_h($b['welcome'])?></textarea></label>
+    <button>Design speichern</button></form><?php
+}
+function contentField(array $c,string $kind,array $row,string $csrf):void{
+    $existing=isset($row['id']);
+    ?><form method="post" class="profile">
+    <input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="content"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>"><input type="hidden" name="kind" value="<?=cd_h($kind)?>"><input type="hidden" name="id" value="<?=(int)($row['id']??0)?>">
+    <label class="full">Titel<input name="title" required maxlength="200" value="<?=cd_h($row['title']??'')?>"></label>
+    <label class="full"><?=$kind==='restaurant'?'Öffnungszeiten, Angebote und Sonderöffnungszeiten':($kind==='calendar'?'Uhrzeit, Ort und Beschreibung':'Beschreibung')?> <textarea name="body" rows="4" maxlength="4000"><?=cd_h($row['body']??'')?></textarea></label>
+    <label><?=$kind==='calendar'?'Termin / Beginn':'Anzeigen ab'?><input type="date" name="starts" value="<?=cd_h($row['starts']??'')?>"></label>
+    <label><?=$kind==='calendar'?'Enddatum':'Anzeigen bis'?><input type="date" name="ends" value="<?=cd_h($row['ends']??'')?>"></label>
+    <label class="full">Website / weiterer Link (HTTPS)<input type="url" name="url" maxlength="500" value="<?=cd_h($row['url']??'')?>"></label>
+    <label class="check"><input type="checkbox" name="enabled" <?=($row['enabled']??1)?'checked':''?>> Für Anzeige freigegeben</label>
+    <button name="intent" value="save"><?=$existing?'Eintrag speichern':'Eintrag anlegen'?></button>
+    <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
+    </form><?php
+}
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=052"></head><body><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong>ADMINISTRATION</strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
 <?php if(!$auth):?><section class="login"><h1>Administrator-Anmeldung</h1><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="login"><label>Vereinskennung (für TENNILO leer lassen) <input name="club_login" autocomplete="username"></label><label>Passwort <input type="password" name="password" autocomplete="current-password" required></label><button>Anmelden</button></form></section>
@@ -109,6 +140,11 @@ function accountField(array $c,?array $a,string $csrf):void{
 <?php if($scope===null):?><details class="panel"><summary>+ Neuen Verein anlegen</summary><?php field([],true,$csrf)?></details><?php endif?>
 <?php foreach($clubs as $club):$displays=cd_displays($db,$club['slug']);?><details class="panel" <?=$scope!==null?'open':''?>><summary><?=cd_h($club['name'])?> <small><?=cd_h($club['plan'])?> · <?=count($displays)?> Bildschirme</small></summary>
 <?php if($scope===null):?><details class="subpanel"><summary>Vereinsprofil & Lizenz</summary><?php field($club,false,$csrf)?></details><details class="subpanel"><summary>Vereinszugang</summary><?php accountField($club,cd_account_row($db,$club['slug']),$csrf)?></details><?php endif?>
+<h2>Gemeinsame Vereinsinhalte</h2><p>Einmal pflegen, später auf allen dafür konfigurierten Bildschirmen nutzen. Aktuell nur Entwürfe.</p>
+<details class="subpanel"><summary>Logo, Farben & Begrüßung</summary><?php brandField($club,cd_brand($db,$club['slug']),$csrf)?></details>
+<?php foreach(CD_CONTENT as $kind=>$label):if(!in_array($kind,json_decode($club['modules'],true)?:[],true))continue;$rows=cd_content_rows($db,$club['slug'],$kind);?><details class="subpanel"><summary><?=cd_h($label)?> <small><?=count($rows)?> Einträge</small></summary>
+<details class="entry"><summary>+ Eintrag anlegen</summary><?php contentField($club,$kind,[],$csrf)?></details>
+<?php foreach($rows as $row):?><details class="entry"><summary><?=cd_h($row['title'])?> <small><?=$row['enabled']?'Freigegeben':'Entwurf'?></small></summary><?php contentField($club,$kind,$row,$csrf)?></details><?php endforeach?></details><?php endforeach?>
 <h2>Bildschirme</h2><p>Jeder Bildschirm erhält eigene Module, Betriebsart, Sprache und Wechselzeit. Noch keine Verbindung zum Live-Gerät.</p>
 <details class="subpanel"><summary>+ Bildschirm anlegen</summary><?php displayField($club,[],true,$csrf)?></details>
 <?php foreach($displays as $d):?><details class="subpanel"><summary><?=cd_h($d['name'])?> <small><?=cd_h($d['mode'])?> · <?=$d['enabled']?'Aktiv':'Deaktiviert'?> · Entwurf</small></summary><?php displayField($club,$d,false,$csrf)?></details><?php endforeach?>
