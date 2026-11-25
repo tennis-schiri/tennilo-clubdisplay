@@ -30,11 +30,17 @@ function teamAndLeague(m){
   else if(key==='MID'||key==='MIXED')team='Mixed';
   return {team:team+(suffix?' '+suffix:''),league:match[2]||full};
 }
+function matchPageSize(){
+  if(innerWidth<700)return 3;
+  if(innerHeight<850)return 2;
+  if(innerHeight<1080)return 3;
+  return 4;
+}
 function matchView(){
   const d=leagueData, info=view==='info', filter=info?'home':matchFilter;
   const headings={home:tr('Nächste Heimspiele','Upcoming home matches'),away:tr('Nächste Auswärtsspiele','Upcoming away matches'),all:tr('Alle kommenden Spiele','All upcoming matches'),results:tr('Letzte Ergebnisse','Recent results')};
   const tabs=info?'':'<div class="tabs">'+Object.keys(headings).map(k=>'<button data-action="match:'+k+'" aria-pressed="'+(k===filter)+'">'+({home:tr('Heim','Home'),away:tr('Auswärts','Away'),all:tr('Alle','All'),results:tr('Ergebnisse','Results')}[k])+'</button>').join('')+'</div>';
-  const title='<h1>'+headings[filter]+'</h1>'+tabs;
+  const title='<div class="match-heading"><h1>'+headings[filter]+'</h1>'+tabs+'</div>';
   if(!d)return title+'<div class="panel"><p>'+tr('nuLiga-Daten werden geladen …','Loading nuLiga data …')+'</p></div>';
   const source='<p class="match-source">'+tr('Quelle: nuLiga · TVBB','Source: nuLiga · TVBB')+(d.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+(!info&&!pilot?' · <a href="'+sourceUrl+'" target="_blank" rel="noopener noreferrer">'+tr('Original-Spielplan','Original schedule')+'</a>':'')+'</p>';
   if(d.status==='unavailable')return title+'<div class="panel"><p>'+tr('nuLiga momentan nicht verfügbar.','nuLiga currently unavailable.')+'</p></div>'+source;
@@ -45,17 +51,20 @@ function matchView(){
   const future=m=>m.date.slice(0,10)>=day;
   let rows=d.matches.filter(m=>filter==='results'?!!m.score:future(m)&&!m.score&&(filter==='all'||(filter==='home'?m.isHome:!m.isHome)));
   if(filter==='results')rows=rows.slice().reverse();
-  const size=info?4:6, pages=Math.max(1,Math.ceil(rows.length/size)), page=info?0:Math.min(matchPage,pages-1);
+  const size=matchPageSize(), pages=Math.max(1,Math.ceil(rows.length/size)), page=info?0:Math.min(matchPage,pages-1);
   if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine passenden Begegnungen im von nuLiga gelieferten Zeitraum.','No matching fixtures in the period supplied by nuLiga.')+'</p>'+(d.range?'<p>'+esc(d.range.from)+' – '+esc(d.range.to)+'</p>':'')+'</div>'+source;
   const cards=rows.slice(page*size,(page+1)*size).map(m=>{
-    const date=new Date(m.date).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const when=new Date(m.date),locale=lang==='de'?'de-DE':'en-GB',zone='Europe/Berlin';
+    const dayLabel=when.toLocaleDateString(locale,{timeZone:zone,weekday:'short',day:'2-digit',month:'2-digit'});
+    const timeLabel=when.toLocaleTimeString(locale,{timeZone:zone,hour:'2-digit',minute:'2-digit'});
     const identity=teamAndLeague(m);
-    const venueLabel=typeof m.venue==='string'&&m.venue.trim()?m.venue.trim():'';
-    const courtLabel=Array.isArray(m.courts)&&m.courts.length?m.courts.join(', '):typeof m.courts==='string'&&m.courts.trim()?m.courts:tr('nicht verfügbar','not available');
-    return '<article class="match-row"><div class="match-meta"><strong class="match-identity">'+esc(identity.team)+'</strong><span class="match-league">'+esc(identity.league)+'</span><span class="match-date">'+esc(date)+'</span><span class="match-side">'+(m.isHome?tr('Heim','Home'):tr('Auswärts','Away'))+'</span></div><div class="match-teams"><div class="match-pair"><strong class="match-team '+(m.isHome?'own-team':'opponent-team')+'">'+esc(shortClub(m.home))+'</strong><span class="match-versus">'+(m.score?esc(m.score):'–')+'</span><strong class="match-team '+(!m.isHome?'own-team':'opponent-team')+'">'+esc(shortClub(m.away))+'</strong></div>'+(venueLabel?'<span class="match-venue">'+tr('Platzanlage','Venue')+': <strong>'+esc(venueLabel)+'</strong></span>':'')+(m.isHome?'<span class="match-court">'+tr('Platz / Plätze','Court(s)')+': '+esc(courtLabel)+'</span>':'')+'</div></article>';
+    const venueLabel=typeof m.venue==='string'?m.venue.trim():'';
+    const courtLabel=Array.isArray(m.courts)&&m.courts.length?m.courts.join(', '):typeof m.courts==='string'?m.courts.trim():'';
+    const meta=[venueLabel?'<span>'+tr('Platzanlage','Venue')+': <strong>'+esc(venueLabel)+'</strong></span>':'',m.isHome&&courtLabel?'<span>'+tr('Plätze','Courts')+': <strong>'+esc(courtLabel)+'</strong></span>':''].filter(Boolean).join('');
+    return '<article class="fixture-card"><div class="fixture-top"><div class="fixture-date"><time datetime="'+esc(m.date)+'">'+esc(dayLabel)+' <span class="fixture-dot">·</span> '+esc(timeLabel)+(lang==='de'?' Uhr':'')+'</time></div><div class="fixture-tags">'+(identity.league?'<span class="fixture-tag fixture-league">'+esc(identity.league)+'</span>':'')+'<span class="fixture-tag">'+(m.isHome?tr('Heim','Home'):tr('Auswärts','Away'))+'</span></div></div><div class="fixture-identity">'+esc(identity.team)+'</div><div class="fixture-pair"><strong class="fixture-team '+(m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.home))+'</strong><span class="fixture-versus">'+(m.score?esc(m.score):'–')+'</span><strong class="fixture-team '+(!m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.away))+'</strong></div>'+(meta?'<div class="fixture-details">'+meta+'</div>':'')+'</article>';
   }).join('');
   const pagination=!info&&pages>1?'<div class="actions match-pages"><button data-action="match-prev" '+(page===0?'disabled':'')+'>‹</button><span>'+(page+1)+' / '+pages+'</span><button data-action="match-next" '+(page===pages-1?'disabled':'')+'>›</button></div>':'';
-  return title+warning+'<div class="panel match-list">'+cards+'</div>'+pagination+source;
+  return title+warning+'<div class="fixture-list">'+cards+'</div>'+pagination+source;
 }
 async function refreshLeague(){
   if(fetching)return;fetching=true;
@@ -123,7 +132,7 @@ function ebusyView(){
 function courtList(){return '<div class="grid">'+[1,2,3,4].map(i=>'<button class="tile" data-action="court:'+i+'" '+(i===2?'disabled':'')+'><strong>'+t().court+' '+i+'</strong><span class="'+(i===2?'occupied':'availability')+'">'+(i===2?t().busy:t().available)+'</span><small>'+t().slot+'</small></button>').join('')+'</div>'}
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen sind noch Beispiele · Buchung über eBuSy.','Club news is still sample data · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;let html='';
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');let html='';
 switch(active){
 case 'welcome':html=hero(l.welcome,l.intro,(pilot?'<div class="panel"><h2>'+tr('Außenplätze','Outdoor courts')+'</h2><p>'+tr('Aktuelle Belegung im eBuSy-Buchungsplan.','Current availability in the eBuSy booking plan.')+'</p><div class="actions">'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary large')+'</div></div>':panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available])));break;
 case 'home':html='<h1>'+l.welcome+'</h1><p>'+l.intro+'</p><div class="grid">'+[['courts',l.booking],['calendar',l.upcoming],['teams',l.matches],['news',l.announcements]].map(([k,v])=>button(v,k,'tile large')).join('')+'</div>';break;
@@ -182,4 +191,6 @@ adminForm.addEventListener('submit',async e=>{
 });
 syncFullscreen();
 setInterval(()=>{const now=Date.now();clock();if(adminDialog.open)return;if(view==='info'){if(now-started>=dwell){slide=(slide+1)%screens.length;started=now;render();}$('progress').style.setProperty('--progress',Math.min(100,(now-started)/dwell*100)+'%');}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+let lastMatchSize=matchPageSize();
+window.addEventListener('resize',()=>{const size=matchPageSize();if(size!==lastMatchSize){lastMatchSize=size;if(view==='teams'||(view==='info'&&screens[slide]==='teams')){matchPage=0;render();}}});
 render();refreshLeague();refreshEvents();
