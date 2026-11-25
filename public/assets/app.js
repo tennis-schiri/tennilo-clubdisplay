@@ -263,82 +263,67 @@ function newsView(){
 const ntcSponsors=[
   {
     "name": "Fördersiegel Neuenhagen",
-    "url": "https://ntc93.com/wp-content/uploads/2026/05/Foerdersiegel-Neuenhagen_RZ-1-240x300.jpg",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2026/05/Foerdersiegel-Neuenhagen_RZ-1-240x300.jpg"
   },
   {
     "name": "AMSICO",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/amsico_foto-300x276.png",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/amsico_foto-300x276.png"
   },
   {
     "name": "Bruhn",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/logo_bruhn-300x99.jpg",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/logo_bruhn-300x99.jpg"
   },
   {
     "name": "Allianz Maxelon",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/Allianz-Maxelon-300x155.jpeg",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Allianz-Maxelon-300x155.jpeg"
   },
   {
     "name": "Mutter Hoppe",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/mutterhoppe-300x271.png",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/mutterhoppe-300x271.png"
   },
   {
     "name": "Landessportbund",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/LSB_Logo_HZ_Standard_4C_270mm-LSB-300x73.png",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/LSB_Logo_HZ_Standard_4C_270mm-LSB-300x73.png"
   },
   {
     "name": "TVBB",
-    "url": "https://ntc93.com/wp-content/uploads/2023/06/TVBB-Logo-300x300.jpg",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/06/TVBB-Logo-300x300.jpg"
   },
   {
     "name": "Eurailpool",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/logo_eurailpool.jpg",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/logo_eurailpool.jpg"
   },
   {
     "name": "Sparkasse",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/Logo_Sparkasse_2021_R-300x97.jpg",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Logo_Sparkasse_2021_R-300x97.jpg"
   },
   {
     "name": "Finwire",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/finwire-logo-white-subline-300x169.png",
-    "dark": true
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/finwire-logo-white-subline-300x169.png"
   },
   {
     "name": "Robert Vermessung",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/Robert-Vermessung-300x100.jpg",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Robert-Vermessung-300x100.jpg"
   },
   {
     "name": "Floraland Arnold",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/Logo_FloralandArnold_2014-outline-300x99.png",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Logo_FloralandArnold_2014-outline-300x99.png"
   },
   {
     "name": "City Schuhe",
-    "url": "https://ntc93.com/wp-content/uploads/2023/07/Logo-City-Schuhe.jpg",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Logo-City-Schuhe.jpg"
   },
   {
     "name": "B1",
-    "url": "https://ntc93.com/wp-content/uploads/2023/06/logob1.gif",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/06/logob1.gif"
   },
   {
     "name": "Leben retten",
-    "url": "https://ntc93.com/wp-content/uploads/2023/10/lebenretten-300x265.png",
-    "dark": false
+    "url": "https://ntc93.com/wp-content/uploads/2023/10/lebenretten-300x265.png"
   }
 ];
 function sponsorView(){
-  const cards=ntcSponsors.map(s=>'<figure class="sponsor-logo'+(s.dark?' sponsor-logo-dark':'')+'"><img src="'+esc(s.url)+'" alt="'+esc(s.name)+'" decoding="async" referrerpolicy="no-referrer"></figure>').join('');
+  const cards=ntcSponsors.map(s=>'<figure class="sponsor-logo"><img src="'+esc(s.url)+'" alt="'+esc(s.name)+'" decoding="async" referrerpolicy="no-referrer"></figure>').join('');
   return '<div class="match-heading sponsor-heading"><h1>'+tr('Partner & Sponsoren','Partners & sponsors')+'</h1><span class="news-origin">'+tr('Vielen Dank für die Unterstützung!','Thank you for your support!')+'</span></div><div class="sponsor-grid">'+cards+'</div><p class="match-source sponsor-source">'+tr('Sponsoren und Partner des NTC 93 · Quelle: ntc93.com','NTC 93 sponsors and partners · Source: ntc93.com')+'</p>';
 }
 function infoControls(){

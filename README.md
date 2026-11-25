@@ -116,3 +116,6 @@ Dezente Vor-/Zurück- und Pause/Fortsetzen-Tasten neben der Fortschrittsleiste. 
 
 ## 0.4.15 – Zeitbegrenzte Infomodus-Pause
 25 Sekunden ohne Eingabe beenden die Pause automatisch; kleiner Sekunden-Countdown neben der Steuerung, nur während der Pause sichtbar. Tastendruck, Klick, Berührung und Scrollen setzen die Frist zurück; reine Mausbewegung nicht. Manuelles Fortsetzen jederzeit möglich. Nach Ablauf läuft die verbleibende Anzeigezeit der aktuellen Infoseite weiter. Fester Seitenrahmen unverändert.
+
+## 0.4.16 – Einheitliche Sponsorenhintergründe
+Alle Logokarten einschließlich Finwire auf reinweißem Hintergrund. Keine dunkle Sonderkarte mehr; bereits in den Originalbildern vorhandene Hintergrundfarben (z. B. Allianz) bleiben unverändert. Logos werden weder eingefärbt noch verzerrt. Raster und Reihenfolge bleiben erhalten. Bei transparenten weißen Logodetails kann eine geeignete offizielle Logoalternative nötig sein; Sichtprüfung ausstehend.
