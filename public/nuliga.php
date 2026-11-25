@@ -39,18 +39,19 @@ function parseMeetings(string $html): array {
             ksort($cells);
             if (!$cells) continue;
             $texts = array_map(fn($c) => cleanText($c->textContent), $cells);
-            $homeCol = $awayCol = $leagueCol = $scoreCol = null;
+            $homeCol = $awayCol = $leagueCol = $scoreCol = $venueCol = null;
             foreach ($texts as $i=>$s) {
                 if ($s === 'Heimmannschaft') $homeCol = $i;
                 if ($s === 'Gastmannschaft') $awayCol = $i;
                 if ($s === 'Liga') $leagueCol = $i;
                 if ($s === 'Matchpunkte') $scoreCol = $i;
+                if (preg_match('/^(Spielort|Platzanlage|Spielstätte|Halle|Tennishalle|Austragungsort)$/iu', $s)) $venueCol = $i;
             }
             if ($homeCol !== null && $awayCol !== null && $leagueCol !== null) {
-                $columns = [$leagueCol,$homeCol,$awayCol,$scoreCol]; $found = true; continue;
+                $columns = [$leagueCol,$homeCol,$awayCol,$scoreCol,$venueCol]; $found = true; continue;
             }
             if ($columns === null) continue;
-            [$li,$hi,$ai,$si] = $columns;
+            [$li,$hi,$ai,$si,$vi] = $columns;
             // Blank date cells and rowspans repeat the last time.
             $dateCells = implode(' ', array_slice($texts,0,$li));
             if (preg_match('/(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2})/u', $dateCells, $m)) {
@@ -75,8 +76,25 @@ function parseMeetings(string $html): array {
             if ($home === '' || $away === '' || $league === '') continue;
             $score = $si !== null ? ($texts[$si] ?? '') : '';
             $score = preg_match('/^\d+\s*:\s*\d+$/', $score) ? preg_replace('/\s+/', '', $score) : null;
+            $venue = $vi !== null ? ($texts[$vi] ?? '') : '';
+            // Some nuLiga layouts put a labeled venue inside the fixture cells.
+            if ($venue === '') {
+                foreach ($cells as $i=>$cell) {
+                    if ($i > $ai) break;
+                    $parts = preg_split('/\R/u', trim(preg_replace('/<br\s*\/?>/i', "\n", $dom->saveHTML($cell)) ?? '')) ?: [];
+                    foreach ($parts as $part) {
+                        $part = cleanText(html_entity_decode(strip_tags($part), ENT_QUOTES|ENT_HTML5, 'UTF-8'));
+                        if (preg_match('/^(?:Spielort|Platzanlage|Spielstätte|Halle|Tennishalle|Austragungsort)\s*:\s*(.+)$/iu', $part, $vm)) { $venue = $vm[1]; break 2; }
+                    }
+                    foreach ($xp->query('.//*[@title]', $cell) as $node) {
+                        if (preg_match('/^(?:Spielort|Platzanlage|Spielstätte|Halle|Tennishalle|Austragungsort)\s*:\s*(.+)$/iu', cleanText($node->getAttribute('title')), $vm)) { $venue = $vm[1]; break 2; }
+                    }
+                }
+            }
+            $venue = cleanText(preg_replace('/\s*\[Routenplan(?:er)?\]\s*/iu', '', $venue) ?? '');
+            if ($venue === '' || in_array($venue,['-','–','—'],true)) $venue = null;
             $key = $lastDate.'|'.$league.'|'.$home.'|'.$away;
-            $matches[$key] = ['date'=>$lastDate,'league'=>$league,'home'=>$home,'away'=>$away,'isHome'=>$ownHome,'score'=>$score];
+            $matches[$key] = ['date'=>$lastDate,'league'=>$league,'home'=>$home,'away'=>$away,'isHome'=>$ownHome,'score'=>$score,'venue'=>$venue];
         }
     }
     if (!$found) throw new RuntimeException('nuLiga match table not found');
@@ -110,15 +128,15 @@ function getMeetings(): array {
     if (!$lock) throw new RuntimeException('Cache unavailable');
     try {
         if (!flock($lock,LOCK_EX)) throw new RuntimeException('Cache unavailable');
-        $cache = is_file($dir.'/meetings.json') ? json_decode((string)file_get_contents($dir.'/meetings.json'),true) : null;
+        $cache = is_file($dir.'/meetings-v2.json') ? json_decode((string)file_get_contents($dir.'/meetings-v2.json'),true) : null;
         $now = time();
         if (is_array($cache) && $now-($cache['fetchedAt']??0)<NULIGA_TTL) return $cache+['status'=>'ok'];
-        if (!is_file($dir.'/retry') || $now-(int)file_get_contents($dir.'/retry')>=NULIGA_RETRY) {
-            file_put_contents($dir.'/retry',(string)$now,LOCK_EX);
+        if (!is_file($dir.'/retry-v2') || $now-(int)file_get_contents($dir.'/retry-v2')>=NULIGA_RETRY) {
+            file_put_contents($dir.'/retry-v2',(string)$now,LOCK_EX);
             try {
                 $data = parseMeetings(fetchSource());
                 $data['fetchedAt'] = $now;
-                if (file_put_contents($dir.'/meetings.tmp',json_encode($data,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),LOCK_EX) === false || !rename($dir.'/meetings.tmp',$dir.'/meetings.json')) throw new RuntimeException('Cache write failed');
+                if (file_put_contents($dir.'/meetings-v2.tmp',json_encode($data,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),LOCK_EX) === false || !rename($dir.'/meetings-v2.tmp',$dir.'/meetings-v2.json')) throw new RuntimeException('Cache write failed');
                 return $data+['status'=>'ok'];
             } catch (Throwable $e) { error_log('ClubDisplay nuLiga: '.$e->getMessage()); }
         }
