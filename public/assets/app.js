@@ -257,9 +257,91 @@ function newsView(){
   const cards=d.posts.slice(0,3).map((p,i)=>'<button type="button" class="panel news-card" data-action="news-open:'+i+'"><time class="news-date" datetime="'+esc(p.date)+'">'+esc(newsDate(p))+'</time><strong class="news-card-title">'+esc(p.title)+'</strong><span class="news-excerpt">'+esc(p.excerpt)+'</span><span class="news-read-more">'+tr('Artikel lesen','Read article')+' →</span></button>').join('');
   return title+warn+'<div class="news-grid">'+cards+'</div>'+source;
 }
+// Snapshot of the NTC homepage sponsor section, verified 2026-11-25. Refresh only on request.
+const ntcSponsors=[
+  {
+    "name": "Fördersiegel Neuenhagen",
+    "url": "https://ntc93.com/wp-content/uploads/2026/05/Foerdersiegel-Neuenhagen_RZ-1-240x300.jpg",
+    "dark": false
+  },
+  {
+    "name": "AMSICO",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/amsico_foto-300x276.png",
+    "dark": false
+  },
+  {
+    "name": "Bruhn",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/logo_bruhn-300x99.jpg",
+    "dark": false
+  },
+  {
+    "name": "Allianz Maxelon",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Allianz-Maxelon-300x155.jpeg",
+    "dark": false
+  },
+  {
+    "name": "Mutter Hoppe",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/mutterhoppe-300x271.png",
+    "dark": false
+  },
+  {
+    "name": "Landessportbund",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/LSB_Logo_HZ_Standard_4C_270mm-LSB-300x73.png",
+    "dark": false
+  },
+  {
+    "name": "TVBB",
+    "url": "https://ntc93.com/wp-content/uploads/2023/06/TVBB-Logo-300x300.jpg",
+    "dark": false
+  },
+  {
+    "name": "Eurailpool",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/logo_eurailpool.jpg",
+    "dark": false
+  },
+  {
+    "name": "Sparkasse",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Logo_Sparkasse_2021_R-300x97.jpg",
+    "dark": false
+  },
+  {
+    "name": "Finwire",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/finwire-logo-white-subline-300x169.png",
+    "dark": true
+  },
+  {
+    "name": "Robert Vermessung",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Robert-Vermessung-300x100.jpg",
+    "dark": false
+  },
+  {
+    "name": "Floraland Arnold",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Logo_FloralandArnold_2014-outline-300x99.png",
+    "dark": false
+  },
+  {
+    "name": "City Schuhe",
+    "url": "https://ntc93.com/wp-content/uploads/2023/07/Logo-City-Schuhe.jpg",
+    "dark": false
+  },
+  {
+    "name": "B1",
+    "url": "https://ntc93.com/wp-content/uploads/2023/06/logob1.gif",
+    "dark": false
+  },
+  {
+    "name": "Leben retten",
+    "url": "https://ntc93.com/wp-content/uploads/2023/10/lebenretten-300x265.png",
+    "dark": false
+  }
+];
+function sponsorView(){
+  const cards=ntcSponsors.map(s=>'<figure class="sponsor-logo'+(s.dark?' sponsor-logo-dark':'')+'"><img src="'+esc(s.url)+'" alt="'+esc(s.name)+'" decoding="async" referrerpolicy="no-referrer"></figure>').join('');
+  return '<div class="match-heading sponsor-heading"><h1>'+tr('Partner & Sponsoren','Partners & sponsors')+'</h1><span class="news-origin">'+tr('Vielen Dank für die Unterstützung!','Thank you for your support!')+'</span></div><div class="sponsor-grid">'+cards+'</div><p class="match-source sponsor-source">'+tr('Sponsoren und Partner des NTC 93 · Quelle: ntc93.com','NTC 93 sponsors and partners · Source: ntc93.com')+'</p>';
+}
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:l.touch;$('demo').textContent=tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Platzbuchung und Meldungen sind noch Beispiele.','Court booking and news are still examples.');$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');let html='';
+const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',pilot&&active==='partner');let html='';
 switch(active){
 case 'welcome':html=hero(l.welcome,l.intro,(pilot?'<div class="panel"><h2>'+tr('Außenplätze','Outdoor courts')+'</h2><p>'+tr('Aktuelle Belegung im eBuSy-Buchungsplan.','Current availability in the eBuSy booking plan.')+'</p><div class="actions">'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary large')+'</div></div>':panel(l.today,[l.court+' 1',l.court+' 2',l.court+' 3'],[l.available,l.busy,l.available])));break;
 case 'home':{
@@ -278,7 +360,7 @@ case 'calendar':html=eventView();break;
 case 'teams':html=matchView();break;
 case 'weather':html=weatherView();if(!radarBusy)refreshRadar();break;
 case 'news':html=newsView();break;
-case 'partner':html=hero(l.partner,l.partnerText);break;
+case 'partner':html=pilot?sponsorView():hero(l.partner,l.partnerText);break;
 }
 $('language').disabled=pilot&&view==='courts'&&courtMode==='outdoor';const embeddedBooking=pilot&&active==='courts',readingNews=pilot&&active==='news'&&view==='news'&&!!openedNews;document.body.classList.toggle('news-reading',readingNews);$('screen').innerHTML=embeddedBooking||readingNews?html:'<div class="fit-content">'+html+'</div>';if(!embeddedBooking&&!readingNews)fitActiveScreen();if(active==='weather')inspectRadarImage();clock();}
 
