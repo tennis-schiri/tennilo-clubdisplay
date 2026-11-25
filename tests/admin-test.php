@@ -27,3 +27,15 @@ check(cd_login_hash($db,'ntc93','admin')==='');
 cd_account($db,'test-club','',false);
 check(cd_login_hash($db,'test-club','admin')==='');
 echo "Display isolation and account tests passed\n";
+
+cd_save_brand($db,['club'=>'test-club','color'=>'#123456','welcome'=>'Willkommen'],[],'test-club');
+check(cd_brand($db,'test-club')['welcome']==='Willkommen');
+check(cd_club($db,'test-club')['color']==='#123456');
+try{cd_save_brand($db,['club'=>'ntc93','color'=>'#123456'],[],'test-club');throw new RuntimeException('Cross-club brand accepted');}catch(InvalidArgumentException $e){}
+$news=['club'=>'ntc93','kind'=>'news','title'=>'Testmeldung','body'=>'Test','starts'=>'2026-11-25','ends'=>'2026-12-01','url'=>'https://example.com/','enabled'=>1];
+cd_save_content($db,$news,'ntc93');
+$rows=cd_content_rows($db,'ntc93','news');check(count($rows)===1);
+$news['id']=$rows[0]['id'];$news['title']='Geändert';cd_save_content($db,$news,'ntc93');check(cd_content_rows($db,'ntc93','news')[0]['title']==='Geändert');
+foreach([['url'=>'javascript:alert(1)'],['starts'=>'2026-02-30'],['ends'=>'2026-01-01'],['club'=>'test-club']] as $bad){try{cd_save_content($db,array_replace($news,$bad),'ntc93');throw new RuntimeException('Invalid content accepted');}catch(InvalidArgumentException $e){}}
+cd_save_content($db,array_replace($news,['intent'=>'delete']),'ntc93');check(count(cd_content_rows($db,'ntc93','news'))===0);
+echo "Brand and editorial content tests passed\n";
