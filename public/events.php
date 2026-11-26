@@ -3,6 +3,7 @@
 declare(strict_types=1);
 const EVENTS_SITE='https://ntc93.com';
 const EVENTS_TTL=1800;
+const EVENTS_CACHE_VERSION=2;
 function eventText($s): string {
     return trim(preg_replace('/\s+/u',' ',html_entity_decode(strip_tags((string)$s),ENT_QUOTES|ENT_HTML5,'UTF-8')) ?? '');
 }
@@ -82,9 +83,15 @@ function parseCalendarIcs(string $raw): array {
     }
     return $rows;
 }
+function eventRange(DateTimeImmutable $now): array {
+    return [$now->format('Y-m-d'),$now->modify('+12 months')->format('Y-m-d')];
+}
+function eventCacheFresh(?array $cached,int $now): bool {
+    return $cached!==null&&($cached['cacheVersion']??0)===EVENTS_CACHE_VERSION&&$now-($cached['fetchedAt']??0)<EVENTS_TTL;
+}
 function fetchEvents(): array {
     $now=new DateTimeImmutable('today',new DateTimeZone('Europe/Berlin'));
-    $from=$now->format('Y-m-d');$to=$now->modify('+180 days')->format('Y-m-d');
+    [$from,$to]=eventRange($now);
     try{$rows=eventRest($from,$to);$method='rest';}
     catch(Throwable){
         $rows=[];$method='ical';$month=$now->modify('first day of this month');
@@ -101,7 +108,7 @@ function fetchEvents(): array {
         $key=$e['title'].'|'.$e['start'].'|'.$e['end'];$out[$key]=$e;
     }
     $out=array_values($out);usort($out,fn($a,$b)=>strcmp($a['start'],$b['start']));
-    return ['events'=>$out,'method'=>$method,'from'=>$from,'to'=>$to,'fetchedAt'=>time()];
+    return ['events'=>$out,'method'=>$method,'from'=>$from,'to'=>$to,'fetchedAt'=>time(),'cacheVersion'=>EVENTS_CACHE_VERSION];
 }
 function getEvents(): array {
     $dir=sys_get_temp_dir().'/tennilo-events-'.hash('sha256',__DIR__);
@@ -109,9 +116,9 @@ function getEvents(): array {
     $lock=fopen($dir.'/lock','c');if(!$lock)throw new RuntimeException('Cache unavailable');
     try{
         if(!flock($lock,LOCK_EX))throw new RuntimeException('Cache unavailable');
-        $file=$dir.'/events.json';$retry=$dir.'/retry';$now=time();
+        $file=$dir.'/events.json';$retry=$dir.'/retry-v'.EVENTS_CACHE_VERSION;$now=time();
         $cached=is_file($file)?json_decode((string)file_get_contents($file),true):null;
-        if(is_array($cached)&&$now-($cached['fetchedAt']??0)<EVENTS_TTL)return $cached+['status'=>'ok'];
+        if(is_array($cached)&&eventCacheFresh($cached,$now))return $cached+['status'=>'ok'];
         if(!is_file($retry)||$now-(int)file_get_contents($retry)>=300){
             file_put_contents($retry,(string)$now,LOCK_EX);
             try{
