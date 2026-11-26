@@ -1,12 +1,13 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/managed.php';
+require_once __DIR__.'/partner-board.php';
 function cd_plan_label(string $key):string{return match($key){'INFO'=>'BASIC','INTERACTIVE'=>'PLUS',default=>$key};}
-const CD_MODULES=['welcome','weather','calendar','teams','news','partner','restaurant','courts'];
+const CD_MODULES=['welcome','weather','calendar','teams','news','partner','restaurant','courts','partner_search'];
 function cd_db(string $path): PDO {
     $db=new PDO('sqlite:'.$path,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
     $db->exec('PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON');
-    if((int)$db->query('PRAGMA user_version')->fetchColumn()===603)return $db;
+    if((int)$db->query('PRAGMA user_version')->fetchColumn()===604)return $db;
     $db->exec('CREATE TABLE IF NOT EXISTS clubs (slug TEXT PRIMARY KEY, name TEXT NOT NULL, plan TEXT NOT NULL, color TEXT NOT NULL, language TEXT NOT NULL, dwell INTEGER NOT NULL, modules TEXT NOT NULL, updated TEXT NOT NULL); CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT PRIMARY KEY, count INTEGER NOT NULL, since INTEGER NOT NULL)');
     $q=$db->prepare('INSERT OR IGNORE INTO clubs VALUES (?,?,?,?,?,?,?,?)');
     foreach([['tennilo-demo','TENNILO Demo','INTERACTIVE','#21d5db','de',12, json_encode(['welcome','weather','calendar','teams','news','partner','courts']),''],['ntc93','NTC 93','INTERACTIVE','#f7dc14','de',12,json_encode(CD_MODULES),'']] as $row){
@@ -21,7 +22,8 @@ function cd_db(string $path): PDO {
     $db->exec('CREATE TABLE IF NOT EXISTS display_layout (club TEXT NOT NULL, display TEXT NOT NULL, welcome TEXT NOT NULL DEFAULT \'\', module_order TEXT NOT NULL DEFAULT \'[]\', module_dwell TEXT NOT NULL DEFAULT \'{}\', PRIMARY KEY(club,display), FOREIGN KEY(club,display) REFERENCES displays(club,slug) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS content_audience (content_id INTEGER PRIMARY KEY REFERENCES club_content(id) ON DELETE CASCADE, mode TEXT NOT NULL CHECK(mode IN (\'all\',\'selected\')));
     CREATE TABLE IF NOT EXISTS content_targets (content_id INTEGER NOT NULL REFERENCES content_audience(content_id) ON DELETE CASCADE, club TEXT NOT NULL, display TEXT NOT NULL, PRIMARY KEY(content_id,club,display), FOREIGN KEY(club,display) REFERENCES displays(club,slug) ON DELETE CASCADE)');
-    $db->exec('PRAGMA user_version=603');
+    cd_partner_schema($db);
+    $db->exec('PRAGMA user_version=604');
     return $db;
 }
 function cd_validate(array $in): array {

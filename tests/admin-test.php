@@ -186,3 +186,26 @@ $timedIcs="BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART;TZID=Europe/Berlin:20991205T18
 check(cd_ical_parse($timedIcs)[0]['end']==='2099-12-05T20:00:00+01:00');
 check(cd_event_timestamp('2027-02-30 12:00:00')===null);
 echo "Managed event times and missing-end validation passed\n";
+
+$partnerNow=1800000000;
+check(!cd_partner_enabled($db,'ntc93'));
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
+$invite=cd_partner_admin($db,['club'=>'ntc93','intent'=>'invite','verified_member'=>'1'],'ntc93',$partnerNow);
+check(is_string($invite)&&strlen($invite)===32);
+$submission=['mode'=>'post','code'=>$invite,'adult'=>'1','consent'=>'1','contact'=>'PRIVATE-CONTACT@example.com','category'=>'doubles','skill'=>'recreational','availability'=>'weekend','period'=>'morning'];
+cd_partner_submit($db,'ntc93',$submission,$partnerNow);
+check(cd_partner_rows($db,'ntc93',$partnerNow)===[]);
+$private=cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow);check(count($private)===1);$ref=$private[0]['ref'];
+check($private[0]['contact']==='PRIVATE-CONTACT@example.com');
+try{cd_partner_submit($db,'ntc93',$submission,$partnerNow);throw new RuntimeException('Invite reuse accepted');}catch(InvalidArgumentException $e){}
+try{cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$ref,'reviewed'=>'1'],'test-club',$partnerNow);throw new RuntimeException('Cross-club approval accepted');}catch(InvalidArgumentException $e){}
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$ref,'reviewed'=>'1'],'ntc93',$partnerNow);
+$pub=cd_partner_rows($db,'ntc93',$partnerNow);check(count($pub)===1&&!isset($pub[0]['contact'])&&$pub[0]['category']==='doubles');
+check(cd_partner_rows($db,'ntc93',$partnerNow+1209600)===[]);
+$interest=cd_partner_admin($db,['club'=>'ntc93','intent'=>'invite','verified_member'=>'1'],'ntc93',$partnerNow);
+cd_partner_submit($db,'ntc93',['mode'=>'interest','code'=>$interest,'adult'=>'1','consent'=>'1','contact'=>'OTHER-PRIVATE','ref'=>$ref],$partnerNow);
+check(count(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)[0]['interest'])===1);
+check(!str_contains(json_encode(cd_partner_rows($db,'ntc93',$partnerNow)),'PRIVATE'));
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
+check(cd_partner_rows($db,'ntc93',$partnerNow)===[]&&cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)===[]);
+echo "Partner board: single-use invitations, consent, moderation, privacy, isolation and expiry OK\n";

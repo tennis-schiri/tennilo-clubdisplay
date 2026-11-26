@@ -23,6 +23,7 @@ if(is_link($dir.'/clubdisplay-admin.sqlite'))cd_unavailable('STORAGE_NOT_PRIVATE
 if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true))cd_unavailable('SQLITE_DRIVER');
 umask(0077);
 try{$db=cd_db($dir.'/clubdisplay-admin.sqlite');}catch(Throwable $e){cd_unavailable('DATABASE_INIT');}
+if(isset($_GET['partner']))cd_partner_public($db);
 // Device traffic never uses an administrator session. The key travels in a POST body.
 if(isset($_GET['device'])){
     header('Content-Type: application/json; charset=utf-8');
@@ -93,10 +94,13 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             catch(InvalidArgumentException $e){$error=$e->getMessage();}
             catch(Throwable $e){$error='Speichern fehlgeschlagen. Ist die Vereinskennung bereits vergeben?';}
         }
-        if(in_array($action,['display-create','display-save','account','brand','content','media','dining','sources','contract','device-issue','device-revoke','backup','billing','billing-export','source-test'],true)){
+        if(in_array($action,['display-create','display-save','account','brand','content','media','dining','sources','contract','device-issue','device-revoke','backup','billing','billing-export','source-test','partner-board'],true)){
             try{
                 if($action==='account'){if($scope!==null)throw new InvalidArgumentException('Keine Berechtigung.');cd_account($db,(string)($_POST['club']??''),(string)($_POST['new_password']??''),isset($_POST['enabled']));}
                 elseif($action==='brand')cd_save_brand($db,$_POST,$_FILES['logo']??[],$scope);
+                elseif($action==='partner-board'){
+                    $code=cd_partner_admin($db,$_POST,$scope);if($code!==null)$_SESSION['partner_invite']=$code;
+                }
                 elseif($action==='content')cd_save_content($db,$_POST,$scope);
                 elseif($action==='media')cd_media_save($db,$_POST,$_FILES['image']??[],$scope);
                 elseif($action==='dining')cd_dining_save($db,$_POST,$scope);
@@ -140,7 +144,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         }
     }
 }
-$auth=!empty($_SESSION['auth']);if($auth)$_SESSION['last']=time();
+$auth=!empty($_SESSION['auth']);if($auth){$_SESSION['last']=time();cd_partner_cleanup($db);}
 if(isset($_GET['preview'])||isset($_GET['preview-data'])){
     if(!$auth){http_response_code(403);exit;}
     try{
@@ -172,7 +176,7 @@ if(isset($_GET['logo'])){
 $csrf=cd_h($_SESSION['csrf']);$ok=$_SESSION['flash']??'';unset($_SESSION['flash']);
 function field(array $c,bool $new,string $csrf):void{
     $modules=json_decode($c['modules']??'["welcome"]',true)?:['welcome'];
-    $labels=['welcome'=>'Willkommen','weather'=>'Wetter','calendar'=>'Termine','teams'=>'Mannschaften','news'=>'Vereinsinfos','partner'=>'Sponsoren','restaurant'=>'Gastronomie','courts'=>'Buchung / Plätze'];
+    $labels=['welcome'=>'Willkommen','weather'=>'Wetter','calendar'=>'Termine','teams'=>'Mannschaften','news'=>'Vereinsinfos','partner'=>'Sponsoren','restaurant'=>'Gastronomie','courts'=>'Buchung / Plätze','partner_search'=>'Spielpartnerbörse'];
     ?>
     <form method="post" class="profile">
       <input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="<?=$new?'create':'save'?>">
@@ -190,7 +194,7 @@ function displayField(PDO $db,array $c,array $d,bool $new,string $csrf):void{
     $allowed=json_decode($c['modules'],true)?:[];$active=json_decode($d['modules']??'["welcome"]',true)?:[];
     $layout=$new?['welcome'=>'','order'=>[],'dwell'=>[]]:cd_layout($db,$c['slug'],$d['slug']);
     $ordered=array_values(array_intersect($layout['order'],$allowed));foreach($allowed as $k)if(!in_array($k,$ordered,true))$ordered[]=$k;
-    $labels=['welcome'=>'Willkommen','weather'=>'Wetter','calendar'=>'Termine','teams'=>'Mannschaften','news'=>'Vereinsinfos','partner'=>'Sponsoren','restaurant'=>'Gastronomie','courts'=>'Buchung / Plätze'];
+    $labels=['welcome'=>'Willkommen','weather'=>'Wetter','calendar'=>'Termine','teams'=>'Mannschaften','news'=>'Vereinsinfos','partner'=>'Sponsoren','restaurant'=>'Gastronomie','courts'=>'Buchung / Plätze','partner_search'=>'Spielpartnerbörse'];
     ?><form method="post" class="profile">
     <input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="<?=$new?'display-create':'display-save'?>"><input type="hidden" name="club" value="<?=cd_h($c['slug'])?>">
     <label>Bildschirmkennung <input name="slug" required pattern="[a-z0-9][a-z0-9\-]{1,48}[a-z0-9]" value="<?=cd_h($d['slug']??'')?>" <?=$new?'':'readonly'?>></label>
@@ -312,6 +316,7 @@ function contentField(PDO $db,array $c,string $kind,array $row,string $csrf,arra
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
 <?php if($auth&&!empty($_SESSION['device_link'])):$deviceLink=$_SESSION['device_link'];unset($_SESSION['device_link']);?><section class="panel"><h2>Geräteadresse · nur einmal sichtbar</h2><p>Vertraulich behandeln und am Bildschirm öffnen. Bei Verlust einen neuen Schlüssel erzeugen.</p><input readonly value="<?=cd_h($deviceLink)?>" aria-label="Geräteadresse"><a class="admin-action" href="<?=cd_h($deviceLink)?>" target="_blank" rel="noopener noreferrer">Gerät öffnen</a></section><?php endif?>
+<?php if($auth&&!empty($_SESSION['partner_invite'])):$invite=$_SESSION['partner_invite'];unset($_SESSION['partner_invite']);?><section class="panel"><h2>Einladungscode · nur einmal sichtbar</h2><p>Nur dem bestätigten volljährigen Vereinsmitglied mitteilen. 48 Stunden gültig, einmal verwendbar.</p><input readonly value="<?=cd_h($invite)?>" aria-label="Einladungscode"></section><?php endif?>
 <?php if(!$auth):?><section class="login"><h1><?=$clubPortal?'Vereinsadmin-Anmeldung':'Administrator-Anmeldung'?></h1><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="login"><?php if($clubPortal):?><?php if($fixedClub):?><p>NTC 93</p><?php else:?><label>Vereinskennung <input name="club_login" autocomplete="username" required></label><?php endif?><?php endif?><label>Passwort <input type="password" name="password" autocomplete="current-password" required></label><button>Anmelden</button></form></section>
 <?php else:$clubs=$scope===null?$db->query('SELECT * FROM clubs ORDER BY name')->fetchAll():[cd_club($db,$scope)];?>
 <div class="head"><div><h1><?=$scope===null?'TENNILO · Kundenverwaltung':'Vereinsbackend'?></h1><p><?=count($clubs)?> Vereinsprofile · Konfigurationsentwürfe</p></div><form method="post"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="logout"><button>Abmelden</button></form></div>
@@ -321,7 +326,7 @@ function contentField(PDO $db,array $c,string $kind,array $row,string $csrf,arra
 <?php if($scope===null):?><details class="panel"><summary>+ Neuen Verein anlegen</summary><?php field([],true,$csrf)?></details><?php endif?>
 <?php foreach($clubs as $club):$displays=cd_displays($db,$club['slug']);?><details class="panel" <?=$scope!==null||$focusClub===$club['slug']?'open':''?>><summary><?=cd_h($club['name'])?> <small><?=cd_h(cd_plan_label($club['plan']))?> · <?=count($displays)?> Bildschirme</small></summary>
 <?php if($scope===null):?><details class="subpanel"><summary>Vereinsprofil & Lizenz</summary><?php field($club,false,$csrf)?></details><details class="subpanel"><summary>Vereinszugang</summary><?php accountField($club,cd_account_row($db,$club['slug']),$csrf)?></details><details class="subpanel"><summary>Vertrag & Bildschirmkontingent</summary><?php contractField($club,cd_contract($db,$club['slug']),$csrf)?></details><details class="subpanel" <?=$focusAction==='billing'&&$focusClub===$club['slug']?'open':''?>><summary>Abrechnungsdaten</summary><?php billingField($club,cd_billing($db,$club['slug']),$csrf)?></details><?php endif?>
-<details class="subpanel" <?=in_array($focusAction,['sources','source-test'],true)&&$focusClub===$club['slug']?'open':''?>><summary>Datenquellen & Schnittstellen</summary><?php sourceField($club,cd_sources($db,$club['slug'],$scope),$csrf,$scope)?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="club" value="<?=cd_h($club['slug'])?>"><button name="action" value="source-test">Freigegebene Datenfeeds prüfen</button></form></details><h2>Gemeinsame Vereinsinhalte</h2><p>Einmal pflegen und gezielt auf allen oder ausgewählten Bildschirmen veröffentlichen. Für gekoppelte Geräte wirksam.</p>
+<details class="subpanel" <?=in_array($focusAction,['sources','source-test'],true)&&$focusClub===$club['slug']?'open':''?>><summary>Datenquellen & Schnittstellen</summary><?php sourceField($club,cd_sources($db,$club['slug'],$scope),$csrf,$scope)?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="club" value="<?=cd_h($club['slug'])?>"><button name="action" value="source-test">Freigegebene Datenfeeds prüfen</button></form></details><details class="subpanel" <?=$focusAction==='partner-board'&&$focusClub===$club['slug']?'open':''?>><summary>Spielpartnerbörse</summary><?php cd_partner_field($db,$club,$csrf,$scope)?></details><h2>Gemeinsame Vereinsinhalte</h2><p>Einmal pflegen und gezielt auf allen oder ausgewählten Bildschirmen veröffentlichen. Für gekoppelte Geräte wirksam.</p>
 <details class="subpanel" <?=$focusAction==='brand'&&$focusClub===$club['slug']?'open':''?>><summary>Logo, Farben & Begrüßung</summary><?php brandField($club,cd_brand($db,$club['slug']),$csrf)?></details>
 <?php foreach(CD_CONTENT as $kind=>$label):if(!in_array($kind,json_decode($club['modules'],true)?:[],true))continue;$rows=cd_content_rows($db,$club['slug'],$kind);?><details class="subpanel"><summary><?=cd_h($label)?> <small><?=count($rows)?> Einträge</small></summary>
 <details class="entry"><summary>+ Eintrag anlegen</summary><?php contentField($db,$club,$kind,[],$csrf,$displays)?></details>

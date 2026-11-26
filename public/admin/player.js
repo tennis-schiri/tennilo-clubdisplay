@@ -1,6 +1,6 @@
 'use strict';
 (()=>{
-const $=id=>document.getElementById(id), preview=document.body.dataset.preview, token=location.hash.slice(1), VERSION='0.6.4';
+const $=id=>document.getElementById(id), preview=document.body.dataset.preview, token=location.hash.slice(1), VERSION='0.6.5';
 let snapshot=null,slides=[],index=0,rotation=null,paused=false,lastOk=0,denied=false,generation=0,logoUrl=null,slideUrl=null,polling=false,signature='';
 const tr=(de,en)=>snapshot?.language==='en'?en:de;
 const node=(tag,value,cls)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=String(value);if(cls)e.className=cls;return e;};
@@ -18,7 +18,7 @@ async function request(action,id){
 }
 function message(title,body){generation++;clearImage('slide');clearImage('logo');$('slide').className='welcome';$('slide').replaceChildren(node('h1',title),node('p',body));$('club').textContent='TENNILO ClubDisplay';$('screen').textContent='';$('position').textContent='–';}
 function stopAccess(){denied=true;snapshot=null;slides=[];clearTimeout(rotation);message(tr('Zugang nicht verfügbar','Access unavailable'),tr('Bitte Gerätefreigabe oder Vereinsanmeldung prüfen.','Check device access or club login.'));$('status').textContent='Zugang nicht verfügbar / Access unavailable';}
-function label(kind){return ({welcome:tr('Willkommen','Welcome'),weather:tr('Wetter','Weather'),calendar:tr('Termine','Events'),teams:tr('Mannschaften','Teams'),news:tr('Vereinsnachrichten','Club news'),partner:tr('Sponsoren','Sponsors'),restaurant:tr('Gastronomie','Dining'),courts:tr('Platzbuchung','Court booking')})[kind]||kind;}
+function label(kind){return ({welcome:tr('Willkommen','Welcome'),weather:tr('Wetter','Weather'),calendar:tr('Termine','Events'),teams:tr('Mannschaften','Teams'),news:tr('Vereinsnachrichten','Club news'),partner:tr('Sponsoren','Sponsors'),restaurant:tr('Gastronomie','Dining'),courts:tr('Platzbuchung','Court booking'),partner_search:tr('Spielpartnerbörse','Find a playing partner')})[kind]||kind;}
 function groups(items,size){const pages=[];for(let i=0;i<items.length;i+=size)pages.push(items.slice(i,i+size));return pages;}
 function textPages(value){
   const text=String(value||'');if(text.length<=500)return [text];
@@ -63,6 +63,7 @@ function build(s){
   for(const kind of s.modules||[]){
     const start=out.length;
     if(kind==='calendar')out.push(...activeEventGreetingRows(s));
+    if(kind==='partner_search')groups((s.partner_search||[]).filter(r=>r.expires>Date.now()/1000),4).forEach((rows,i)=>out.push({key:'partner-search:'+i,kind:'partner-search',rows}));
     if(kind==='welcome')out.push({key:'welcome',kind:'welcome'});
     if(kind==='restaurant'&&s.dining?.name){
       out.push({key:'dining',kind:'dining'});
@@ -103,6 +104,11 @@ function render(){
   add(main,node('div',tr('VERANSTALTUNG','EVENT'),'eyebrow'),node('h2',tr('Herzlich willkommen!','A warm welcome!')),node('h1',r.title),node('p',eventGreetingPeriod(r),'event-greeting-period'));
   if(r.venue)add(main,node('p',r.venue));
   add(main,node('p',tr('Wir wünschen euch eine schöne Veranstaltung!','Enjoy the event!'),'event-greeting-farewell'));
+ }
+ else if(slide.kind==='partner-search'){
+  heading(main,'partner_search',tr('Wer spielt mit?','Find a playing partner'));
+  const words={singles:tr('Einzel','Singles'),doubles:tr('Doppel','Doubles'),mixed:'Mixed',training:tr('Training','Practice'),any:tr('Alle Spielstärken / flexibel','Any level / flexible'),beginner:tr('Einsteiger','Beginner'),recreational:tr('Freizeitspieler','Recreational'),league:tr('Mannschaftsspieler','League player'),advanced:tr('Fortgeschritten','Advanced'),flexible:tr('Flexibel','Flexible'),weekday:tr('Werktags','Weekdays'),weekend:tr('Wochenende','Weekend'),mon:tr('Montag','Monday'),tue:tr('Dienstag','Tuesday'),wed:tr('Mittwoch','Wednesday'),thu:tr('Donnerstag','Thursday'),fri:tr('Freitag','Friday'),sat:tr('Samstag','Saturday'),sun:tr('Sonntag','Sunday'),morning:tr('Vormittags','Morning'),afternoon:tr('Nachmittags','Afternoon'),evening:tr('Abends','Evening')};
+  const cards=node('div',undefined,'cards');for(const r of slide.rows.filter(r=>r.expires>Date.now()/1000))add(cards,tile((words[r.category]||'')+' · '+r.ref,[words[r.skill],words[r.availability],words[r.period]].filter(Boolean).join(' · ')));add(main,cards,node('p',tr('Mit der Referenz und einem Einladungscode an die Vereinsverwaltung wenden.','Contact the club administration with the reference and an invitation code.')));
  }
  else if(slide.kind==='entry'){
   const r=slide.row;heading(main,r.kind,r.title);if(slide.total>1)add(main,node('small',(slide.page+1)+' / '+slide.total));
