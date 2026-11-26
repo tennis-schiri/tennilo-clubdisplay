@@ -67,3 +67,17 @@ assert.doesNotMatch(source,/Interaktiver Modus|Interactive mode/);
 assert.ok(source.includes("$('mode').hidden=view!=='info'"));
 assert.ok(source.includes("$('mode-dot').hidden=view!=='info'"));
 assert.match(displayHtml,/id="mode-dot"/);
+
+// Home venue suppression and away labels apply to both languages and results.
+dateCtx.lang='de';dateCtx.view='teams';dateCtx.matchFilter='all';
+const baseFixture={date:'2027-01-02T10:00:00+01:00',home:'NTC',away:'TC',isHome:true,score:null};
+dateCtx.leagueData.matches=[{...baseFixture,venue:' NEUENHAGEN '},{...baseFixture,venue:'Halle Hoppegarten'},{...baseFixture,home:'TC Gast',away:'NTC',isHome:false,venue:'Berlin',courts:[1,2]}];
+const fixtureHtml=vm.runInContext('matchView()',dateCtx);
+const fixtureCards=[...fixtureHtml.matchAll(/<article class="fixture-card">(.*?)<\/article>/g)].map(m=>m[1]);
+assert.equal(fixtureCards.length,3);
+assert.doesNotMatch(fixtureCards[0],/fixture-venue|Heimspiel|fixture-side|NEUENHAGEN/);
+assert.match(fixtureCards[1],/fixture-match-meta.*fixture-venue.*Halle Hoppegarten/);
+assert.match(fixtureCards[2],/fixture-away-strip.*fixture-away-label">Auswärts<.*fixture-match-meta.*fixture-venue.*Berlin/);
+assert.doesNotMatch(fixtureCards[2],/fixture-court-icon|fixture-side/);
+dateCtx.lang='en';assert.match(vm.runInContext('matchView()',dateCtx),/fixture-away-label">Away</);
+console.log('Match card layout: venues and away markers OK');
