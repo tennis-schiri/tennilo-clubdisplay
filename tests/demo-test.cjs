@@ -25,7 +25,7 @@ assert.doesNotMatch(source, /admin-link|\/admin\/\?portal=club/);
 
 // Exercise the real fixture/calendar rendering with dates spanning the new year.
 const dateCtx=vm.createContext({Intl,Date:class extends Date{constructor(...args){super(...(args.length?args:['2026-11-25T12:00:00+01:00']));}},lang:'de',view:'info',matchFilter:'home',pilot:true,tr:(de,en)=>dateCtx.lang==='de'?de:en,t:()=>({upcoming:'Termine'}),esc:s=>String(s??''),shortClub:s=>s,teamAndLeague:()=>({team:'Herren',league:'VL'}),fixtureCourtNumbers:()=>[],leagueData:{status:'ok',matches:[{date:'2027-01-01T10:00:00+01:00',home:'NTC',away:'TC',isHome:true,score:null}]},eventData:{status:'ok',events:[{title:'Regel-Workshop',start:'2027-03-04T19:00:00+01:00',end:'2027-03-04T21:00:00+01:00'},{title:'Jahreswechsel',start:'2026-12-31T20:00:00+01:00',end:'2027-01-01T01:00:00+01:00'}]}});
-for(const [start,end] of [['function matchView(){','async function refreshLeague()'],['function eventView(){','async function refreshEvents()']])vm.runInContext(source.slice(source.indexOf(start),source.indexOf(end)),dateCtx);
+for(const [start,end] of [['function fixtureAssignedCourts(m){','function matchGreetingView(key){'],['function matchView(){','async function refreshLeague()'],['function eventView(){','async function refreshEvents()']])vm.runInContext(source.slice(source.indexOf(start),source.indexOf(end)),dateCtx);
 const dates=code=>[...vm.runInContext(code,dateCtx).matchAll(/class="fixture-day">([^<]+)</g)].map(m=>m[1]);
 assert.deepEqual(dates('matchView()'),['01.01.2027']);
 assert.deepEqual(dates('eventView()'),['04.03.2027','31.12.2026','01.01.2027']);
