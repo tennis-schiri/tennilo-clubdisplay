@@ -718,3 +718,16 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 
 /* Playing partner board — structured, anonymous listings. */
 .partner-board-layout{display:grid;grid-template-columns:minmax(0,1fr) clamp(180px,24vw,340px);gap:1rem;align-items:stretch}.partner-board-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}.partner-board-card,.partner-board-help{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:clamp(.65rem,1.5vw,1.3rem);min-width:0}.partner-board-card h2{font-size:clamp(1.05rem,1.8vw,1.9rem);font-weight:600;color:var(--cyan);overflow-wrap:anywhere}.partner-board-card p{font-size:clamp(.85rem,1.35vw,1.35rem);margin:.3rem 0}.partner-board-card small{display:block;margin-top:.7rem;font-variant-numeric:tabular-nums;color:var(--muted)}.partner-board-help{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:.45rem}.partner-board-help h2{margin:0;font-weight:600}.partner-board-help small{color:var(--muted)}.partner-board-qr{display:block;width:clamp(100px,12vw,180px);aspect-ratio:1;background:#fff;border-radius:5px;overflow:hidden}.partner-board-qr svg{width:100%;height:100%;display:block}@media(max-width:699px){.partner-board-layout{grid-template-columns:minmax(0,1fr)}.partner-board-grid{grid-template-columns:minmax(0,1fr)}.partner-board-help{gap:.2rem}.partner-board-qr{width:84px}}
+
+/* 0.4.57 – private touch input, independent of the rotating slide. */
+#partner-dialog{width:min(880px,92vw);max-height:90dvh;overflow:auto;border:1px solid var(--line);border-radius:18px;padding:clamp(1rem,2vw,2rem);background:var(--panel);color:var(--ink);box-shadow:0 24px 70px #0008}
+#partner-dialog::backdrop{background:#000d}
+#partner-form{display:grid;gap:.85rem}
+#partner-form label{display:grid;gap:.3rem;font-size:clamp(15px,1.4vw,21px)}
+#partner-form :is(select,textarea){font:inherit;width:100%;min-height:48px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:.5rem}
+#partner-form .partner-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+#partner-form .partner-check{display:flex;align-items:flex-start;gap:.6rem;font-size:clamp(13px,1vw,17px)}
+#partner-form .partner-check input{flex:none;width:24px;height:24px;accent-color:var(--cyan)}
+#partner-form .actions{justify-content:flex-end;margin-top:.25rem}
+#partner-status{color:var(--cyan);margin-top:.5rem}
+.partner-board-help button,.partner-board-card button{width:100%;margin-top:.3rem}

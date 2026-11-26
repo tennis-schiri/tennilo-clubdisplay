@@ -196,30 +196,26 @@ cd_partner_admin($db,['club'=>'ntc93','intent'=>'mail-settings','moderator_email
 check(cd_partner_mail_address($db,'ntc93')==='');
 check(!cd_partner_enabled($db,'ntc93'));
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
-$invite=cd_partner_admin($db,['club'=>'ntc93','intent'=>'invite','verified_member'=>'1'],'ntc93',$partnerNow);
-check(is_string($invite)&&strlen($invite)===32);
-$submission=['mode'=>'post','code'=>$invite,'adult'=>'1','consent'=>'1','contact'=>'PRIVATE-CONTACT@example.com','category'=>'doubles','skill'=>'recreational','availability'=>'weekend','period'=>'morning'];
+$submission=['mode'=>'post','adult'=>'1','consent'=>'1','contact'=>'PRIVATE-CONTACT@example.com','category'=>'doubles','skill'=>'recreational','availability'=>'weekend','period'=>'morning'];
 cd_partner_submit($db,'ntc93',$submission,$partnerNow);
 check(cd_partner_rows($db,'ntc93',$partnerNow)===[]);
 $private=cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow);check(count($private)===1);$ref=$private[0]['ref'];
 check($private[0]['contact']==='PRIVATE-CONTACT@example.com');
-try{cd_partner_submit($db,'ntc93',$submission,$partnerNow);throw new RuntimeException('Invite reuse accepted');}catch(InvalidArgumentException $e){}
+try{cd_partner_submit($db,'ntc93',$submission,$partnerNow);throw new RuntimeException('Duplicate request accepted');}catch(InvalidArgumentException $e){}
 try{cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$ref,'reviewed'=>'1'],'test-club',$partnerNow);throw new RuntimeException('Cross-club approval accepted');}catch(InvalidArgumentException $e){}
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$ref,'reviewed'=>'1'],'ntc93',$partnerNow);
 $pub=cd_partner_rows($db,'ntc93',$partnerNow);check(count($pub)===1&&!isset($pub[0]['contact'])&&$pub[0]['category']==='doubles');
 check(cd_partner_rows($db,'ntc93',$partnerNow+1209600)===[]);
-$interest=cd_partner_admin($db,['club'=>'ntc93','intent'=>'invite','verified_member'=>'1'],'ntc93',$partnerNow);
-cd_partner_submit($db,'ntc93',['mode'=>'interest','code'=>$interest,'adult'=>'1','consent'=>'1','contact'=>'OTHER-PRIVATE','ref'=>$ref],$partnerNow);
+cd_partner_submit($db,'ntc93',['mode'=>'interest','adult'=>'1','consent'=>'1','contact'=>'OTHER-PRIVATE','ref'=>$ref],$partnerNow);
 check(count(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)[0]['interest'])===1);
 check(!str_contains(json_encode(cd_partner_rows($db,'ntc93',$partnerNow)),'PRIVATE'));
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 check(cd_partner_rows($db,'ntc93',$partnerNow)===[]&&cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)===[]);
-echo "Partner board: single-use invitations, consent, moderation, privacy, isolation and expiry OK\n";
+echo "Partner board: direct submission, consent, moderation, privacy, isolation and expiry OK\n";
 
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
 foreach(['MAIL-APPROVE','MAIL-REJECT'] as $contact){
-    $invite=cd_partner_admin($db,['club'=>'ntc93','intent'=>'invite','verified_member'=>'1'],'ntc93',$partnerNow);
-    cd_partner_submit($db,'ntc93',array_replace($submission,['code'=>$invite,'contact'=>$contact]),$partnerNow);
+    cd_partner_submit($db,'ntc93',array_replace($submission,['contact'=>$contact]),$partnerNow);
 }
 $refs=array_column(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow),'ref','contact');
 check(count($refs)===2&&cd_partner_rows($db,'ntc93',$partnerNow)===[]);
@@ -245,3 +241,12 @@ check(count(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow))===1);
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'mail-settings','moderator_email'=>''],'ntc93',$partnerNow);
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 echo "Partner mail: scoped, expiring, single-use links; resend and address change invalidate prior links; approve and reject OK\n";
+
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
+for($i=0;$i<12;$i++)cd_partner_submit($db,'ntc93',array_replace($submission,['contact'=>'RATE-'.$i]),$partnerNow,'test-client');
+try{cd_partner_submit($db,'ntc93',array_replace($submission,['contact'=>'RATE-OVER']),$partnerNow,'test-client');throw new RuntimeException('Rate limit bypass');}catch(InvalidArgumentException $e){}
+check(count(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow))===12);
+check(cd_partner_rows($db,'ntc93',$partnerNow)===[]);
+try{cd_partner_submit($db,'ntc93',array_replace($submission,['website'=>'spam']),$partnerNow);throw new RuntimeException('Honeypot bypass');}catch(InvalidArgumentException $e){}
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
+echo "Direct requests, duplicate prevention and rate limit OK\n";

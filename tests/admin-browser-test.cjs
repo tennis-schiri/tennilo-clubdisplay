@@ -78,6 +78,7 @@ const {chromium}=require('playwright');
   await mobile.screenshot({path:'artifacts/club-admin-mobile.png'});
   await mobile.goto(base+'?partner=submit&club=ntc93');
   await mobile.getByRole('heading',{name:'Spielpartner gesucht'}).waitFor();
+  assert.equal(await mobile.locator('input[name=code]').count(),0);
   for(const width of [360,390]){
     await mobile.setViewportSize({width,height:844});
     await noOverflow();
