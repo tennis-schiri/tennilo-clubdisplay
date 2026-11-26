@@ -28,9 +28,9 @@ const dateCtx=vm.createContext({Intl,Date:class extends Date{constructor(...args
 for(const [start,end] of [['function matchView(){','async function refreshLeague()'],['function eventView(){','async function refreshEvents()']])vm.runInContext(source.slice(source.indexOf(start),source.indexOf(end)),dateCtx);
 const dates=code=>[...vm.runInContext(code,dateCtx).matchAll(/class="fixture-day">([^<]+)</g)].map(m=>m[1]);
 assert.deepEqual(dates('matchView()'),['01.01.2027']);
-assert.deepEqual(dates('eventView()'),['04.03.2027','31.12.2026']);
+assert.deepEqual(dates('eventView()'),['04.03.2027','31.12.2026','01.01.2027']);
 assert.match(vm.runInContext('eventView()',dateCtx),/01\.01\.2027/);
-dateCtx.lang='en';assert.deepEqual(dates('matchView()'),['01/01/2027']);assert.deepEqual(dates('eventView()'),['04/03/2027','31/12/2026']);
+dateCtx.lang='en';assert.deepEqual(dates('matchView()'),['01/01/2027']);assert.deepEqual(dates('eventView()'),['04/03/2027','31/12/2026','01/01/2027']);
 dateCtx.view='teams';dateCtx.matchFilter='results';dateCtx.leagueData.matches[0].score='6:3';assert.deepEqual(dates('matchView()'),['01/01/2027']);
 console.log('Fixture and event year labels in DE/EN, results and cross-year dates OK');
 
@@ -44,3 +44,12 @@ assert.equal(managedRun('activeEventGreetingRows(s,start+7199999).length'),1);
 assert.equal(managedRun('activeEventGreetingRows(s,start+7200000).length'),0);
 assert.equal(managedRun('activeEventGreetingRows({...s,modules:["welcome"]},start).length'),0);
 console.log('Managed calendar module gating and welcome timing OK');
+
+dateCtx.lang='de';dateCtx.view='info';dateCtx.eventData.events.push({title:'NEUENHAGEN OPEN',start:'2027-06-15T00:00:00+02:00',end:'2027-06-20T23:59:59+02:00',allDay:true});
+const multiHtml=vm.runInContext('eventView()',dateCtx);
+const rangeBlocks=[...multiHtml.matchAll(/<time class="fixture-date-block fixture-date-range"[^>]*>(.*?)<\/time>/g)].map(m=>m[1]);
+assert.equal(rangeBlocks.length,2);
+assert.match(rangeBlocks[0],/31\.12\.2026.*bis.*01\.01\.2027/);
+assert.match(rangeBlocks[1],/15\.06\.2027.*bis.*20\.06\.2027.*Ganztägig/);
+assert.doesNotMatch(multiHtml,/class="fixture-details event-details"/);
+console.log('Multi-day dates fully inside leading date tiles OK');

@@ -216,12 +216,13 @@ function eventView(){
     const date=fmt(e.start,{day:'2-digit',month:'2-digit',year:'numeric'});
     const time=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+(lang==='de'?' Uhr':'');
     const endTime=fmt(e.end,{hour:'2-digit',minute:'2-digit'});
-    const dateRange=multi?fmt(e.start,{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})+' – '+fmt(e.end,{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}):'';
+    const endDate=fmt(e.end,{day:'2-digit',month:'2-digit',year:'numeric'});
+    const dateBlock=multi?'<span class="fixture-weekday">'+tr('Mehrtägig','Multi-day')+'</span><strong class="fixture-day">'+esc(date)+'</strong><span class="fixture-range-separator">'+tr('bis','to')+'</span><strong class="fixture-day">'+esc(endDate)+'</strong>':'<span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(date)+'</strong>';
     const link=!info&&!pilot&&typeof e.url==='string'&&/^https:\/\/(?:www\.)?ntc93\.com\//i.test(e.url)?'<a class="event-link" href="'+esc(e.url)+'" target="_blank" rel="noopener noreferrer">'+tr('Details','Details')+'</a>':'';
-    const period=e.allDay?(multi?fmt(e.end,{day:'2-digit',month:'2-digit',year:'numeric'}):tr('Ganztägig','All day')):multi?fmt(e.end,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+(lang==='de'?' Uhr':''):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+endTime+(lang==='de'?' Uhr':'');
-    const periodLabel=multi?tr('Bis','Until'):tr('Zeitraum','Time');
+    const period=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+endTime+(lang==='de'?' Uhr':'');
+    const periodLabel=tr('Zeitraum','Time');
     const cell=(label,value)=>'<div class="event-meta-cell"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>';
-    return '<article class="fixture-card event-card'+(link?' event-card-linked':'')+'"><time class="fixture-date-block" datetime="'+esc(e.start)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(date)+'</strong><span class="fixture-time">'+esc(time)+'</span></time><div class="fixture-content event-content"><strong class="event-title">'+esc(e.title)+'</strong>'+(dateRange?'<div class="fixture-details event-details">'+esc(dateRange)+'</div>':'')+'</div><div class="event-meta">'+cell(periodLabel,period)+cell(tr('Ort','Venue'),e.venue||'–')+'</div>'+link+'</article>';
+    return '<article class="fixture-card event-card'+(link?' event-card-linked':'')+'"><time class="fixture-date-block'+(multi?' fixture-date-range':'')+'" datetime="'+esc(e.start)+'">'+dateBlock+'<span class="fixture-time">'+esc(time)+'</span></time><div class="fixture-content event-content"><strong class="event-title">'+esc(e.title)+'</strong></div><div class="event-meta">'+cell(periodLabel,period)+cell(tr('Ort','Venue'),e.venue||'–')+'</div>'+link+'</article>';
   }).join('');
   const paging='<div class="actions match-pages"><button data-action="event-prev" aria-label="'+tr('Vorherige Seite','Previous page')+'">‹</button><span class="match-page-number"></span><button data-action="event-next" aria-label="'+tr('Nächste Seite','Next page')+'">›</button></div>';
   return title+warning+'<div class="fixture-list">'+cards+'</div>'+paging+source;
@@ -469,7 +470,7 @@ function occupancyBookingText(area,court,hour){
     const label=r.displayLabel.trim();
     const timed=typeof r.start==='string'&&typeof r.end==='string'&&Number.isFinite(Date.parse(r.start))&&Number.isFinite(Date.parse(r.end))&&Date.parse(r.start)<Date.parse(r.end);
     const extra=timed&&(entries.length>1||status==='partial')?'<span class="occupancy-booking-time">'+esc(occupancyTime(r.start)+'–'+occupancyTime(r.end))+'</span>':'';
-    return '<div class="occupancy-booking-entry">'+extra+'<strong>'+esc(label)+'</strong></div>';
+    return '<div class="occupancy-booking-entry">'+extra+'<span class="occupancy-booking-name">'+esc(label)+'</span></div>';
   }).join(''):'<span class="occupancy-booking-placeholder">'+fallback[status]+'</span>';
   return '<div class="occupancy-cell occupancy-'+status+'">'+body+'</div>';
 }

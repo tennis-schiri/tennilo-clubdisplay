@@ -22,7 +22,7 @@ assert.equal(check("occupancyHours(Date.parse('2026-10-25T00:37:00Z'))[1].start"
 assert.equal(check("occupancyView().match(/class=\"occupancy-court-art\"/g).length"),9);
 assert.equal(check("occupancyView().match(/occupancy-hour-head occupancy-hour-current/g).length"),1);
 check("occupancyData={status:'ok',fetchedAt:Date.now()/1000,slots:[{area:'outdoor',court:1,...occupancyHours()[0],status:'occupied',bookings:[{displayLabel:'Testspieler A / B'}]}]}");
-assert.ok(check("occupancyView().includes('Testspieler A / B')"));
+assert.ok(check("occupancyView().includes('<span class=\"occupancy-booking-name\">Testspieler A / B</span>')"));
 check("occupancyData.slots[0].bookings[0].displayLabel='<script>'");
 assert.ok(check("occupancyView().includes('&lt;script&gt;')"));
 assert.ok(!check("occupancyView().includes('<script>')"));
