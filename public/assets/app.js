@@ -97,13 +97,54 @@ function eventGreetingView(key){
   const when=e.allDay?(first===last?first:first+' – '+last)+' · '+tr('Ganztägig','All day'):first+' · '+time(e.start)+' – '+(first===last?'':last+' · ')+time(e.end)+(lang==='de'?' Uhr':'');
   return '<div class="greeting-hero event-greeting-hero"><div class="greeting-kicker">'+tr('VERANSTALTUNG','EVENT')+'</div><div class="greeting-welcome">'+tr('Herzlich willkommen!','A warm welcome!')+'</div><h1 class="event-greeting-title">'+esc(e.title)+'</h1><div class="event-greeting-period">'+esc(when)+'</div>'+(e.venue?'<div class="event-greeting-venue">'+esc(e.venue)+'</div>':'')+'<p class="greeting-farewell">'+tr('Wir wünschen euch eine schöne Veranstaltung!','Enjoy the event!')+'</p></div>';
 }
+// Smart rotation: calendar dates are evaluated in the club's timezone, not the device timezone.
+function smartDate(value){
+  const ms=typeof value==='number'?value:Date.parse(value);
+  if(!Number.isFinite(ms))return '';
+  const fmt=smartDate.formatter||(smartDate.formatter=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}));
+  return fmt.format(new Date(ms));
+}
+function smartSeason(now=Date.now()){
+  const day=smartDate(now).slice(5);
+  return day>='05-01'&&day<'10-01'?'summer':'winter';
+}
+function smartHoliday(now=Date.now()){
+  const day=smartDate(now).slice(5);
+  if(day>='12-24'&&day<='12-26')return 'holiday:christmas';
+  if(day==='12-31')return 'holiday:eve';
+  if(day>='01-01'&&day<='01-06')return 'holiday:newyear';
+  return '';
+}
+function smartScreenKey(key){return typeof key==='string'&&key.startsWith('priority:')?key.slice(9):key;}
+function smartRotation(base,matches,events,matchKeys,eventKeys,now=Date.now()){
+  const today=smartDate(now);
+  const matchDay=matches?.status!=='unavailable'&&(matches?.matches||[]).some(m=>m.isHome===true&&!m.cancelled&&!m.score&&smartDate(m.date)===today);
+  const eventDay=events?.status!=='unavailable'&&(events?.events||[]).some(e=>e&&!e.cancelled&&String(e.status||'').toLowerCase()!=='cancelled'&&Number.isFinite(Date.parse(e.start))&&Date.parse(e.end)>Math.max(now,Date.parse(e.start))&&smartDate(e.start)<=today&&smartDate(e.end)>=today);
+  const holiday=smartHoliday(now);
+  const greetings=[...matchKeys,...eventKeys];
+  const out=[base[0],...greetings,...(holiday?[holiday]:[])];
+  for(const key of base.slice(1)){
+    out.push(key);
+    if(key==='news'){
+      if(matchDay&&base.includes('teams'))out.push('priority:teams');
+      if(eventDay&&base.includes('calendar'))out.push('priority:calendar');
+      // Repeat current welcomes once, while retaining every ordinary slide.
+      out.push(...greetings.map(k=>'priority:'+k));
+    }
+  }
+  return out;
+}
+function smartHolidayView(key){
+  const copy=key==='holiday:christmas'?[tr('Frohe Weihnachten!','Merry Christmas!'),tr('Wir wünschen euch und euren Familien schöne Feiertage.','Wishing you and your families a wonderful holiday.')]:key==='holiday:eve'?[tr('Guten Rutsch!','Happy New Year’s Eve!'),tr('Kommt gut ins neue Jahr.','Have a wonderful start to the new year.')]:[tr('Frohes neues Jahr!','Happy New Year!'),tr('Wir wünschen euch Gesundheit, Glück und viel Freude auf dem Tennisplatz.','Wishing you health, happiness and plenty of joy on the tennis court.')];
+  return '<div class="greeting-hero event-greeting-hero holiday-hero '+(key==='holiday:christmas'?'holiday-christmas':'holiday-newyear')+'"><div class="holiday-art" aria-hidden="true">'+(key==='holiday:christmas'?'<svg viewBox="0 0 160 110"><path d="M80 8 53 43h15L38 75h26L28 99h104L96 75h26L92 43h15Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M80 0v12m-6-6h12" stroke="currentColor" stroke-width="2"/><circle cx="80" cy="52" r="3" fill="currentColor"/><circle cx="60" cy="80" r="3" fill="currentColor"/><circle cx="100" cy="80" r="3" fill="currentColor"/></svg>':'<svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M80 12v26m0 24v26M42 50h26m24 0h26M53 23l18 18m18 18 18 18M53 77l18-18m18-18 18-18M24 5v20m-10-10h20m102 65v20m-10-10h20"/><circle cx="80" cy="50" r="5"/></svg>')+'</div><h1 class="event-greeting-title">'+esc(copy[0])+'</h1><p class="greeting-farewell">'+esc(copy[1])+'</p></div>';
+}
 function syncMatchGreetings(now=Date.now()){
   const active=activeMatchGreetings(leagueData,now);
   const previous=screens[slide];
-  const before=greetingMatches.get(previous)||greetingEvents.get(previous);
+  const before=greetingMatches.get(smartScreenKey(previous))||greetingEvents.get(smartScreenKey(previous));
   greetingMatches=new Map(active.map(m=>[matchGreetingKey(m),m]));
   greetingEvents=new Map(activeEventGreetings(eventData,now).map(e=>[eventGreetingKey(e),e]));
-  const next=[baseScreens[0],...greetingMatches.keys(),...greetingEvents.keys(),...baseScreens.slice(1)];
+  const next=smartRotation(baseScreens,leagueData,eventData,[...greetingMatches.keys()],[...greetingEvents.keys()],now);
   const changed=next.length!==screens.length||next.some((key,i)=>screens[i]!==key);
   if(changed){
     screens.splice(0,screens.length,...next);
@@ -114,7 +155,7 @@ function syncMatchGreetings(now=Date.now()){
       render();
     }else if(view==='info')infoControls();
   }
-  const current=greetingMatches.get(screens[slide])||greetingEvents.get(screens[slide]);
+  const current=greetingMatches.get(smartScreenKey(screens[slide]))||greetingEvents.get(smartScreenKey(screens[slide]));
   if(view==='info'&&before&&current&&JSON.stringify(before)!==JSON.stringify(current))render();
 }
 function matchGreetingView(key){
@@ -212,7 +253,7 @@ function fixtureStatusMarkup(m){
   return '<div class="fixture-result fixture-status fixture-status-'+status.kind+'" data-match-start="'+esc(m.date)+'"><span>'+esc(status.label)+'</span><strong>'+esc(status.value)+'</strong></div>';
 }
 function refreshFixtureStatuses(now=Date.now()){
-  if(view!=='teams'&&!(view==='info'&&screens[slide]==='teams'))return;
+  if(view!=='teams'&&!(view==='info'&&smartScreenKey(screens[slide])==='teams'))return;
   for(const el of document.querySelectorAll('[data-match-start]')){
     const status=fixtureStatus(el.dataset.matchStart,now);
     const label=el.querySelector('span'),value=el.querySelector('strong');
@@ -224,7 +265,7 @@ function refreshFixtureStatuses(now=Date.now()){
   }
 }
 async function refreshLeague(){
-  if(!pilot){leagueData=demoLeague();syncMatchGreetings();if(view==='teams'||(view==='info'&&screens[slide]==='teams'))render();return;}
+  if(!pilot){leagueData=demoLeague();syncMatchGreetings();if(view==='teams'||(view==='info'&&smartScreenKey(screens[slide])==='teams'))render();return;}
   if(fetching)return;fetching=true;
   try{
     const response=await fetch('nuliga.php',{cache:'no-store',signal:AbortSignal.timeout(25000)});
@@ -233,7 +274,7 @@ async function refreshLeague(){
     if(!Array.isArray(data.matches)||!['ok','stale','unavailable'].includes(data.status))throw Error('invalid feed');
     leagueData=data;
   }catch{leagueData=leagueData&&leagueData.status!=='unavailable'?{...leagueData,status:'stale'}:{status:'unavailable',matches:[]};}
-  finally{fetching=false;syncMatchGreetings();if(view==='teams'||(view==='info'&&screens[slide]==='teams'))render();}
+  finally{fetching=false;syncMatchGreetings();if(view==='teams'||(view==='info'&&smartScreenKey(screens[slide])==='teams'))render();}
 }
 setInterval(refreshLeague,300000);
 setInterval(refreshFixtureStatuses,10000);
@@ -270,7 +311,7 @@ async function refreshEvents(){
   if(eventFetching)return;eventFetching=true;
   try{const response=await fetch('events.php',{cache:'no-store',signal:AbortSignal.timeout(45000)});if(!response.ok)throw Error('HTTP');const data=await response.json();if(!Array.isArray(data.events)||!['ok','stale','unavailable'].includes(data.status))throw Error('feed');eventData=data;}
   catch{eventData=eventData&&eventData.status!=='unavailable'?{...eventData,status:'stale'}:{status:'unavailable',events:[]};}
-  finally{eventFetching=false;syncMatchGreetings();if(view==='calendar'||(view==='info'&&screens[slide]==='calendar'))render();}
+  finally{eventFetching=false;syncMatchGreetings();if(view==='calendar'||(view==='info'&&smartScreenKey(screens[slide])==='calendar'))render();}
 }
 setInterval(refreshEvents,300000);
 
@@ -304,7 +345,7 @@ function weatherIcon(icon){return (weatherLabels[icon]||['','','–'])[2];}
 function wxNum(value,unit=''){return typeof value==='number'&&Number.isFinite(value)?Math.round(value)+unit:'–';}
 function wxTime(value){return typeof value==='number'?new Date(value*1000).toLocaleTimeString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}):'–';}
 function wxDay(value){return new Date(value+'T12:00:00').toLocaleDateString(lang==='de'?'de-DE':'en-GB',{weekday:'short',day:'numeric',month:'numeric'});}
-function weatherActive(){return view==='weather'||(view==='info'&&screens[slide]==='weather');}
+function weatherActive(){return view==='weather'||(view==='info'&&smartScreenKey(screens[slide])==='weather');}
 function headerWeatherSymbol(kind){
   const shapes={
     sunrise:'<path d="M2 18h20M4 21h16M6 18a6 6 0 0 1 12 0M12 2v6m-3-3 3-3 3 3M3 10l2 2m16-2-2 2"/>',
@@ -386,7 +427,7 @@ async function refreshNews(){
     if(!Array.isArray(data.posts)||!['ok','stale','unavailable'].includes(data.status))throw Error('feed');
     newsData=data;
   }catch{newsData=newsData?.posts?.length?{...newsData,status:'stale'}:{status:'unavailable',posts:[]};}
-  finally{newsBusy=false;if((view==='news'&&!openedNews)||(view==='info'&&screens[slide]==='news'))render();}
+  finally{newsBusy=false;if((view==='news'&&!openedNews)||(view==='info'&&smartScreenKey(screens[slide])==='news'))render();}
 }
 function newsDate(p){return new Date(p.date).toLocaleDateString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'});}
 function newsArticleView(p){
@@ -519,10 +560,10 @@ function occupancyView(){
   const ready=hours.some(hour=>Object.keys(occupancyCourts).some(area=>occupancyCourts[area].some(court=>occupancySlot(area,court,hour)!=='unknown')));
   const header='<div class="occupancy-timeline-head"><span>'+tr('Platz','Court')+'</span>'+hours.map((hour,i)=>'<div class="occupancy-hour-head'+(i===0?' occupancy-hour-current':'')+'"><strong>'+occupancyTime(hour.start)+' – '+occupancyTime(hour.end)+'</strong><small>'+(i===0?tr('Aktuelle Stunde','Current hour'):tr('Danach','Upcoming'))+'</small></div>').join('')+'</div>';
   const group=(area,title)=>'<section class="occupancy-roster-group occupancy-roster-'+area+'"><div class="occupancy-roster-caption">'+title+'</div>'+occupancyCourts[area].map(court=>'<article class="occupancy-roster-row occupancy-court-'+area+'" aria-label="'+title+' · '+tr('Platz ','Court ')+court+'"><div class="occupancy-court-ident">'+occupancyCourtGraphic(court)+'<strong>'+tr('Platz ','Court ')+court+'</strong></div>'+hours.map(hour=>occupancyBookingText(area,court,hour)).join('')+'</article>').join('')+'</section>';
-  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(!pilot?tr('Fiktive Buchungen · TENNILO-Demo','Fictional bookings · TENNILO demo'):ready?tr('Buchungsübersicht · eBuSy','Booking overview · eBuSy'):tr('eBuSy-Anbindung noch ausstehend','Awaiting eBuSy integration'))+'</span></div><div class="occupancy-roster">'+header+group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts'))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.')+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
+  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(!pilot?tr('Fiktive Buchungen · TENNILO-Demo','Fictional bookings · TENNILO demo'):ready?tr('Buchungsübersicht · eBuSy','Booking overview · eBuSy'):tr('eBuSy-Anbindung noch ausstehend','Awaiting eBuSy integration'))+'</span></div><div class="occupancy-roster">' +header+(smartSeason()==='winter'?group('indoor',tr('Hallenplätze','Indoor courts'))+group('outdoor',tr('Außenplätze','Outdoor courts')):group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts')))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.')+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
 }
 function refreshOccupancyHour(now){
-  if(view==='info'&&screens[slide]==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();
+  if(view==='info'&&smartScreenKey(screens[slide])==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();
 }
 // NTC-only restaurant slide. Official Due Fratelli assets and published regular hours.
 function restaurantView(){
@@ -593,8 +634,8 @@ function toggleInfoPause(){
 }
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:'';$('mode').hidden=view!=='info';$('mode-dot').hidden=view!=='info';$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();infoControls();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
-const active=view==='info'?screens[slide]:view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active)||greetingEvents.has(active));document.body.classList.toggle('restaurant-screen',pilot&&active==='restaurant');let html='';
-if(greetingMatches.has(active))html=matchGreetingView(active);else if(greetingEvents.has(active))html=eventGreetingView(active);else switch(active){
+const active=view==='info'?smartScreenKey(screens[slide]):view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active)||greetingEvents.has(active)||active.startsWith('holiday:'));document.body.classList.toggle('restaurant-screen',pilot&&active==='restaurant');let html='';
+if(greetingMatches.has(active))html=matchGreetingView(active);else if(greetingEvents.has(active))html=eventGreetingView(active);else if(active.startsWith('holiday:'))html=smartHolidayView(active);else switch(active){
 case 'welcome':html=occupancyView();break;
 case 'home':{
   const tiles=[
@@ -718,7 +759,7 @@ function scheduleScreenFit(){
 
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
 function go(next){openedNews=null;if(next==='weather'&&view!=='weather')weatherPage='all';if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info'){slide=0;infoPaused=false;infoElapsed=0;infoPauseUntil=0;}render();}
-document.addEventListener('click',e=>{infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&screens[slide]==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
+document.addEventListener('click',e=>{infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown','wheel','touchmove'])document.addEventListener(event,infoInput);
 $('language').addEventListener('click',()=>{if(pilot&&view==='courts'&&courtMode==='outdoor')return;lang=lang==='de'?'en':'de';message='';render();});
 const adminDialog=$('admin-dialog'), adminForm=$('admin-form'), adminPin=$('admin-pin'), adminStatus=$('admin-status');
@@ -762,7 +803,8 @@ adminForm.addEventListener('submit',async e=>{
   finally{$('admin-submit').disabled=false;if(adminDialog.open)adminPin.focus();}
 });
 syncFullscreen();
-setInterval(()=>{const now=Date.now();clock();syncMatchGreetings(now);if(adminDialog.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+let lastSmartSecond=-1;
+setInterval(()=>{const now=Date.now();clock();const second=Math.floor(now/1000);if(second!==lastSmartSecond){lastSmartSecond=second;syncMatchGreetings(now);}if(adminDialog.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);

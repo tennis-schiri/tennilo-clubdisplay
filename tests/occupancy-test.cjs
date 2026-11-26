@@ -6,6 +6,8 @@ assert(begin>=0&&end>begin);
 const now=Date.parse('2026-11-25T13:37:22.123Z');
 class Clock extends Date{static now(){return now;}}
 const ctx=vm.createContext({Date:Clock,Intl,pilot:true,lang:'de',tr:(de,en)=>de,button:(label)=>label,esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')});
+vm.runInContext(source.slice(source.indexOf('function smartDate('),source.indexOf('function smartHoliday(')),ctx);
+vm.runInContext(source.slice(source.indexOf('function smartScreenKey('),source.indexOf('function smartRotation(')),ctx);
 vm.runInContext(source.slice(begin,end),ctx);
 const check=s=>vm.runInContext(s,ctx);
 assert.equal(check('occupancyHours()[0].start'),'2026-11-25T13:00:00.000Z');
@@ -29,3 +31,6 @@ assert.ok(!check("occupancyView().includes('<script>')"));
 check('occupancyData.fetchedAt-=181');
 assert.ok(!check("occupancyView().includes('&lt;script&gt;')"));
 console.log('Court occupancy tests OK');
+
+const winterHtml=check('occupancyView()');assert.ok(winterHtml.indexOf('occupancy-roster-indoor')<winterHtml.indexOf('occupancy-roster-outdoor'));
+console.log('Winter court area ordering OK');

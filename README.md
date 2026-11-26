@@ -228,3 +228,6 @@ Für jeden Kalendereintrag mit gültigem Beginn und Ende erscheint eine eigene B
 
 ## Admin 0.6.4 – Veranstaltungsbegrüßung
 Verwaltete Geräte zeigen die zusätzliche Begrüßungsfolie nur bei aktiviertem Kalendermodul und für freigegebene Kalenderfeeds mit gültigem Start- und Endzeitpunkt. WordPress, iCalendar und NTC-Feed liefern vorhandene Endzeiten mit. Redaktionelle Datumseinträge ohne Uhrzeit werden nicht als zeitgesteuerte Begrüßung interpretiert. Die lokale Zeitsteuerung endet unabhängig vom nächsten Serverabruf.
+
+## SmartDisplay – public displays 0.4.51
+The rotation automatically repeats today's home fixtures and currently scheduled events plus active welcome slides once per cycle; normal slides remain available. Season ordering: indoor first Oct 1–Apr 30, outdoor first May 1–Sep 30. Additional seasonal slides Dec 24–26, Dec 31 and Jan 1–6, local Europe/Berlin time. No private booking data, actual live-match status, automatic physical screen power control or weather alerts are inferred. Managed display settings are not changed by this release.

@@ -57,3 +57,22 @@ assert.ok(run('eventGreetingView(eventGreetingKey(eventData.events[0])).includes
 assert.equal(run('activeEventGreetings(eventData,cross+3600000).length'),1);
 assert.equal(run('activeEventGreetings({...eventData,status:"unavailable"},cross).length'),0);
 console.log('Overlapping and overnight event greetings OK');
+
+ctx.fullBase=['welcome','weather','calendar','teams','news','partner'];
+ctx.testNow=Date.parse('2027-05-09T09:00:00+02:00');
+ctx.eventDayData={status:'ok',events:[{title:'Turnier',start:'2027-05-09T11:00:00+02:00',end:'2027-05-09T16:00:00+02:00'}]};
+assert.equal(run('smartSeason(Date.parse("2027-04-30T22:00:00Z"))'),'summer');
+assert.equal(run('smartSeason(Date.parse("2027-09-30T22:00:00Z"))'),'winter');
+assert.equal(run('smartHoliday(Date.parse("2027-12-24T12:00:00+01:00"))'),'holiday:christmas');
+assert.equal(run('smartHoliday(Date.parse("2027-12-27T12:00:00+01:00"))'),'');
+assert.equal(run('smartHoliday(Date.parse("2027-12-31T12:00:00+01:00"))'),'holiday:eve');
+assert.equal(run('smartHoliday(Date.parse("2028-01-01T12:00:00+01:00"))'),'holiday:newyear');
+assert.equal(run('smartScreenKey("priority:teams")'),'teams');
+assert.equal(run('smartScreenKey("priority:greeting:test")'),'greeting:test');
+assert.equal(run('smartRotation(fullBase,data,eventDayData,["greeting:test"],[],testNow).filter(k=>smartScreenKey(k)==="teams").length'),2);
+assert.equal(run('smartRotation(fullBase,data,eventDayData,[],[],testNow).filter(k=>smartScreenKey(k)==="calendar").length'),2);
+assert.equal(run('smartRotation(fullBase,data,eventDayData,["greeting:test"],[],testNow).includes("priority:greeting:test")'),true);
+assert.equal(run('smartRotation(fullBase,{status:"unavailable"},null,[],[],testNow).length'),6);
+assert.equal(run('smartRotation(fullBase,null,eventDayData,[],[],testNow+9*3600000).includes("priority:calendar")'),false);
+assert.equal(run('smartRotation(fullBase,null,null,[],[],Date.parse("2027-12-25T12:00:00+01:00")).includes("holiday:christmas")'),true);
+console.log('Smart seasonal dates, priorities, expiry and alias routing OK');

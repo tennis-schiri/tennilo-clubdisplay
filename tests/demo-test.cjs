@@ -103,3 +103,5 @@ assert.match(vm.runInContext('fixtureStatusMarkup({date:statusDate,score:"4:2"})
 assert.doesNotMatch(vm.runInContext('fixtureStatusMarkup({date:statusDate,score:null})',dateCtx),/Ergebnis<\/span>|– : –/);
 dateCtx.lang='en';assert.equal(statusAt(0),'In progress');assert.equal(statusAt(-2100000),'In 35 min');
 console.log('Fixture countdown, scheduled running status and result precedence OK');
+
+const style=fs.readFileSync('public/assets/app.css','utf8');assert.match(style,/\.event-meta-cell>strong\{[^}]*font-weight:600/);assert.match(style,/\.occupancy-roster-indoor \.occupancy-unknown\{[^}]*background:#284b69/);
