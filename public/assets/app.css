@@ -86,8 +86,8 @@ html[data-club="ntc"] .fixture-date-block{background:#f7dc14;color:#073538}
 .fixture-top{display:flex;align-items:center;justify-content:space-between;gap:.45rem}
 .fixture-identity{font-size:clamp(1.05rem,1.55vw,1.6rem);font-weight:780;line-height:1.15;color:var(--ink)}
 .fixture-league{font-size:clamp(.95rem,1.25vw,1.25rem);font-weight:750;color:var(--cyan);white-space:nowrap}
-.fixture-pair{display:flex;justify-content:flex-start;align-items:baseline;gap:clamp(.35rem,1vw,1rem);font-size:clamp(1.2rem,2vw,2.2rem);font-weight:800;line-height:1.13;letter-spacing:-.02em;min-width:0}
-.fixture-team{min-width:0;overflow-wrap:anywhere;hyphens:auto;color:var(--ink)}
+.fixture-pair{display:flex;justify-content:flex-start;align-items:baseline;gap:clamp(.35rem,1vw,1rem);font-size:clamp(1.2rem,2vw,2.2rem);font-weight:500;line-height:1.13;letter-spacing:-.02em;min-width:0}
+.fixture-team{min-width:0;overflow-wrap:anywhere;hyphens:auto;color:var(--ink);font-weight:500}
 .fixture-team:first-child{text-align:left}
 .fixture-team:last-child{text-align:left}
 .fixture-own{color:var(--cyan)}
@@ -253,7 +253,7 @@ body.court-screen{height:100dvh;min-height:0;overflow:hidden}
 /* 0.4.7: calendar cards use the approved CD-M04c visual language. */
 .event-screen .event-card{grid-template-columns:clamp(112px,14vw,190px) minmax(0,1fr) auto}
 .event-screen .event-content{gap:.25rem;align-content:center}
-.event-title{font-size:clamp(1.25rem,2vw,2.15rem);line-height:1.15;overflow-wrap:anywhere;color:var(--ink);font-weight:800;text-align:left}
+.event-title{font-size:clamp(1.25rem,2vw,2.15rem);line-height:1.15;overflow-wrap:anywhere;color:var(--ink);font-weight:500;text-align:left}
 .event-details{justify-content:flex-start}
 .event-card>.event-link{align-self:stretch;justify-content:center;padding:.45rem 1rem;min-height:0;border-left:1px solid var(--line);background:#0002;font-weight:650}
 @media(max-width:699px){.event-screen .event-card{grid-template-columns:clamp(62px,18vw,100px) minmax(0,1fr) auto}.event-title{font-size:clamp(.95rem,3.5vw,1.3rem)}.event-card>.event-link{font-size:.7rem;padding:.3rem}}
