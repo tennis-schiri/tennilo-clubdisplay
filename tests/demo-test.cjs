@@ -165,3 +165,12 @@ assert.match(weekendHtml,/Clubhaus/);
 assert.doesNotMatch(weekendHtml,/smart-weekend-row/);
 dateCtx.lang='en';assert.match(vm.runInContext('smartWeekendView("weekend:0")',dateCtx),/This weekend/);
 console.log('Weekend shares match and calendar card rendering in DE/EN');
+
+// Language control displays the target language with an actual inline SVG flag.
+vm.runInContext(source.slice(source.indexOf('function languageButtonContent('),source.indexOf('function syncLanguageButton(')),dateCtx);
+const enButton=vm.runInContext('languageButtonContent("de")',dateCtx);
+const deButton=vm.runInContext('languageButtonContent("en")',dateCtx);
+assert.match(enButton,/#012169/);assert.match(enButton,/<span>EN<\/span>/);
+assert.match(deButton,/#FFCE00/);assert.match(deButton,/<span>DE<\/span>/);
+assert.match(fs.readFileSync('public/assets/app.css','utf8'),/html\[data-club="ntc"\] body>header #fullscreen\{display:none!important\}/);
+console.log('Language flags and NTC-only fullscreen button visibility OK');

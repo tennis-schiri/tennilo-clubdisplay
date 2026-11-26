@@ -900,3 +900,9 @@ html[data-club="ntc"] body>header[data-birthday="true"] .brand .brand-subline{gr
 .holiday-birthday .birthday-age{font-size:clamp(2rem,5.4vw,5.5rem)}
 @media(max-width:1100px){html[data-club="ntc"] body>header[data-birthday="true"] .brand .ntc-brand-title{font-size:clamp(.95rem,2vw,1.7rem)}html[data-club="ntc"] body>header[data-birthday="true"].has-advent-candles .brand .header-advent-candles{width:clamp(40px,5vw,75px)}}
 @media(max-width:700px){html[data-club="ntc"] body>header[data-birthday="true"] .brand .header-birthday{padding:.2rem .28rem;border-radius:5px;white-space:normal;max-width:76px}.header-birthday strong{font-size:.64rem}.header-birthday small{font-size:.55rem}html[data-club="ntc"] body>header[data-birthday="true"].has-advent-candles .brand .header-advent-candles{width:38px}.holiday-birthday .birthday-story,.holiday-birthday .birthday-thanks{max-width:95%;font-size:.85rem}}
+
+/* NTC uses Chrome kiosk mode; the public TENNILO demo retains its fullscreen control. */
+html[data-club="ntc"] body>header #fullscreen{display:none!important}
+body>header #language{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;white-space:nowrap;line-height:1}
+body>header #language .language-flag{display:block;width:24px;height:auto;aspect-ratio:5/3;flex:none;border-radius:2px;box-shadow:0 0 0 1px #ffffff38}
+@media(max-width:700px){body>header #language .language-flag{width:20px}}
