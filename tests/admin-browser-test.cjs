@@ -95,6 +95,12 @@ const {chromium}=require('playwright');
     const b=await mobile.locator('button.partner-submit').boundingBox();assert.ok(b&&b.height>=48&&b.x>=0&&b.x+b.width<=width+1);
   }
   await mobile.screenshot({path:'artifacts/partner-form-mobile.png',fullPage:true});
+  // Submit an intentionally incomplete form via the real browser. Bypass only
+  // browser validation so server-side validation runs; no email or record is created.
+  const postResponse=mobile.waitForResponse(r=>r.request().method()==='POST'&&r.url().includes('partner=submit'));
+  await mobile.locator('form.profile').evaluate(form=>{form.noValidate=true;form.requestSubmit();});
+  assert.equal((await postResponse).status(),200);
+  await mobile.getByText('Bitte Altersgruppe, Mitgliedschaft und Einwilligung bestätigen.',{exact:true}).waitFor();
   await mobile.goto(base+'?partner=moderate&club=ntc93&decision=publish&token=invalid');
   await mobile.getByRole('heading',{name:'Spielpartnergesuch prüfen'}).waitFor();
   await noOverflow();

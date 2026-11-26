@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 // The public board contains only structured, approved data. Private contacts never enter a display feed.
+function cd_partner_post_origin_allowed(array $server):bool{
+    $origin=$server['HTTP_ORIGIN']??null;$site=$server['HTTP_SEC_FETCH_SITE']??'';
+    return ($site===''||$site==='same-origin')&&($origin===null||$origin==='https://clubdisplay.tennilo.de'||($origin==='null'&&$site==='same-origin'));
+}
 function cd_partner_schema(PDO $db):void{
     $db->exec("CREATE TABLE IF NOT EXISTS partner_board (club TEXT PRIMARY KEY REFERENCES clubs(slug) ON DELETE CASCADE, enabled INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS partner_invites (hash TEXT PRIMARY KEY, club TEXT NOT NULL REFERENCES clubs(slug) ON DELETE CASCADE, expires INTEGER NOT NULL);
@@ -203,7 +207,7 @@ function cd_partner_action_page(PDO $db,string $club,string $action):never{
         $valid=(bool)$q->fetchColumn();if(!$valid)http_response_code(410);
     }
     if($method==='POST'){
-        if(isset($_SERVER['HTTP_ORIGIN'])&&$_SERVER['HTTP_ORIGIN']!=='https://clubdisplay.tennilo.de'){http_response_code(403);exit;}
+        if(!cd_partner_post_origin_allowed($_SERVER)){http_response_code(403);exit;}
         if((int)($_SERVER['CONTENT_LENGTH']??0)>4096){http_response_code(413);exit;}
         try{$ok=$valid&&($in['confirmed']??'')==='1'&&($action==='verify'?cd_partner_confirm($db,$club,$token,time()):cd_partner_manage($db,$club,$token,$decision,time()));$message=$ok?($action==='verify'?'E-Mail bestätigt. Deine Anfrage wird jetzt geprüft.':'Änderung gespeichert.'): 'Dieser Link ist ungültig, abgelaufen oder bereits verwendet.';if(!$ok)http_response_code(410);}
         catch(InvalidArgumentException $e){$message=$e->getMessage();http_response_code(400);}catch(Throwable $e){$message='Anfrage derzeit nicht möglich.';http_response_code(503);}
@@ -277,7 +281,7 @@ function cd_partner_mail_page(PDO $db,string $club):never{
     $decision=is_string($input['decision']??null)?$input['decision']:'';
     $row=null;$message='';$now=time();
     if($method==='POST'){
-        if(isset($_SERVER['HTTP_ORIGIN'])&&$_SERVER['HTTP_ORIGIN']!=='https://clubdisplay.tennilo.de'){http_response_code(403);exit;}
+        if(!cd_partner_post_origin_allowed($_SERVER)){http_response_code(403);exit;}
         if((int)($_SERVER['CONTENT_LENGTH']??0)>4096){http_response_code(413);exit;}
         if(($input['confirmed']??'')==='1'&&cd_partner_mail_decide($db,$club,$token,$decision,$now,($input['youth_reviewed']??'')==='1')){
             $message=$decision==='publish'?'Gesuch freigegeben und für 14 Tage veröffentlicht.':'Gesuch abgelehnt und gelöscht.';
@@ -449,7 +453,7 @@ function cd_partner_public(PDO $db):never{
     if(!in_array($_SERVER['REQUEST_METHOD'],['GET','POST'],true)){http_response_code(405);exit;}
     $error='';$success=false;
     if($_SERVER['REQUEST_METHOD']==='POST'){
-        if(isset($_SERVER['HTTP_ORIGIN'])&&$_SERVER['HTTP_ORIGIN']!=='https://clubdisplay.tennilo.de'){http_response_code(403);exit;}
+        if(!cd_partner_post_origin_allowed($_SERVER)){http_response_code(403);exit;}
         if((int)($_SERVER['CONTENT_LENGTH']??0)>4096){http_response_code(413);exit;}
         try{cd_partner_start_verification($db,$club,$_POST,$_SERVER['REMOTE_ADDR']??'unknown');$success=true;}catch(InvalidArgumentException $e){$error=$e->getMessage();}catch(Throwable $e){http_response_code(503);$error='Anfrage derzeit nicht möglich.';}
     }

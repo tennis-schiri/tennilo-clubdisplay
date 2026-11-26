@@ -252,3 +252,6 @@ Neue Anfragen werden erst nach einer einmaligen 24h-E-Mail-Bestätigung dem Vere
 
 ## 0.4.63
 Smartphone-Einstieg zeigt ausschließlich freigegebene anonyme Gesuche als Karten. Spielart/LK-Filter, eigener Gesuch-Button, Interesse pro Karte; getrennte Formulare. QR auf dem Kiosk ist reine scanbare Grafik ohne Link, Klick- oder Tastatur-Navigation. Freigabe, Datenschutz und E-Mail-Verifikation unverändert.
+
+### NTC Formular-POST (26.11.2026)
+Referrer-Policy strict-origin statt no-referrer, damit der Browser bei HTML-Formularen die eigene Origin beibehält, ohne persönliche URL-Token als Referrer zu übertragen. Alte offene Formulare mit Origin: null nur bei Sec-Fetch-Site: same-origin akzeptieren. Fremde Origins und Cross-Site-Fetch-Metadaten bleiben gesperrt. NTC-Deployment prüft echte POST-Routen mit absichtlich unvollständigen Formulardaten ohne E-Mail-Versand, inklusive negativem Cross-Site-Test. Browserregression prüft serverseitige Formularvalidierung.

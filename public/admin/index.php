@@ -4,7 +4,8 @@ ini_set('display_errors','0');
 header('Cache-Control: no-store, private');
 header('X-Robots-Tag: noindex, nofollow');
 header('X-Content-Type-Options: nosniff');
-header('Referrer-Policy: no-referrer');
+// Origin-only referrers keep token paths private and preserve same-origin form POSTs.
+header('Referrer-Policy: strict-origin');
 header("Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 if(($_SERVER['HTTP_HOST']??'')!=='clubdisplay.tennilo.de'||(empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off')){http_response_code(404);exit;}
 require __DIR__.'/lib.php';

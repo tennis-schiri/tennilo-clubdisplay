@@ -106,6 +106,14 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   code="$(curl --silent --show-error --max-time 55 -w '%{http_code}' "https://$DOMAIN/spielpartner/?release=$RELEASE_ID" -o "$tmp/ntc-partner")"
   if [[ "$code" == 200 ]]; then
     grep -Fq 'Spielpartner gesucht' "$tmp/ntc-partner"
+    # Exercise POST routing with intentionally incomplete data: no real request or email.
+    for origin in "https://$DOMAIN" null; do
+      code="$(curl --silent --show-error --max-time 55 -w '%{http_code}' -H "Origin: $origin" -H 'Sec-Fetch-Site: same-origin' --data 'mode=post' "https://$DOMAIN/spielpartner/?partner=submit&club=ntc93&mode=post" -o "$tmp/ntc-partner-post")"
+      [[ "$code" == 200 ]]
+      grep -Fq 'Bitte Altersgruppe, Mitgliedschaft und Einwilligung bestätigen.' "$tmp/ntc-partner-post"
+    done
+    code="$(curl --silent --show-error --max-time 55 -w '%{http_code}' -H 'Origin: null' -H 'Sec-Fetch-Site: cross-site' --data 'mode=post' "https://$DOMAIN/spielpartner/" -o "$tmp/ntc-partner-cross")"
+    [[ "$code" == 403 ]]
   elif [[ "$code" == 404 ]]; then
     grep -Fq 'Spielpartnerbörse nicht freigeschaltet.' "$tmp/ntc-partner"
   else

@@ -4,7 +4,9 @@ declare(strict_types=1);
 header('Cache-Control: no-store, private');
 header('X-Robots-Tag: noindex, nofollow');
 header('X-Content-Type-Options: nosniff');
-header('Referrer-Policy: no-referrer');
+// Send at most the origin, never a path or personal token. no-referrer can
+// cause a browser's legitimate same-origin HTML form POST to send Origin: null.
+header('Referrer-Policy: strict-origin');
 header("Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 function ntc_fail(int $status):never {
     http_response_code($status);header('Content-Type: text/plain; charset=utf-8');
@@ -13,7 +15,18 @@ function ntc_fail(int $status):never {
 if(!defined('CD_NTC_ROUTE')||!in_array(CD_NTC_ROUTE,['admin','partner'],true)||($_SERVER['HTTP_HOST']??'')!=='clubdisplay.ntc93.de'||empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off')ntc_fail(404);
 $method=$_SERVER['REQUEST_METHOD']??'';
 if(!in_array($method,['GET','POST'],true))ntc_fail(405);
-if($method==='POST'&&isset($_SERVER['HTTP_ORIGIN'])&&$_SERVER['HTTP_ORIGIN']!=='https://clubdisplay.ntc93.de')ntc_fail(403);
+if($method==='POST'){
+    $origin=$_SERVER['HTTP_ORIGIN']??null;
+    $site=$_SERVER['HTTP_SEC_FETCH_SITE']??'';
+    // For already opened pages with the previous referrer policy, browsers
+    // may send a null origin. Accept it ONLY with browser same-origin metadata.
+    // Explicit foreign origins and cross-site/same-site submissions stay blocked.
+    if(($site!==''&&$site!=='same-origin')||($origin!==null&&$origin!=='https://clubdisplay.ntc93.de'&&!($origin==='null'&&$site==='same-origin'))){
+        error_log('ClubDisplay NTC gateway rejected POST origin.');
+        http_response_code(403);header('Content-Type: text/html; charset=utf-8');
+        exit('<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Formular erneut öffnen</title><link rel="stylesheet" href="admin.css"><body class="partner-page ntc-portal"><main><section class="panel"><h1>Formular erneut öffnen</h1><p>Diese Anfrage konnte nicht sicher zugeordnet werden. Bitte öffne das Formular erneut und sende es aus dem NTC-Portal ab.</p><a href="./">Zurück zum Portal</a></section></main></body></html>');
+    }
+}
 if(!function_exists('curl_init'))ntc_fail(503);
 if((int)($_SERVER['CONTENT_LENGTH']??0)>3000000)ntc_fail(413);
 $partner=CD_NTC_ROUTE==='partner';
