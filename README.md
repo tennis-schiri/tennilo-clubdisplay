@@ -290,3 +290,6 @@ Kompakte 2×2-Gesuchskarten mit zusammengefasster Alters-/Geschlechtszeile und k
 Originale quadratische PNGs (einschließlich 1-Bit-Schwarzweiß) werden ohne GD-Konvertierung übernommen. PNG-Signatur, Maße, Chunk-Längen/CRC und Abschluss werden geprüft, Metadaten entfernt. NTC-Gateway leitet PNG und PDF mit passenden MIME-Typen und Dateiendungen weiter. HTTP-Test verwendet ein künstliches 574×574-1-Bit-PNG ohne Einladungsdaten.
 
 QR-Upload: PNG-Maße direkt aus IHDR gelesen, 128–2048 Pixel quadratisch, JPEG/WebP nach Möglichkeit serverseitig in PNG konvertiert. Fehlermeldungen enthalten erkanntes Bildformat und Abmessungen. QR-Inhalte bleiben außerhalb des Repositories.
+
+## 0.4.78 · QR-Bildzuschnitte
+QR-Bilder mit bis zu 10 % Seitenabweichung werden akzeptiert (128–2048 Pixel pro Seite, 2 MB). Originalpixel bleiben erhalten; START zentriert die Bilder mit weißem Scanrand. Regression prüft synthetische RGB-PNGs in den Maßen 510×510 und 516×522, ohne private Einladungsdaten im Repository. Hochformatige Screenshots bleiben ausgeschlossen.

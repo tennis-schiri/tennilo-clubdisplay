@@ -172,13 +172,17 @@ function cd_community_public(PDO $db):array{
     }return $out;
 }
 // Preserve QR modules exactly, including 1-bit PNGs; no GD dependency.
+function cd_community_dimensions(int $w,int $h):bool{
+    // Cropped QR images need not be exactly square. Reject full portrait screenshots.
+    return min($w,$h)>=128&&max($w,$h)<=2048&&min($w,$h)*10>=max($w,$h)*9;
+}
 function cd_community_png(string $bytes):string{
     $length=strlen($bytes);
     if($length>2000000)throw new InvalidArgumentException('Bilddatei größer als 2 MB.');
     if(!str_starts_with($bytes,"\x89PNG\r\n\x1a\n")){
         $info=@getimagesizefromstring($bytes);
         if(!$info||!in_array($info['mime'],['image/jpeg','image/webp'],true))throw new InvalidArgumentException('Datei ist kein erkennbares PNG-, JPEG- oder WebP-Bild. Bitte die heruntergeladene Bilddatei auswählen.');
-        if($info[0]!==$info[1]||$info[0]<128||$info[0]>2048)throw new InvalidArgumentException('Erkannt: '.$info['mime'].' · '.$info[0].' × '.$info[1].' Pixel. Bitte nur den quadratischen QR-Code hochladen (128–2048 Pixel).');
+        if(!cd_community_dimensions($info[0],$info[1]))throw new InvalidArgumentException('Erkannt: '.$info['mime'].' · '.$info[0].' × '.$info[1].' Pixel. Bitte nur den QR-Code als annähernd quadratisches Bild hochladen (128–2048 Pixel je Seite, bis 10 % Seitenabweichung).');
         if(!function_exists('imagecreatefromstring'))throw new InvalidArgumentException('Bild wurde als '.$info['mime'].' erkannt. Der Server unterstützt dafür keine Konvertierung. Bitte die PNG-Upload-Datei verwenden.');
         $image=@imagecreatefromstring($bytes);
         if(!$image)throw new InvalidArgumentException('Bild konnte nicht dekodiert werden.');
@@ -189,7 +193,7 @@ function cd_community_png(string $bytes):string{
     // Read PNG dimensions directly from IHDR; do not depend on server image-type recognition.
     if($length<33||substr($bytes,8,8)!=="\x00\x00\x00\x0dIHDR")throw new InvalidArgumentException('PNG-Datei beschädigt: Bildkopf fehlt.');
     $size=unpack('Nwidth/Nheight',substr($bytes,16,8));
-    if($size['width']!==$size['height']||$size['width']<128||$size['width']>2048)throw new InvalidArgumentException('Erkannt: PNG · '.$size['width'].' × '.$size['height'].' Pixel. Bitte nur den quadratischen QR-Code hochladen (128–2048 Pixel).');
+    if(!cd_community_dimensions($size['width'],$size['height']))throw new InvalidArgumentException('Erkannt: PNG · '.$size['width'].' × '.$size['height'].' Pixel. Bitte nur den QR-Code als annähernd quadratisches Bild hochladen (128–2048 Pixel je Seite, bis 10 % Seitenabweichung).');
     $out=substr($bytes,0,8);$pos=8;$header=false;$data=false;$end=false;
     while($pos+12<=$length){
         $n=unpack('N',substr($bytes,$pos,4))[1];if($n>$length-$pos-12)break;
