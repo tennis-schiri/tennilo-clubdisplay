@@ -52,7 +52,7 @@ jobs:
           [[ "$FTP_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
-          php -r '$p=getenv("ADMIN_PASSWORD"); $g=bin2hex(random_bytes(32)); if(strlen($p)<16||strlen($p)>72)exit(1); file_put_contents($argv[2],$g); $hash=password_hash($p,PASSWORD_BCRYPT); if(!$hash)exit(1); file_put_contents($argv[1],str_replace(["__CD_ADMIN_PASSWORD_HASH__","__CD_ADMIN_GUARD_TOKEN__"],[$hash,$g],file_get_contents("public/admin/index.php")));' "$tmp/index.php" "$tmp/guard"
+          php -r '$p=getenv("ADMIN_PASSWORD"); $g=bin2hex(random_bytes(32)); if(strlen($p)<16||strlen($p)>72)exit(1); file_put_contents($argv[2],$g); $hash=password_hash($p,PASSWORD_BCRYPT); if(!$hash)exit(1); file_put_contents($argv[1],str_replace(["__CD_ADMIN_PASSWORD_HASH__","__CD_ADMIN_GUARD_TOKEN__","__CD_PARTNER_MAINTENANCE_KEY__"],[$hash,$g,hash_hmac("sha256","clubdisplay-partner-maintenance-v1",$p)],file_get_contents("public/admin/index.php")));' "$tmp/index.php" "$tmp/guard"
           php -l "$tmp/index.php"
           upload() { curl --fail --silent --show-error --ssl-reqd --ftp-pasv --ftp-create-dirs --connect-timeout 15 --max-time 90 --user "$FTP_USER:$FTP_PASSWORD" --upload-file "$1" "ftp://$FTP_HOST:21/$2"; }
           printf '%s\n' "clubdisplay.tennilo.de:admin:${GITHUB_RUN_ID}" > "$tmp/check"

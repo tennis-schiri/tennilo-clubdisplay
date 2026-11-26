@@ -1,0 +1,25 @@
+name: ClubDisplay – Spielpartnerbörse E-Mail-Versand und Ablaufprüfung
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: clubdisplay-partner-maintenance
+  cancel-in-progress: false
+jobs:
+  maintenance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Geschützten Versandlauf auslösen
+        env:
+          ADMIN_PASSWORD: ${{ secrets.TENNILO_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${ADMIN_PASSWORD:?Admin password missing}"
+          key="$(php -r 'echo hash_hmac("sha256","clubdisplay-partner-maintenance-v1",getenv("ADMIN_PASSWORD"));')"
+          echo "::add-mask::$key"
+          printf 'header = "X-CD-Maintenance: %s"\n' "$key" | curl --config - --fail --silent --show-error --max-time 90 --request POST 'https://clubdisplay.tennilo.de/admin/?partner-maintenance=1' | tee /tmp/partner-result.json
+          php -r '$r=json_decode(file_get_contents("/tmp/partner-result.json"),true);if(($r["ok"]??false)!==true)exit(1);'

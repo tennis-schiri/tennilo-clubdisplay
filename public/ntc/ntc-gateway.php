@@ -21,7 +21,7 @@ if(!$partner&&($_GET['partner']??'')==='submit'&&$method==='GET'){header('Locati
 $query=$partner?['partner'=>'submit','club'=>'ntc93']:['portal'=>'club','verein'=>'ntc93'];
 if($partner){
     $action=$_GET['partner']??'submit';
-    if(!in_array($action,['submit','moderate'],true))ntc_fail(404);
+    if(!in_array($action,['submit','moderate','verify','manage'],true))ntc_fail(404);
     $query['partner']=$action;
     foreach(['mode','ref','token','decision'] as $key)if(isset($_GET[$key])&&is_string($_GET[$key]))$query[$key]=$_GET[$key];
 }else{

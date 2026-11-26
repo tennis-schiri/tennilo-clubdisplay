@@ -27,6 +27,12 @@ if(is_link($dir.'/clubdisplay-admin.sqlite'))cd_unavailable('STORAGE_NOT_PRIVATE
 if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true))cd_unavailable('SQLITE_DRIVER');
 umask(0077);
 try{$db=cd_db($dir.'/clubdisplay-admin.sqlite');}catch(Throwable $e){cd_unavailable('DATABASE_INIT');}
+if(isset($_GET['partner-maintenance'])){
+    // HMAC-derived dedicated key, supplied only in a header by the scheduled workflow.
+    $key='__CD_PARTNER_MAINTENANCE_KEY__';
+    if(($_SERVER['REQUEST_METHOD']??'')!=='POST'||!preg_match('/^[a-f0-9]{64}$/D',$key)||!hash_equals($key,(string)($_SERVER['HTTP_X_CD_MAINTENANCE']??''))){http_response_code(403);exit;}
+    try{cd_partner_cleanup($db);$count=cd_partner_outbox($db);header('Content-Type: application/json');echo json_encode(['ok'=>true,'sent'=>$count]);}catch(Throwable $e){http_response_code(503);echo '{"ok":false}';}exit;
+}
 if(isset($_GET['partner']))cd_partner_public($db);
 // Device traffic never uses an administrator session. The key travels in a POST body.
 if(isset($_GET['device'])){

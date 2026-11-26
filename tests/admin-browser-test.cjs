@@ -82,6 +82,9 @@ const {chromium}=require('playwright');
   assert.equal(await mobile.locator('select[name=age_group] option').count(),4);
   await mobile.locator('select[name=age_group]').selectOption('child');
   assert.equal(await mobile.locator('input[name=guardian]').count(),1);
+  assert.equal(await mobile.locator('input[name=email][required][type=email]').count(),1);
+  assert.equal(await mobile.locator('input[name=phone]:not([required])').count(),1);
+  assert.equal(await mobile.locator('select[name=lk] option').count(),6);
   for(const width of [360,390]){
     await mobile.setViewportSize({width,height:844});
     await noOverflow();

@@ -288,3 +288,26 @@ check(str_contains($decoded,'&lt;script&gt;alert(1)&lt;/script&gt;')&&!str_conta
 check(str_contains($decoded,'?a=1&amp;b=2')&&str_contains($decoded,'Test & Text'));
 check(cd_partner_mail_message('tennilo-demo','Plain','Title','Intro',[],[],'Note')['body']==='Plain');
 echo "NTC email branding, MIME fallback and HTML escaping OK\n";
+
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
+$new=array_replace($submission,['name'=>'Test Member','email'=>'member@example.invalid','phone'=>'','lk'=>'11-15']);
+try{cd_partner_validate_submission(array_replace($new,['email'=>'']),true);throw new RuntimeException('Missing email accepted');}catch(InvalidArgumentException $e){}
+try{cd_partner_validate_submission(array_replace($new,['lk'=>'<script>']),true);throw new RuntimeException('Invalid LK accepted');}catch(InvalidArgumentException $e){}
+check(cd_partner_validate_submission($new,true)[3]==='11-15');
+$verifyToken=cd_partner_start_verification($db,'ntc93',$new,'verification-test',$partnerNow,$fakeSend);
+check(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)===[]);
+check(!cd_partner_confirm($db,'tennilo-demo',$verifyToken,$partnerNow));
+check(!cd_partner_confirm($db,'ntc93',$verifyToken,$partnerNow+86400));
+check(cd_partner_confirm($db,'ntc93',$verifyToken,$partnerNow));
+check(!cd_partner_confirm($db,'ntc93',$verifyToken,$partnerNow));
+$verifiedRows=cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow);check(count($verifiedRows)===1&&$verifiedRows[0]['lk']==='11-15');
+$verifiedRef=$verifiedRows[0]['ref'];
+check(cd_partner_rows($db,'ntc93',$partnerNow)===[]);
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$verifiedRef,'reviewed'=>'1'],'ntc93',$partnerNow);
+$public=cd_partner_rows($db,'ntc93',$partnerNow);check(count($public)===1&&$public[0]['lk']==='11-15'&&!str_contains(json_encode($public),'member@example.invalid'));
+cd_partner_cleanup($db,$partnerNow+1036801);
+$reminded=$db->query('SELECT reminded FROM partner_post_meta')->fetchColumn();check((int)$reminded===1);
+cd_partner_cleanup($db,$partnerNow+1209601);
+check(cd_partner_rows($db,'ntc93',$partnerNow+1209601)===[]);
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
+echo "Verified email, optional phone, LK whitelist, no publication before approval and expiry OK\n";
