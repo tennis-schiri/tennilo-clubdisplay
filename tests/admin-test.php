@@ -369,3 +369,17 @@ check($explicit[2][2]==='tue,sat'&&$explicit[2][3]==='afternoon,evening'&&$expli
 $flex=cd_partner_validate_submission(array_replace($prefsInput,['availability'=>['flexible'],'period'=>['any']]),false);
 check($flex[2][2]==='flexible'&&$flex[2][3]==='any');
 echo "Partner availability and time: explicit choices preserved, contradictory flexibility rejected\n";
+
+$genderInput=array_replace($prefsInput,['gender_primary'=>'female','gender_additional'=>['male'],'gender_wanted'=>'any']);
+$genderParsed=cd_partner_validate_submission($genderInput,false);
+check($genderParsed[8]===['female','male']&&$genderParsed[9]==='any');
+check(cd_partner_validate_submission(array_replace($genderInput,['category'=>'singles']),false)[8]===['female']);
+try{cd_partner_validate_submission(array_replace($genderInput,['gender_wanted'=>'invalid']),false);throw new RuntimeException('Invalid gender accepted');}catch(InvalidArgumentException $e){}
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
+cd_partner_submit($db,'ntc93',$genderInput,$partnerNow);
+$genderEntry=cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)[0];
+check($genderEntry['own_gender_label']==='Weiblich, Männlich'&&$genderEntry['wanted_gender_label']==='Egal');
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$genderEntry['ref'],'reviewed'=>'1'],'ntc93',$partnerNow);
+check(cd_partner_rows($db,'ntc93',$partnerNow)[0]['own_gender_label']==='Weiblich, Männlich');
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
+echo "Partner gender: validated, persisted, public adult labels and legacy compatibility OK\n";

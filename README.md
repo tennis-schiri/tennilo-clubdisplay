@@ -282,3 +282,6 @@ Gesuche mit getrennten, beschrifteten Feldern auf Display, Smartphone und Player
 
 ### MATCHBALL: Originale für vorhandene Ausgabemonate
 Eigenständiger PDF-Upload legt neue Monate an oder ergänzt vorhandene Ausgaben ohne Überschreiben der Lesefassung. Austausch eines bereits gespeicherten Originals erfordert Bestätigung; nach jedem Upload erfolgt die öffentliche Freigabe erneut. HTTP-Regression testet Nachtrag zur Oktober-Ausgabe, Ersetzen und Freigabe.
+
+## 0.4.77
+Kompakte 2×2-Gesuchskarten mit zusammengefasster Alters-/Geschlechtszeile und kleinerem QR-Code. Freiwillige eigene Geschlechtsangabe (männlich/weiblich/divers), zusätzliche Gruppenangaben bei Doppel/Mixed und Wunschgeschlecht einschließlich egal. Unveränderte Altgesuche ohne Angaben; Jugendschutz unterdrückt öffentliche Geschlechtsangaben zu minderjährigen Suchenden und gesuchten Jugendgruppen. Speicherung, Prüfung und Smartphone-Ansicht erweitert.
