@@ -29,6 +29,7 @@ jobs:
           php -l public/admin/managed.php
           php -l public/admin/providers.php
           php -l public/admin/partner-board.php
+          php -l public/admin/matchball.php
           php -l deploy/backup-admin.php
           php -l public/admin/player.php
           node --check public/admin/player.js
@@ -85,6 +86,7 @@ jobs:
           deny "clubdisplay-admin/backup-admin.php"
           echo 'Storage HTTP access denied; deploying backend.'
           upload public/admin/partner-board.php admin/partner-board.php
+          upload public/admin/matchball.php admin/matchball.php
           upload public/admin/providers.php admin/providers.php
           upload public/admin/managed.php admin/managed.php
           upload public/admin/player.php admin/player.php

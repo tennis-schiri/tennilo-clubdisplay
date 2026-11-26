@@ -564,73 +564,18 @@ async function refreshNews(){
 }
 function newsDate(p){return new Date(p.date).toLocaleDateString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'});}
 // NTC Matchball: deliberately public-safe editorial summaries of supplied member PDFs.
-const matchballIssues=[
-  {
-    "issue": "10/26",
-    "month": "Oktober 2026",
-    "pages": 10,
-    "headline": "Die Wintersaison hat begonnen",
-    "teaser": "25 Teams in der Winterrunde · Jugendclubmeisterschaften · 33 Jahre NTC",
-    "articles": [
-      [
-        "Winterrunde und Tennishalle",
-        "Die Hallensaison ist gestartet. Der NTC ist mit 25 Mannschaften in der Winterrunde 2026/27 vertreten. Die ersten Verbandsspiele sind absolviert. Der Verein bittet alle Spielerinnen und Spieler, die Plätze nach dem Spielen sorgfältig abzuziehen.",
-        "Seiten 1–2, 6"
-      ],
-      [
-        "Vereinsleben",
-        "Der NTC präsentierte sich beim Oktoberfest und bei den Feierlichkeiten zu 100 Jahren Rathaus Neuenhagen. Ein Interview mit dem 1. Vorsitzenden blickt auf die ersten sechs Monate im Amt und die Entwicklung des Vereins zurück.",
-        "Seiten 1, 3"
-      ],
-      [
-        "Jugendclubmeisterschaften",
-        "51 Kinder und Jugendliche nahmen an den Jugendclubmeisterschaften teil – ein neuer Teilnehmerrekord. Die Siegerehrung bildete den Abschluss des Turniers.",
-        "Seite 4"
-      ],
-      [
-        "Eine Ära geht zu Ende",
-        "Nach 19 Jahren übergibt der Mannschaftsführer der 1. Herren seine Verantwortung. Dem Verein und dem Mannschaftstennis bleibt er erhalten.",
-        "Seite 7"
-      ],
-      [
-        "33 Jahre NTC",
-        "Die Ausgabe kündigt den Geburtstagsbrunch am 6. Dezember 2026 von 11 bis 15 Uhr im Clubhaus an. Aktuelle Informationen stehen im Bereich Termine.",
-        "Seite 8"
-      ]
-    ]
-  },
-  {
-    "issue": "09/26",
-    "month": "September 2026",
-    "pages": 12,
-    "headline": "Der Sommer neigt sich dem Ende",
-    "teaser": "Saisonrückblick · Sommercamps · Hallenvorbereitung",
-    "articles": [
-      [
-        "Rückblick auf die Sommersaison",
-        "Die Herren 30, 50 und 60 feierten den Aufstieg. Die Damen 40 und Herren 75 vertraten den NTC in der Meisterklasse. Die Neuenhagen Open, Senior Open und Junior Open waren sportliche Höhepunkte.",
-        "Seiten 4–6"
-      ],
-      [
-        "Unsere Halle",
-        "Bei einem gemeinsamen Arbeitseinsatz am 19. September wurde die Halle für die Wintersaison vorbereitet. Viele Helferinnen und Helfer reinigten und pflegten die Anlage.",
-        "Seite 2"
-      ],
-      [
-        "Sommercamps",
-        "Die Jugendcamps auf der Anlage und in Usedom kombinierten Tennistraining, Matchpraxis und gemeinsame Freizeit. Auch das Erwachsenencamp mit wechselnden Trainern war ein Erfolg.",
-        "Seiten 7–9"
-      ],
-      [
-        "Vereinsleben",
-        "Der NTC war beim Oktoberfest in Neuenhagen vertreten. Die September-Ausgabe blickte außerdem auf das Rathausjubiläum und den Übergang in die Wintersaison voraus.",
-        "Seiten 1, 3"
-      ]
-    ]
-  }
-];
+let matchballIssues=[],matchballBusy=false;
+async function refreshMatchball(){
+  if(!pilot||matchballBusy)return;matchballBusy=true;
+  try{
+    const res=await fetch('https://clubdisplay.tennilo.de/admin/?matchball=feed&club=ntc93',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+    if(!res.ok)throw Error('feed');const data=await res.json();if(!Array.isArray(data.issues))throw Error('format');
+    matchballIssues=data.issues.filter(r=>r&&/^20\d{2}-(0[1-9]|1[0-2])$/.test(r.id)&&typeof r.headline==='string'&&typeof r.teaser==='string'&&Array.isArray(r.articles)&&r.articles.every(a=>Array.isArray(a)&&a.length===3&&a.every(v=>typeof v==='string')));
+  }catch{matchballIssues=[];}
+  finally{matchballBusy=false;if(view==='news'&&openedNews?.matchballId){if(!matchballIssues.some(r=>r.id===openedNews.matchballId))openedNews=null;render();}else if((view==='news'&&!openedNews)||(view==='info'&&smartScreenKey(screens[slide])==='news'))render();}
+}
 function matchballCard(){
-  const issue=matchballIssues[0];
+  const issue=matchballIssues[0];if(!issue)return '';
   return '<button type="button" class="panel news-card matchball-card" data-action="matchball-open:0"><span class="matchball-kicker">'+tr('Unser Vereinsnewsletter','Our club newsletter')+'</span><span class="matchball-brand">MATCHBALL <b>'+esc(issue.issue)+'</b></span><span class="news-date">'+esc(issue.month)+'</span><strong class="news-card-title">'+esc(issue.headline)+'</strong><span class="news-excerpt">'+esc(issue.teaser)+'</span><span class="news-read-more">'+tr('Ausgabe ansehen · Archiv','View issue · archive')+' →</span></button>';
 }
 function matchballReader(index){
@@ -640,7 +585,7 @@ function matchballReader(index){
   return '<div class="news-reader-head"><div><span class="matchball-kicker">'+tr('Vereinsnewsletter · Zusammenfassung','Club newsletter · Summary')+'</span><h1>MATCHBALL '+esc(issue.issue)+' · '+esc(issue.month)+'</h1></div>'+button(tr('Zurück zu den Meldungen','Back to news'),'news-back','primary')+'</div><div class="matchball-archive" aria-label="'+tr('Ausgabenarchiv','Issue archive')+'">'+archive+'</div><div id="news-article-scroll" class="panel news-article-scroll matchball-reader" tabindex="0"><h2>'+esc(issue.headline)+'</h2><p class="matchball-original">'+tr('Lesefassung für das ClubDisplay. Das vollständige Original (','ClubDisplay reading edition. The complete original (')+issue.pages+tr(' Seiten) wurde als E-Mail-Newsletter verschickt.',' pages) was distributed by email.')+'</p><div class="matchball-stories">'+articles+'</div></div><div class="news-reader-foot"><span>'+tr('Quelle: NTC MATCHBALL · redaktionelle Zusammenfassung','Source: NTC MATCHBALL · editorial summary')+'</span><div><button data-action="news-up" aria-label="'+tr('Nach oben','Scroll up')+'">↑</button><button data-action="news-down" aria-label="'+tr('Weiterlesen','Read further')+'">↓</button></div></div>';
 }
 function newsArticleView(p){
-  if(Number.isInteger(p.matchballIndex))return matchballReader(p.matchballIndex);
+  if(p.matchballId){const i=matchballIssues.findIndex(r=>r.id===p.matchballId);if(i>=0)return matchballReader(i);return '<p>'+tr('Ausgabe nicht verfügbar.','Issue unavailable.')+'</p>';}
   const source='<span class="news-origin">'+(pilot?tr('Originalbeitrag: ','Original article: ')+'ntc93.com':tr('Beispielartikel · TENNILO','Sample article · TENNILO'))+'</span>';
   const image=p.image&&!(p.article||'').includes(esc(p.image))?'<figure class="news-cover"><img src="'+esc(p.image)+'" alt="'+esc(p.imageAlt||'')+'" referrerpolicy="no-referrer"></figure>':'';
   const warning=!p.complete?'<p class="news-article-warning">'+tr('Der vollständige Beitrag ist momentan nicht über die Schnittstelle verfügbar. Angezeigt wird der vorhandene Inhalt.','The complete article is currently unavailable through the feed. Available content is shown.')+'</p>':'';
@@ -653,11 +598,11 @@ function newsView(){
   const stamp=d?.fetchedAt?new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'}):'';
   const source='<p class="match-source">'+(pilot?tr('Quelle: ntc93.com','Source: ntc93.com'):tr('Beispieldaten · TENNILO','Sample data · TENNILO'))+(stamp?' · '+tr('Stand ','Updated ')+esc(stamp):'')+(pilot&&lang==='en'?' · Original German articles':'')+'</p>';
   const newsletter=pilot?matchballCard():'';
-  if(!d||d.status==='unavailable')return title+'<div class="news-grid'+(pilot?' has-matchball':'')+'"><div class="panel news-feed-placeholder">'+tr(d?'Vereinsmeldungen momentan nicht verfügbar.':'Vereinsmeldungen werden geladen …',d?'Club news currently unavailable.':'Loading club news …')+'</div>'+newsletter+'</div>'+source;
-  if(!d.posts.length)return title+'<div class="news-grid'+(pilot?' has-matchball':'')+'"><div class="panel news-feed-placeholder">'+tr('Keine veröffentlichten Meldungen gefunden.','No published news found.')+'</div>'+newsletter+'</div>'+source;
+  if(!d||d.status==='unavailable')return title+'<div class="news-grid'+(newsletter?' has-matchball':'')+'"><div class="panel news-feed-placeholder">'+tr(d?'Vereinsmeldungen momentan nicht verfügbar.':'Vereinsmeldungen werden geladen …',d?'Club news currently unavailable.':'Loading club news …')+'</div>'+newsletter+'</div>'+source;
+  if(!d.posts.length)return title+'<div class="news-grid'+(newsletter?' has-matchball':'')+'"><div class="panel news-feed-placeholder">'+tr('Keine veröffentlichten Meldungen gefunden.','No published news found.')+'</div>'+newsletter+'</div>'+source;
   const warn=d.status==='stale'?'<p class="message">'+tr('Zwischengespeicherte Meldungen – Aktualisierung fehlgeschlagen.','Cached news – refresh failed.')+'</p>':'';
   const cards=d.posts.slice(0,3).map((p,i)=>'<button type="button" class="panel news-card" data-action="news-open:'+i+'"><time class="news-date" datetime="'+esc(p.date)+'">'+esc(newsDate(p))+'</time><strong class="news-card-title">'+esc(p.title)+'</strong><span class="news-excerpt">'+esc(p.excerpt)+'</span><span class="news-read-more">'+tr('Artikel lesen','Read article')+' →</span></button>').join('');
-  return title+warn+'<div class="news-grid'+(pilot?' has-matchball':'')+'">'+cards+newsletter+'</div>'+source;
+  return title+warn+'<div class="news-grid'+(newsletter?' has-matchball':'')+'">'+cards+newsletter+'</div>'+source;
 }
 // Snapshot of the NTC homepage sponsor section, verified 2026-11-25. Refresh only on request.
 const ntcSponsors=[
@@ -986,7 +931,7 @@ function scheduleScreenFit(){
 
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
 function go(next){openedNews=null;if(next==='weather'&&view!=='weather')weatherPage='all';if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info'){slide=0;infoPaused=false;infoElapsed=0;infoPauseUntil=0;}render();}
-document.addEventListener('click',e=>{infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a.startsWith('matchball-open:')&&pilot&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);if(Number.isInteger(index)&&matchballIssues[index]){openedNews={matchballIndex:index};view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='partners-prev'&&view==='partners'){partnerPage=Math.max(0,partnerPage-1);render();}else if(a==='partners-next'&&view==='partners'){partnerPage++;render();}else if(a==='partners'&&partnerBoardData?.enabled){partnerPage=0;go('partners');}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
+document.addEventListener('click',e=>{infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a.startsWith('matchball-open:')&&pilot&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);if(Number.isInteger(index)&&matchballIssues[index]){openedNews={matchballId:matchballIssues[index].id};view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='partners-prev'&&view==='partners'){partnerPage=Math.max(0,partnerPage-1);render();}else if(a==='partners-next'&&view==='partners'){partnerPage++;render();}else if(a==='partners'&&partnerBoardData?.enabled){partnerPage=0;go('partners');}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown','wheel','touchmove'])document.addEventListener(event,infoInput);
 $('language').addEventListener('click',()=>{if(pilot&&view==='courts'&&courtMode==='outdoor')return;lang=lang==='de'?'en':'de';message='';render();});
 
@@ -1036,4 +981,4 @@ setInterval(()=>{const now=Date.now();clock();const second=Math.floor(now/1000);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
-if(!pilot)leagueData=demoLeague();syncMatchGreetings();render();refreshLeague();refreshEvents();refreshWeather();refreshNews();refreshPartnerBoard();setInterval(refreshPartnerBoard,60000);setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);
+if(!pilot)leagueData=demoLeague();syncMatchGreetings();render();refreshLeague();refreshEvents();refreshWeather();refreshNews();refreshMatchball();refreshPartnerBoard();setInterval(refreshMatchball,60000);setInterval(refreshPartnerBoard,60000);setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);

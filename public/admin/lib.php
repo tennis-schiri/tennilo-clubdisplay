@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/managed.php';
 require_once __DIR__.'/partner-board.php';
+require_once __DIR__.'/matchball.php';
 function cd_plan_label(string $key):string{return match($key){'INFO'=>'BASIC','INTERACTIVE'=>'PLUS',default=>$key};}
 const CD_MODULES=['welcome','weather','calendar','teams','news','partner','restaurant','courts','partner_search'];
 function cd_db(string $path): PDO {

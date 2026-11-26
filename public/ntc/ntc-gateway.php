@@ -28,7 +28,7 @@ if($method==='POST'){
     }
 }
 if(!function_exists('curl_init'))ntc_fail(503);
-if((int)($_SERVER['CONTENT_LENGTH']??0)>3000000)ntc_fail(413);
+if((int)($_SERVER['CONTENT_LENGTH']??0)>(CD_NTC_ROUTE==='admin'?11000000:3000000))ntc_fail(413);
 $partner=CD_NTC_ROUTE==='partner';
 if(!$partner&&($_GET['partner']??'')==='submit'&&$method==='GET'){header('Location: /spielpartner/',true,303);exit;}
 $query=$partner?['partner'=>'submit','club'=>'ntc93']:['portal'=>'club','verein'=>'ntc93'];
@@ -38,8 +38,8 @@ if($partner){
     $query['partner']=$action;
     foreach(['mode','ref','token','decision','category','lk_filter','day_filter','time_filter'] as $key)if(isset($_GET[$key])&&is_string($_GET[$key]))$query[$key]=$_GET[$key];
 }else{
-    foreach(['preview','preview-data','screen','media','image','partner_review'] as $key)if(isset($_GET[$key])&&is_string($_GET[$key]))$query[$key]=$_GET[$key];
-    if(isset($_GET['preview'])||isset($_GET['preview-data'])||isset($_GET['media']))$query['club']='ntc93';
+    foreach(['preview','preview-data','screen','media','image','partner_review','matchball_pdf'] as $key)if(isset($_GET[$key])&&is_string($_GET[$key]))$query[$key]=$_GET[$key];
+    if(isset($_GET['preview'])||isset($_GET['preview-data'])||isset($_GET['media'])||isset($_GET['matchball_pdf']))$query['club']='ntc93';
     if(isset($_GET['logo']))$query['logo']='ntc93';
 }
 $url='https://clubdisplay.tennilo.de/admin/?'.http_build_query($query,'','&',PHP_QUERY_RFC3986);
@@ -64,7 +64,7 @@ if(!$partner&&is_string($_COOKIE['CD_CLUB']??null)&&preg_match('/^[a-zA-Z0-9,-]{
 if($method==='POST'){
     $post=$_POST;
     if(!$partner&&isset($post['club']))$post['club']='ntc93';
-    if(!$partner&&isset($post['action'])&&!in_array($post['action'],['login','logout','brand','content','media','dining','sources','source-test','partner-board','display-create','display-save','device-issue','device-revoke'],true))ntc_fail(403);
+    if(!$partner&&isset($post['action'])&&!in_array($post['action'],['login','logout','brand','content','media','dining','sources','source-test','partner-board','matchball','display-create','display-save','device-issue','device-revoke'],true))ntc_fail(403);
     if($partner&&$_FILES)ntc_fail(400);
     curl_setopt($ch,CURLOPT_POST,true);
     if($_FILES){
@@ -74,9 +74,9 @@ if($method==='POST'){
         };
         $flatten($post);
         foreach($_FILES as $key=>$file){
-            if(!in_array($key,['image','logo'],true)||!is_array($file)||is_array($file['error']??null))ntc_fail(400);
+            if(!in_array($key,['image','logo','newsletter_pdf'],true)||($key==='newsletter_pdf'&&($post['action']??'')!=='matchball')||!is_array($file)||is_array($file['error']??null))ntc_fail(400);
             if(($file['error']??null)===UPLOAD_ERR_NO_FILE)continue;
-            if(($file['error']??null)!==UPLOAD_ERR_OK||!is_uploaded_file($file['tmp_name'])||filesize($file['tmp_name'])>2000000)ntc_fail(413);
+            if(($file['error']??null)!==UPLOAD_ERR_OK||!is_uploaded_file($file['tmp_name'])||filesize($file['tmp_name'])>($key==='newsletter_pdf'?10000000:2000000))ntc_fail(413);
             $fields[$key]=new CURLFile($file['tmp_name'],'application/octet-stream','upload');
         }
         curl_setopt($ch,CURLOPT_POSTFIELDS,$fields);
