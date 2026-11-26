@@ -321,13 +321,37 @@ function syncMatchGreetings(now=Date.now()){
   const current=greetingMatches.get(smartScreenKey(screens[slide]))||greetingEvents.get(smartScreenKey(screens[slide]));
   if(view==='info'&&before&&current&&JSON.stringify(before)!==JSON.stringify(current))render();
 }
+function fixtureAssignedCourts(m){
+  const supplied=fixtureCourtNumbers(m.courts);
+  if(supplied.length||!pilot||!m.isHome||typeof occupancyData==='undefined'||occupancyData?.status!=='ok'||Date.now()-occupancyData.fetchedAt*1000>180000)return supplied;
+  const full=String(m.league??'').trim();
+  const cat=full.match(/^(U\d{1,2}\s*[mw]?|[DH](?:\s*\d{2})?|Mixed)(?=\s|$)/iu);
+  if(!cat)return [];
+  const own=shortClub(m.home);
+  const suffix=own.match(/^NTC 93(?:\s+(I{1,3}|IV|V|[1-5]))?$/u);
+  if(!suffix)return [];
+  const number=({'I':'1','II':'2','III':'3','IV':'4','V':'5'})[suffix[1]]||suffix[1]||'1';
+  const team=cat[1].replace(/\s+/g,'').toUpperCase().replace(/^D00$/,'D')+':'+number;
+  const start=Date.parse(m.date);
+  if(!Number.isFinite(start))return [];
+  const matches=Array.isArray(leagueData?.matches)?leagueData.matches:[];
+  // A booking must explicitly identify the team and cover the fixture start.
+  const rows=(occupancyData.matchBookings||[]).filter(b=>{
+    if(b.team!==team||!['indoor','outdoor'].includes(b.area)||!Number.isInteger(b.court)||b.court<1||b.court>(b.area==='indoor'?2:7))return false;
+    const a=Date.parse(b.start),z=Date.parse(b.end);
+    if(!(a<=start&&start<z))return false;
+    return !matches.some(other=>other!==m&&other.isHome&&!other.score&&matchGreetingKey(other)!==matchGreetingKey(m)&&shortClub(other.home)===own&&String(other.league??'').trim().match(/^(U\d{1,2}\s*[mw]?|[DH](?:\s*\d{2})?|Mixed)(?=\s|$)/iu)?.[1]?.replace(/\s+/g,'').toUpperCase()===cat[1].replace(/\s+/g,'').toUpperCase()&&a<=Date.parse(other.date)&&Date.parse(other.date)<z);
+  });
+  return [...new Set(rows.map(b=>b.area==='indoor'?'H'+b.court:String(b.court)))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+}
+function fixtureCourtLabel(n){return String(n).startsWith('H')?tr('Halle ','Indoor court ')+String(n).slice(1):tr('Platz ','Court ')+n;}
 function matchGreetingView(key){
   const m=greetingMatches.get(key);
   if(!m)return '';
   const identity=teamAndLeague(m);
   const time=new Intl.DateTimeFormat(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(m.date));
-  const courts=fixtureCourtNumbers(m.courts);
-  const courtList=courts.length?'<div class="greeting-courts">'+courts.map(n=>'<div class="greeting-court"><svg viewBox="0 0 120 68" aria-hidden="true"><rect x="1" y="1" width="118" height="66" rx="8" fill="#96603e"/><g fill="none" stroke="#fff" stroke-width="1.4"><rect x="8" y="8" width="104" height="52"/><path d="M8 16h104M8 52h104M32 16v36M88 16v36M32 34h56M60 4v60"/></g><circle cx="60" cy="34" r="18" fill="#073538"/><text x="60" y="35" dominant-baseline="middle" text-anchor="middle" font-size="24" font-weight="800" fill="#fff">'+esc(n)+'</text></svg><strong>'+tr('Platz ','Court ')+esc(n)+'</strong></div>').join('')+'</div>':'<p class="greeting-unassigned">'+tr('Platzzuordnung noch nicht verfügbar','Court assignment not yet available')+'</p>';
+  const courts=fixtureAssignedCourts(m);
+  const courtList=courts.length?'<div class="greeting-courts">'+courts.map(n=>'<div class="greeting-court"><svg viewBox="0 0 120 68" aria-hidden="true"><rect x="1" y="1" width="118" height="66" rx="8" fill="#96603e"/><g fill="none" stroke="#fff" stroke-width="1.4"><rect x="8" y="8" width="104" height="52"/><path d="M8 16h104M8 52h104M32 16v36M88 16v36M32 34h56M60 4v60"/></g><circle cx="60" cy="34" r="18" fill="#073538"/><text x="60" y="35" dominant-baseline="middle" text-anchor="middle" font-size="24" font-weight="800" fill="#fff">'+esc(n)+'</text></svg><strong>'+esc(fixtureCourtLabel(n))+'</strong></div>').join('')+'</div>':'<p class="greeting-unassigned">'+tr('Platzzuordnung noch nicht verfügbar','Court assignment not yet available')+'</p>';
   return '<div class="greeting-hero"><div class="greeting-kicker"><span>'+tr('HEIMSPIEL','HOME MATCH')+'</span><span>'+esc(time)+(lang==='de'?' Uhr':'')+'</span></div><div class="greeting-welcome">'+(pilot?tr('Herzlich willkommen beim NTC 93!','Welcome to NTC 93!'):tr('Herzlich willkommen im Demo-Club!','Welcome to the demo club!'))+'</div><div class="greeting-category">'+esc(identity.team)+(identity.league?' · '+esc(identity.league):'')+'</div><div class="greeting-pair"><div class="greeting-home"><small>'+tr('Heim','Home')+'</small><strong>'+esc(shortClub(m.home))+'</strong></div><div class="greeting-versus">–</div><div class="greeting-away"><small>'+tr('Gast','Away')+'</small><strong>'+esc(shortClub(m.away))+'</strong></div></div><div class="greeting-assignment"><h2>'+tr('Eure Plätze','Your courts')+'</h2>'+courtList+'</div><p class="greeting-farewell">'+tr('Wir wünschen euch ein schönes und faires Match!','Have a great and fair match!')+'</p></div>';
 }
 function teamAndLeague(m){
@@ -381,8 +405,8 @@ function matchView(){
     const timeLabel=when.toLocaleTimeString(locale,{timeZone:zone,hour:'2-digit',minute:'2-digit'});
     const identity=teamAndLeague(m);
     const venueLabel=typeof m.venue==='string'?m.venue.trim():'';
-    const courtNumbers=fixtureCourtNumbers(m.courts);
-    const courtStrip='<div class="fixture-court-strip'+(!m.isHome?' fixture-away-strip':'')+'" aria-label="'+(m.isHome?tr('Plätze','Courts'):tr('Auswärtsspiel','Away match'))+'">'+(!m.isHome?'<span class="fixture-away-label">'+tr('Auswärts','Away')+'</span>':courtNumbers.length?courtNumbers.map(n=>'<span class="fixture-court-icon" aria-label="'+tr('Platz ','Court ')+esc(n)+'"><svg viewBox="0 0 36 22" aria-hidden="true"><rect x="1" y="1" width="34" height="20" rx="3" fill="currentColor"/><path d="M5 4H31V18H5Z M18 4V18 M5 7H31 M5 15H31 M11 7V15 M25 7V15" fill="none" stroke="var(--court-icon-ink)" stroke-width=".8"/><rect x="10" y="3" width="16" height="16" rx="2" fill="currentColor"/><text x="18" y="15" text-anchor="middle" font-size="'+(n.length>2?'8':'13')+'" font-weight="800" fill="var(--court-icon-ink)">'+esc(n)+'</text></svg></span>').join(''):'<span class="fixture-court-unknown">'+tr('Plätze','Courts')+'<strong>–</strong></span>')+'</div>';
+    const courtNumbers=fixtureAssignedCourts(m);
+    const courtStrip='<div class="fixture-court-strip'+(!m.isHome?' fixture-away-strip':'')+'" aria-label="'+(m.isHome?tr('Plätze','Courts'):tr('Auswärtsspiel','Away match'))+'">'+(!m.isHome?'<span class="fixture-away-label">'+tr('Auswärts','Away')+'</span>':courtNumbers.length?courtNumbers.map(n=>'<span class="fixture-court-icon" aria-label="'+esc(fixtureCourtLabel(n))+'"><svg viewBox="0 0 36 22" aria-hidden="true"><rect x="1" y="1" width="34" height="20" rx="3" fill="currentColor"/><path d="M5 4H31V18H5Z M18 4V18 M5 7H31 M5 15H31 M11 7V15 M25 7V15" fill="none" stroke="var(--court-icon-ink)" stroke-width=".8"/><rect x="10" y="3" width="16" height="16" rx="2" fill="currentColor"/><text x="18" y="15" text-anchor="middle" font-size="'+(n.length>2?'8':'13')+'" font-weight="800" fill="var(--court-icon-ink)">'+esc(n)+'</text></svg></span>').join(''):'<span class="fixture-court-unknown">'+tr('Plätze','Courts')+'<strong>–</strong></span>')+'</div>';
     const showVenue=venueLabel&&(!m.isHome||venueLabel.toLocaleLowerCase('de-DE')!=='neuenhagen');
     const meta=showVenue?'<div class="fixture-venue"><span>'+tr('Halle','Indoor venue')+'</span><strong>'+esc(venueLabel)+'</strong></div>':'';
     return '<article class="fixture-card"><time class="fixture-date-block" datetime="'+esc(m.date)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(dayLabel)+'</strong><span class="fixture-time">'+esc(timeLabel)+(lang==='de'?' Uhr':'')+'</span></time>'+courtStrip+'<div class="fixture-content fixture-match-content"><div class="fixture-match-main"><span class="fixture-identity">'+esc(identity.team)+'</span><div class="fixture-pair"><strong class="fixture-team '+(m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.home))+'</strong><span class="fixture-versus">–</span><strong class="fixture-team '+(!m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.away))+'</strong></div></div><div class="fixture-match-meta">'+(identity.league?'<span class="fixture-league">'+esc(identity.league)+'</span>':'')+meta+'</div></div>'+fixtureStatusMarkup(m)+'</article>';
@@ -744,7 +768,7 @@ async function refreshOccupancy(){
     const d=r.ok?await r.json():null;
     occupancyData=d?.status==='ok'&&Array.isArray(d.slots)?d:null;
   }catch{occupancyData=null;occupancyRestricted=false;}
-  finally{occupancyBusy=false;if(view==='info'&&smartScreenKey(screens[slide])==='welcome')render();}
+  finally{occupancyBusy=false;if(view==='teams'||(view==='info'&&(['welcome','teams'].includes(smartScreenKey(screens[slide]))||smartScreenKey(screens[slide]).startsWith('greeting:'))))render();}
 }
 function occupancyHours(now=Date.now()){
   // Align to the local Berlin hour and advance along the actual time axis (also at DST changes).
@@ -788,7 +812,7 @@ function occupancyView(){
   const ready=hours.some(hour=>Object.keys(occupancyCourts).some(area=>occupancyCourts[area].some(court=>occupancySlot(area,court,hour)!=='unknown')));
   const header='<div class="occupancy-timeline-head"><span>'+tr('Platz','Court')+'</span>'+hours.map((hour,i)=>'<div class="occupancy-hour-head'+(i===0?' occupancy-hour-current':'')+'"><strong>'+occupancyTime(hour.start)+' – '+occupancyTime(hour.end)+'</strong><small>'+(i===0?tr('Aktuelle Stunde','Current hour'):tr('Danach','Upcoming'))+'</small></div>').join('')+'</div>';
   const group=(area,title)=>'<section class="occupancy-roster-group occupancy-roster-'+area+'"><div class="occupancy-roster-caption">'+title+'</div>'+occupancyCourts[area].map(court=>'<article class="occupancy-roster-row occupancy-court-'+area+'" aria-label="'+title+' · '+tr('Platz ','Court ')+court+'"><div class="occupancy-court-ident">'+occupancyCourtGraphic(court)+'<strong>'+tr('Platz ','Court ')+court+'</strong></div>'+hours.map(hour=>occupancyBookingText(area,court,hour)).join('')+'</article>').join('')+'</section>';
-  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(!pilot?tr('Fiktive Buchungen · TENNILO-Demo','Fictional bookings · TENNILO demo'):ready?tr('Live-Belegung · eBuSy','Live occupancy · eBuSy'):occupancyRestricted?tr('Live-Belegung nur für freigegebene Geräte und Vereinsnetz','Live occupancy for authorized devices and club network only'):tr('Belegungsdaten derzeit nicht verfügbar','Occupancy data currently unavailable'))+'</span></div><div class="occupancy-roster">' +header+(smartSeason()==='winter'?group('indoor',tr('Hallenplätze','Indoor courts'))+group('outdoor',tr('Außenplätze','Outdoor courts')):group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts')))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+(pilot?tr('Ohne Spielernamen · nicht gebucht bedeutet nicht automatisch bespielbar.','No player names · not booked does not guarantee availability.'):tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.'))+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
+  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(!pilot?tr('Fiktive Buchungen · TENNILO-Demo','Fictional bookings · TENNILO demo'):ready?tr('Live-Belegung · eBuSy','Live occupancy · eBuSy'):occupancyRestricted?tr('Live-Belegung nur für freigegebene Geräte und Vereinsnetz','Live occupancy for authorized devices and club network only'):tr('Belegungsdaten derzeit nicht verfügbar','Occupancy data currently unavailable'))+'</span></div><div class="occupancy-roster">' +header+(smartSeason()==='winter'?group('indoor',tr('Hallenplätze','Indoor courts'))+group('outdoor',tr('Außenplätze','Outdoor courts')):group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts')))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+(pilot?tr('Nicht gebucht bedeutet nicht automatisch bespielbar.','Not booked does not guarantee availability.'):tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.'))+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
 }
 function refreshOccupancyHour(now){
   if(view==='info'&&smartScreenKey(screens[slide])==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();

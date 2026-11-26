@@ -1,5 +1,5 @@
 <?php
-// NTC-only, read-only eBuSy adapter. Never returns raw booking or person data.
+// NTC-only read-only adapter; only display names, court and time, never raw booking records.
 declare(strict_types=1);
 function eb_list(mixed $v): array {
     if(is_array($v)&&!array_is_list($v)){
@@ -25,7 +25,51 @@ function eb_time(string $date,string $time,DateTimeZone $tz): int {
     if(!$d||$d->format('d.m.Y H:i')!==$date.' '.($time==='24:00'?'00:00':$time))throw new RuntimeException('invalid_time');
     return ($time==='24:00'?$d->modify('+1 day'):$d)->getTimestamp();
 }
-function eb_slots(array $courts,array $rows,string $area,int $start,DateTimeZone $tz): array {
+function eb_name(mixed $v):string {
+    if(!is_array($v))return '';
+    $parts=[];
+    foreach(['firstname','lastname'] as $k){
+        $p=$v[$k]??null;
+        if(is_string($p)&&preg_match("/^[\p{L}\p{M} .'\x{2019}-]{1,80}$/u",trim($p)))$parts[]=trim($p);
+    }
+    return implode(' ',$parts);
+}
+function eb_display(mixed $v):string{
+    if(!is_string($v))return '';
+    $v=trim(preg_replace('/\s+/u',' ',$v)??'');
+    return preg_match("~^[\p{L}\p{M}\d .,'’&()/+\-–]{1,140}$~u",$v)&&!preg_match('/\d{5,}/',$v)?$v:'';
+}
+function eb_team(mixed $value):string{
+    if(!is_string($value))return '';
+    $v=trim(preg_replace('/\s+/u',' ',$value)??'');
+    $v=preg_replace('/^(?:Punktspiel|Heimspiel|Verbandsspiel|Mannschaftsspiel)\s*[:–-]?\s*/iu','',$v);
+    if(!preg_match('/^(Herren|Damen|H|D|U\d{1,2}\s*[mw]?|Mixed)\s*(\d{2})?\s*(IV|III|II|I|V|[1-5])?$/iu',$v,$m))return '';
+    $kind=strtoupper(preg_replace('/\s+/u','',$m[1]));
+    $kind=match($kind){'HERREN'=>'H','DAMEN'=>'D',default=>$kind};
+    $age=$m[2]??'';if($age==='00')$age='';
+    $suffix=strtoupper($m[3]??'');
+    $suffix=match($suffix){'I','1',''=>'1','II','2'=>'2','III','3'=>'3','IV','4'=>'4','V','5'=>'5',default=>''};
+    return $kind.$age.':'.$suffix;
+}
+function eb_match_team(array $b):string{
+    $label=$b['displayText']??'';$type=$b['bookingTypeName']??'';
+    if(!is_string($label)||!is_string($type))return '';
+    if(!preg_match('/\b(?:Punktspiel|Heimspiel|Verbandsspiel|Mannschaftsspiel)\b/iu',$label.' '.$type))return '';
+    return eb_team($label);
+}
+function eb_label(array $b):string{
+    $display=eb_display($b['displayText']??null);
+    if($b['type']==='BLOCKING'||eb_match_team($b)!==''||preg_match('/^(?:Training|Jugendtraining|Punktspiel|Heimspiel|Verbandsspiel|Mannschaftsspiel)\b/iu',$display))return $display;
+    $names=[];$main=eb_name($b['person']??null);if($main!=='')$names[]=$main;
+    foreach(is_array($b['additionalPlayerInfos']??null)?$b['additionalPlayerInfos']:[] as $p){
+        if(!is_array($p))continue;
+        $name=eb_name($p['player']??null);
+        if($name===''&&($p['type']??'')!=='PARTNER_WANTED')$name=eb_display($p['displayName']??null);
+        if($name!=='')$names[]=$name;
+    }
+    return $names?implode(' / ',array_slice(array_unique($names),0,4)):$display;
+}
+function eb_slots(array $courts,array $rows,string $area,int $start,DateTimeZone $tz,array &$matchBookings=[]): array {
     $expected=$area==='indoor'?2:7;$map=[];$numbers=[];
     foreach($courts as $c){
         if(!is_array($c)||!is_int($c['id']??null)||$c['id']<1)throw new RuntimeException('court_id');
@@ -42,26 +86,29 @@ function eb_slots(array $courts,array $rows,string $area,int $start,DateTimeZone
         if(!isset($map[$b['courtId']??0])||!in_array($b['type']??null,['BOOKING','BLOCKING'],true))throw new RuntimeException('booking_mapping');
         $a=eb_time($b['date']??'',$b['fromTime']??'',$tz);$z=eb_time($b['date']??'',$b['toTime']??'',$tz);
         if($z<=$a)throw new RuntimeException('booking_range');
-        $intervals[$map[$b['courtId']]][]=[$a,$z,$b['type']==='BLOCKING'];
+        $court=$map[$b['courtId']];
+        $team=eb_match_team($b);
+        if($team!==''&&$z>$start)$matchBookings[]=['team'=>$team,'area'=>$area,'court'=>$court,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$a),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$z)];
+        if($a<$start+10800&&$z>$start)$intervals[$court][]=[$a,$z,$b['type']==='BLOCKING',eb_label($b)];
     }
     $slots=[];
     foreach($map as $court)for($i=0;$i<3;$i++){
-        $a=$start+$i*3600;$z=$a+3600;$pieces=[];$booked=false;
-        foreach($intervals[$court]??[] as [$x,$y,$blocked])if($x<$z&&$y>$a){$pieces[]=[max($a,$x),min($z,$y)];if(!$blocked)$booked=true;}
+        $a=$start+$i*3600;$z=$a+3600;$pieces=[];$booked=false;$bookings=[];
+        foreach($intervals[$court]??[] as [$x,$y,$blocked,$label])if($x<$z&&$y>$a){$pieces[]=[max($a,$x),min($z,$y)];if(!$blocked)$booked=true;if($label!=='')$bookings[]=['displayLabel'=>$label,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$x),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$y)];}
         sort($pieces);$covered=0;$end=$a;
         foreach($pieces as [$x,$y]){if($y>$end){$covered+=$y-max($x,$end);$end=$y;}}
         $status=$covered===0?'free':($covered<3600?'partial':($booked?'occupied':'blocked'));
-        $slots[]=['area'=>$area,'court'=>$court,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$a),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$z),'status'=>$status];
+        $slots[]=['area'=>$area,'court'=>$court,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$a),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$z),'status'=>$status,'bookings'=>$bookings];
     }
     return $slots;
 }
 function eb_snapshot(array $cfg,int $now,array &$diagnostics=[]): array {
     $tz=new DateTimeZone('Europe/Berlin');$local=(new DateTimeImmutable('@'.$now))->setTimezone($tz);
     $start=$now-(int)$local->format('i')*60-(int)$local->format('s');
-    $from=$local->format('Y-m-d');$to=(new DateTimeImmutable('@'.($start+10799)))->setTimezone($tz)->format('Y-m-d');
+    $from=$local->format('Y-m-d');$to=$local->modify('+7 days')->format('Y-m-d');
     // Local booking times are ambiguous on DST transition days. Fail closed.
     if(count($tz->getTransitions($start-86400,$start+86400))>1)throw new RuntimeException('dst_transition');
-    $slots=[];$failure=null;$results=[];
+    $slots=[];$failure=null;$results=[];$matchBookings=[];
     foreach(['indoor'=>'court/modules/3076','outdoor'=>'lite/modules/1731'] as $area=>$path){
         foreach(['courts','reservations'] as $kind){
             $endpoint=$path.'/'.$kind;
@@ -79,10 +126,10 @@ function eb_snapshot(array $cfg,int $now,array &$diagnostics=[]): array {
     }
     if($failure)throw $failure;
     foreach($results as $area=>$data){
-        try{$slots=array_merge($slots,eb_slots($data['courts'],$data['reservations'],$area,$start,$tz));$diagnostics[$area.'_mapping']='ok';}
+        try{$slots=array_merge($slots,eb_slots($data['courts'],$data['reservations'],$area,$start,$tz,$matchBookings));$diagnostics[$area.'_mapping']='ok';}
         catch(Throwable $e){$diagnostics[$area.'_mapping']='failed';throw $e;}
     }
-    return ['status'=>'ok','fetchedAt'=>$now,'slots'=>$slots];
+    return ['status'=>'ok','fetchedAt'=>$now,'slots'=>$slots,'matchBookings'=>$matchBookings];
 }
 // Authorization is checked on every request before reading the occupancy cache.
 define('CD_DEVICE_LIBRARY_ONLY',true);
@@ -112,7 +159,7 @@ if(!$check&&!$local){
     if(!$registered)eb_reply(403,['status'=>'restricted']);
 }
 if(empty($cfg['user'])||empty($cfg['password'])||!function_exists('curl_init'))eb_reply(503,['status'=>'unconfigured']);
-$lock=@fopen(__DIR__.'/ebusy-private/cache.lock','c+');
+$lock=@fopen(__DIR__.'/ebusy-private/cache-v2.lock','c+');
 if(!$lock||!flock($lock,LOCK_EX)){eb_reply(503,['status'=>'unavailable']);}
 $now=time();$cache=json_decode((string)stream_get_contents($lock),true);
 if(!is_array($cache)||($cache['retryAt']??0)<=$now){
