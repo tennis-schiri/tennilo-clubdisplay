@@ -234,3 +234,6 @@ The rotation automatically repeats today's home fixtures and currently scheduled
 
 ## Public display 0.4.53
 Thursday–Sunday: weekend preview of Saturday/Sunday home fixtures and overlapping calendar events, five items per page. No preview when no entries are known. Individual Neuenhagen Open countdowns start 100 local calendar days before each event and expire when the welcome window starts 30 minutes before the scheduled beginning. No youth-training integration. Both slides use existing feeds and do not require manual event maintenance.
+
+## Spielpartnerbörse (0.4.54 / 0.6.5)
+The demo has fictional examples. The NTC board is initially disabled; activate it in the protected club admin. Invite codes are one-use, valid 48 hours and issued only after checking adult membership. Members submit structured requests or private interest via the smartphone form. The moderator must approve a listing; it expires after 14 days. Public feed and screens receive only a random reference and predefined categories, never private contact details. Contact mediation is performed by the club. Disable the board to delete open requests and invitations. NTC QR opens the invitation form; managed profiles require the partner_search module enabled. No direct messaging or automatic matching. Youth training is excluded.

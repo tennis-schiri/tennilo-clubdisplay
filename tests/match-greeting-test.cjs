@@ -89,3 +89,5 @@ assert.equal(run('smartWeekend(data,eventDayData,weekNow-86400000)'),null);
 assert.equal(run('smartRotation(fullBase,data,eventDayData,[],[],weekNow).includes("weekend:0")'),true);
 assert.equal(run('smartRotation(fullBase,null,juneEvents,[],[],Date.parse("2027-03-07T12:00:00+01:00")).includes("open-countdown")'),true);
 console.log('Weekend preview and individual 100-calendar-day countdowns OK');
+
+ctx.boardTime=Date.parse('2027-06-15T12:00:00+02:00');run('partnerBoardData={enabled:true,rows:[{ref:"ABCDEF1234",category:"mixed",skill:"any",availability:"weekend",period:"morning",expires:boardTime/1000+60,contact:"SECRET"},{ref:"INVALID",category:"mixed",skill:"any",availability:"weekend",period:"morning",expires:boardTime/1000+60}]}');assert.equal(run('partnerBoardRows(boardTime).length'),1);assert.equal(run('partnerBoardScreens(boardTime)[0]'),'partners:0');assert.equal(run('partnerBoardScreens(boardTime+60000).length'),0);run('partnerBoardData=null');assert.equal(run('partnerBoardScreens(boardTime).length'),0);console.log('Partner board display filtering and expiration OK');
