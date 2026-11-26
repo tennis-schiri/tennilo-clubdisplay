@@ -94,7 +94,7 @@ function cd_matchball_public_pdf(PDO $db):never{
         $q=$db->prepare('SELECT i.pdf FROM matchball_issues i JOIN matchball_pdf_release r ON r.club=i.club AND r.month=i.month WHERE i.club=? AND i.month=? AND i.published=1');$q->execute(['ntc93',$month]);$pdf=$q->fetchColumn();
         if(!is_string($pdf)||$pdf===''){http_response_code(404);exit;}
         // Browser-native PDF viewer is embedded only on the NTC host.
-        header("Content-Security-Policy: frame-ancestors https://clubdisplay.ntc93.de; object-src 'none'; base-uri 'none'");
+        header("Content-Security-Policy: frame-ancestors https://clubdisplay.ntc93.de; base-uri 'none'");
         header('Content-Type: application/pdf');header('Content-Disposition: inline; filename="MATCHBALL-'.$month.'.pdf"');header('Content-Length: '.strlen($pdf));echo $pdf;
     }catch(Throwable $e){http_response_code(404);}exit;
 }
@@ -111,10 +111,10 @@ function cd_matchball_editor(string $club,string $csrf,array $r=[]):void{
     <label>Seiten im Original (0 = unbekannt)<input type="number" name="pages" min="0" max="200" value="<?=(int)($r['pages']??0)?>"></label>
     <label class="full">Original-PDF (max. 10 MB)<input type="file" name="newsletter_pdf" accept="application/pdf,.pdf"></label>
     <label class="full">Titel (optional bei PDF-Freigabe)<input name="headline" maxlength="180" value="<?=cd_h($r['headline']??'')?>"></label>
-    <label class="full">Kurzbeschreibung für die Kachel<textarea name="teaser" maxlength="320" rows="2"><?=cd_h($r['teaser']??'')?></textarea></label>
-    <div class="full"><h4>Optionale Lesefassung · bis zu acht Themen</h4><p>Bei direkter Anzeige des freigegebenen Original-PDFs sind diese Texte nicht erforderlich.</p></div>
+    <label class="full">Kurzbeschreibung für die Kachel (optional)<textarea name="teaser" maxlength="320" rows="2"><?=cd_h($r['teaser']??'')?></textarea></label>
+    <details class="entry full"><summary>Optionale Lesefassung bearbeiten</summary><p>Bei direkter Anzeige des freigegebenen Original-PDFs sind diese Texte nicht erforderlich.</p>
     <?php for($i=0;$i<8;$i++):$s=$stories[$i]??['','',''];?><details class="entry full" <?=($i===0||$i<count($stories))?'open':''?>><summary>Thema <?=$i+1?><?=isset($stories[$i])?' · '.cd_h($s[0]):''?></summary><label>Überschrift<input name="story_title[]" maxlength="180" value="<?=cd_h($s[0])?>"></label><label>Text<textarea name="story_body[]" rows="4" maxlength="1800"><?=cd_h($s[1])?></textarea></label><label>Quellseite (optional)<input name="story_ref[]" maxlength="100" value="<?=cd_h($s[2])?>"></label></details><?php endfor?>
-    <p class="full">Speichern erstellt einen Entwurf bzw. nimmt eine bearbeitete Ausgabe bis zur erneuten Freigabe vom Display.</p><button name="intent" value="save">Entwurf speichern</button></form><?php
+    </details><p class="full">Speichern erstellt einen Entwurf bzw. nimmt eine bearbeitete Ausgabe bis zur erneuten Freigabe vom Display.</p><button name="intent" value="save">Entwurf speichern</button></form><?php
 }
 function cd_matchball_field(PDO $db,array $club,string $csrf,?string $scope):void{
     global $clubPortal,$fixedClub;

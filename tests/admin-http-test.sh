@@ -140,7 +140,22 @@ get "$club" "$url" 200; t="$(csrf)"
 post "$club" "$url" 303 --data-urlencode "csrf=$t" -d 'action=matchball&club=ntc93&month=2026-11&intent=delete&delete_confirm=1'
 get "$other" "$base?matchball=feed&club=ntc93" 200
 php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if(count($v["issues"])!==2)exit(1);' "$tmp/body"
-echo "MATCHBALL upload, private original and public release HTTP tests passed."
+get "$other" "$base?matchball-display-pdf=1&club=ntc93&month=2026-11" 404
+# A test PNG stands in for a private QR; never use a real invitation in CI.
+php -r '$i=imagecreatetruecolor(256,256);imagepng($i,$argv[1]);' "$tmp/test-qr.png"
+get "$club" "$url" 200; t="$(csrf)"
+post "$club" "$url" 303 -F "csrf=$t" -F action=community -F club=ntc93 -F intent=save -F kind=youth -F "image=@$tmp/test-qr.png;type=image/png"
+get "$other" "$base?matchball=feed&club=ntc93" 200
+php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if($v["communities"]!==[])exit(1);' "$tmp/body"
+get "$club" "$url" 200; t="$(csrf)"
+post "$club" "$url" 303 --data-urlencode "csrf=$t" -d 'action=community&club=ntc93&kind=youth&intent=publish&reviewed=1'
+get "$other" "$base?matchball=feed&club=ntc93" 200
+php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if(count($v["communities"])!==1||$v["communities"][0]["kind"]!=="youth"||!str_starts_with(base64_decode($v["communities"][0]["png"]),"\x89PNG"))exit(1);' "$tmp/body"
+get "$club" "$url" 200; t="$(csrf)"
+post "$club" "$url" 303 --data-urlencode "csrf=$t" -d 'action=community&club=ntc93&kind=youth&intent=hide'
+get "$other" "$base?matchball=feed&club=ntc93" 200
+php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if($v["communities"]!==[])exit(1);' "$tmp/body"
+echo "MATCHBALL upload, private original, public release and community QR draft/publish/hide HTTP tests passed."
 
 # Neutral review link: fixture uses no actual email delivery.
 review_token="$(php -r 'require "public/admin/lib.php";$db=cd_db($argv[1]);$now=time();cd_partner_mail_schema($db);$db->prepare("INSERT INTO partner_board VALUES (?,1) ON CONFLICT(club) DO UPDATE SET enabled=1")->execute(["ntc93"]);$db->prepare("INSERT INTO partner_posts VALUES (?,?,?,?,?,?,?, ?,?,?)")->execute(["ABCDEF1234","ntc93","singles","any","mon,fri","morning,evening","TEST-PRIVATE-CONTACT","pending",$now,$now+1209600]);$db->prepare("INSERT INTO partner_post_age VALUES (?,?)")->execute(["ABCDEF1234","adult"]);$db->prepare("INSERT INTO partner_post_preferences VALUES (?,?,?)")->execute(["ABCDEF1234","30-39","40-49,50-59"]);$db->prepare("INSERT INTO partner_post_meta(ref,email,lk) VALUES (?,?,?)")->execute(["ABCDEF1234","","11-15"]);$token=bin2hex(random_bytes(32));$db->prepare("INSERT INTO partner_mail_tokens VALUES (?,?,?,?)")->execute(["ABCDEF1234",hash("sha256",$token),$now+3600,"sent"]);echo $token;' "$tmp/www/clubdisplay-admin/clubdisplay-admin.sqlite")"
