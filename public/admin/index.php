@@ -206,7 +206,7 @@ function field(array $c,bool $new,string $csrf):void{
       <label>Akzentfarbe <input type="color" name="color" value="<?=cd_h($c['color']??'#21d5db')?>"></label>
       <label>Sprache <select name="language"><option value="de" <?=($c['language']??'de')==='de'?'selected':''?>>Deutsch</option><option value="en" <?=($c['language']??'de')==='en'?'selected':''?>>English</option></select></label>
       <label>Folienwechsel (Sekunden) <input type="number" name="dwell" min="5" max="120" required value="<?=cd_h((string)($c['dwell']??12))?>"></label>
-      <fieldset><legend>Module</legend><p>BASIC: automatische Infotafel ohne Bedienung. PLUS zusätzlich: Buchung, Spielpartnerbörse, SmartDisplay und interaktive Funktionen. Plus-Module nur bei PLUS-Lizenz.</p><?php foreach($labels as $k=>$v):?><label class="check"><input type="checkbox" name="modules[]" value="<?=$k?>" <?=in_array($k,$modules,true)?'checked':''?>><?=cd_h($v)?></label><?php endforeach?></fieldset>
+      <fieldset><legend>Module</legend><p>BASIC: automatische Infotafel ohne Bedienung. PLUS zusätzlich: Buchung, Spielpartnerbörse, SmartDisplay und interaktive Funktionen. PLUS-Module nur bei PLUS-Lizenz. Der vollständige Paketumfang ist das Ziel zum Marktstart; der NTC-Pilot und der verwaltete Player können sich noch unterscheiden.</p><?php foreach($labels as $k=>$v):?><label class="check"><input type="checkbox" name="modules[]" value="<?=$k?>" <?=in_array($k,$modules,true)?'checked':''?>><?=cd_h($v)?></label><?php endforeach?></fieldset>
       <button><?=$new?'Verein anlegen':'Änderungen speichern'?></button>
     </form><?php
 }
