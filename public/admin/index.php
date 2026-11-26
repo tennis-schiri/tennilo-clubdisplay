@@ -54,7 +54,7 @@ if(isset($_GET['player'])){
 ini_set('session.use_strict_mode','1');
 $clubPortal=isset($_GET['portal'])&&$_GET['portal']==='club';
 $fixedClub=$clubPortal&&($_GET['verein']??'')==='ntc93'?'ntc93':null;
-$portalUrl=$clubPortal?'./?portal=club'.($fixedClub?'&verein=ntc93':''):'./';
+$portalUrl=$clubPortal?'./?portal=club'.($fixedClub?'&verein=ntc93':'').(isset($_GET['partner_review'])?'&partner_review=1':''):'./';
 session_name($clubPortal?'CD_CLUB':'CD_ADMIN');
 session_set_cookie_params(['lifetime'=>0,'path'=>'/admin/','secure'=>true,'httponly'=>true,'samesite'=>'Strict']);
 session_start();
@@ -65,6 +65,7 @@ if(!empty($_SESSION['auth'])&&($clubPortal?(!isset($_SESSION['club'])||($fixedCl
 $_SESSION['csrf']??=bin2hex(random_bytes(32));
 $scope=isset($_SESSION['club'])?(string)$_SESSION['club']:null;
 $error='';$ok='';$focusClub=cd_h(is_string($_SESSION['focus_club']??null)?$_SESSION['focus_club']:'');$focusAction=is_string($_SESSION['focus_action']??null)?$_SESSION['focus_action']:'';unset($_SESSION['focus_club'],$_SESSION['focus_action']);
+if($clubPortal&&isset($_GET['partner_review'])&&$scope!==null){$focusClub=$scope;$focusAction='partner-board';}
 if($_SERVER['REQUEST_METHOD']==='POST'){
     if(!hash_equals($_SESSION['csrf'],(string)($_POST['csrf']??''))){http_response_code(403);exit('Ungültige Sitzung.');}
     $action=is_string($_POST['action']??null)?$_POST['action']:'';
@@ -312,7 +313,7 @@ function contentField(PDO $db,array $c,string $kind,array $row,string $csrf,arra
     <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
     </form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=066"></head><body class="admin-page"><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=067"></head><body class="admin-page"><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
 <?php if($auth&&!empty($_SESSION['device_link'])):$deviceLink=$_SESSION['device_link'];unset($_SESSION['device_link']);?><section class="panel"><h2>Geräteadresse · nur einmal sichtbar</h2><p>Vertraulich behandeln und am Bildschirm öffnen. Bei Verlust einen neuen Schlüssel erzeugen.</p><input readonly value="<?=cd_h($deviceLink)?>" aria-label="Geräteadresse"><a class="admin-action" href="<?=cd_h($deviceLink)?>" target="_blank" rel="noopener noreferrer">Gerät öffnen</a></section><?php endif?>

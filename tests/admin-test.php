@@ -206,8 +206,14 @@ try{cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$ref,'revie
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$ref,'reviewed'=>'1'],'ntc93',$partnerNow);
 $pub=cd_partner_rows($db,'ntc93',$partnerNow);check(count($pub)===1&&!isset($pub[0]['contact'])&&$pub[0]['category']==='doubles');
 check(cd_partner_rows($db,'ntc93',$partnerNow+1209600)===[]);
-cd_partner_submit($db,'ntc93',['mode'=>'interest','adult'=>'1','consent'=>'1','contact'=>'OTHER-PRIVATE','ref'=>$ref],$partnerNow);
-check(count(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)[0]['interest'])===1);
+cd_partner_submit($db,'ntc93',['mode'=>'interest','adult'=>'1','consent'=>'1','share'=>'1','contact'=>'OTHER-PRIVATE','ref'=>$ref],$partnerNow);
+$request=cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)[0]['interest'][0];check((int)$request['share']===1);
+$sent=[];$fakeSend=function($to,$subject,$body,$headers)use(&$sent){$sent=[$to,$body];return true;};
+try{cd_partner_interest_forward($db,'ntc93',$ref,(int)$request['id'],'verified@example.invalid',false,$partnerNow,$fakeSend);throw new RuntimeException('Unverified forwarding accepted');}catch(InvalidArgumentException $e){}
+check($sent===[]);
+cd_partner_interest_forward($db,'ntc93',$ref,(int)$request['id'],'verified@example.invalid',true,$partnerNow,$fakeSend);
+check($sent[0]==='verified@example.invalid'&&str_contains($sent[1],'OTHER-PRIVATE')&&!str_contains($sent[1],'PRIVATE-CONTACT'));
+check(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)[0]['interest']===[]);
 check(!str_contains(json_encode(cd_partner_rows($db,'ntc93',$partnerNow)),'PRIVATE'));
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 check(cd_partner_rows($db,'ntc93',$partnerNow)===[]&&cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)===[]);

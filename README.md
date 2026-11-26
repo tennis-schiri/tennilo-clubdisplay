@@ -237,3 +237,6 @@ Thursday–Sunday: weekend preview of Saturday/Sunday home fixtures and overlapp
 
 ## Spielpartnerbörse (0.4.54 / 0.6.5)
 The demo has fictional examples. The NTC board is initially disabled; activate it in the protected club admin. Invite codes are one-use, valid 48 hours and issued only after checking adult membership. Members submit structured requests or private interest via the smartphone form. The moderator must approve a listing; it expires after 14 days. Public feed and screens receive only a random reference and predefined categories, never private contact details. Contact mediation is performed by the club. Disable the board to delete open requests and invitations. NTC QR opens the invitation form; managed profiles require the partner_search module enabled. No direct messaging or automatic matching. Youth training is excluded.
+
+## Spielpartnerbörse 0.4.58
+QR-Code und Smartphone-Eingabe ohne Einladungscode. Nur anonyme Kategorien und Referenzen werden veröffentlicht. Auch bei leerer aktivierter Börse erscheint die QR-Folie. Kontaktanfragen werden separat an die Vereinsadministration gemeldet; Freigabe und Weiterleitung nur nach unabhängiger Prüfung beider Identitäten und der Empfängeradresse. eBuSy-Mitgliederabgleich ist perspektivisch vorgesehen, nicht aktiviert.

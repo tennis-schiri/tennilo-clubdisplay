@@ -57,3 +57,5 @@
   .partner-page .profile textarea{min-height:96px}
   .partner-page .partner-submit,.partner-page .profile>button{min-height:52px}
 }
+
+.partner-mode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}.partner-mode a{display:flex;align-items:center;justify-content:center;text-align:center;min-height:48px;padding:8px;border:1px solid #456075;border-radius:8px;color:#f3f9fa;text-decoration:none;font-weight:700}.partner-mode a.active{background:#21d5db;color:#071a2c;border-color:#21d5db}

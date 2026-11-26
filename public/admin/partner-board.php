@@ -13,7 +13,8 @@ function cd_partner_schema(PDO $db):void{
 /** Lazy additive migration: existing version-604 databases do not rerun the main schema. */
 function cd_partner_mail_schema(PDO $db):void{
     $db->exec("CREATE TABLE IF NOT EXISTS partner_mail_settings (club TEXT PRIMARY KEY REFERENCES clubs(slug) ON DELETE CASCADE, email TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS partner_mail_tokens (ref TEXT PRIMARY KEY REFERENCES partner_posts(ref) ON DELETE CASCADE, hash TEXT UNIQUE NOT NULL, expires INTEGER NOT NULL, status TEXT NOT NULL)");
+    CREATE TABLE IF NOT EXISTS partner_mail_tokens (ref TEXT PRIMARY KEY REFERENCES partner_posts(ref) ON DELETE CASCADE, hash TEXT UNIQUE NOT NULL, expires INTEGER NOT NULL, status TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS partner_interest_share (id INTEGER PRIMARY KEY REFERENCES partner_interest(id) ON DELETE CASCADE)");
 }
 function cd_partner_mail_address(PDO $db,string $club):string{
     $q=$db->prepare('SELECT email FROM partner_mail_settings WHERE club=?');$q->execute([$club]);$saved=$q->fetchColumn();
@@ -81,11 +82,33 @@ function cd_partner_mail_page(PDO $db,string $club):never{
         }
     }elseif(in_array($decision,['publish','delete'],true)){$row=cd_partner_mail_lookup($db,$club,$token,$now);}
     if(!$row&&$message===''){http_response_code(410);$message='Dieser Freigabelink ist ungültig, abgelaufen oder wurde bereits verwendet. Bitte im Vereinsbackend prüfen.';}
-    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnergesuch prüfen</title><link rel="stylesheet" href="admin.css?v=066"></head><body class="partner-page"><main><section class="panel"><span class="member-brand">TENNILO ClubDisplay</span><h1>Spielpartnergesuch prüfen</h1>
+    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnergesuch prüfen</title><link rel="stylesheet" href="admin.css?v=067"></head><body class="partner-page"><main><section class="panel"><span class="member-brand">TENNILO ClubDisplay</span><h1>Spielpartnergesuch prüfen</h1>
     <?php if($row):$choices=cd_partner_choices();?><p><?=cd_h(cd_club($db,$club)['name'].' · '.$row['ref'])?></p><p><?=cd_h(implode(' · ',array_map(fn($key)=>$choices[$key][$row[$key]],array_keys($choices))))?></p><p>Privater Kontakt: <?=cd_h($row['contact'])?></p>
     <form method="post" action="?partner=moderate&amp;club=<?=rawurlencode($club)?>" class="profile"><input type="hidden" name="token" value="<?=cd_h($token)?>"><input type="hidden" name="decision" value="<?=cd_h($decision)?>"><label class="check full"><input type="checkbox" name="confirmed" value="1" required> <?= $decision==='publish'?'Vereinsmitgliedschaft, Gesuch und Einwilligung geprüft':'Ich möchte dieses Gesuch ablehnen und löschen' ?></label><button class="<?=$decision==='delete'?'danger':''?>"><?=$decision==='publish'?'Jetzt freigeben':'Jetzt ablehnen'?></button></form>
     <?php else:?><p><?=cd_h($message)?></p><?php endif?></section></main></body></html><?php
     exit;
+}
+
+
+function cd_partner_interest_notify(PDO $db,string $club,string $ref):void{
+    try{
+        $email=cd_partner_mail_address($db,$club);if($email==='')return;
+        $url='https://clubdisplay.tennilo.de/admin/?portal=club'.($club==='ntc93'?'&verein=ntc93':'').'&partner_review=1';
+        $body="Neue Kontaktanfrage zu einem Spielpartnergesuch.\nVerein: ".cd_club($db,$club)['name']."\nReferenz: ".$ref."\n\nBitte im geschützten Vereinsbackend beide Mitgliedschaften und Kontaktangaben prüfen. Erst dann den Kontakt vermitteln.\n".$url."\n\nKeine privaten Kontaktdaten in dieser Nachricht.";
+        if(!@mail($email,'TENNILO ClubDisplay - Neue Kontaktanfrage',$body,"MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit"))error_log('ClubDisplay interest notification not accepted.');
+    }catch(Throwable $e){error_log('ClubDisplay interest notification failed.');}
+}
+// Recipient must be independently verified by the administrator, not taken from an unverified submission.
+function cd_partner_interest_forward(PDO $db,string $club,string $ref,int $id,string $email,bool $reviewed,int $now,?callable $send=null):void{
+    if(!$reviewed||strlen($email)>254||!filter_var($email,FILTER_VALIDATE_EMAIL)||preg_match('/[\r\n]/',$email))throw new InvalidArgumentException('Bitte Mitgliedschaften, Identität und Empfängeradresse prüfen.');
+    if(!cd_partner_enabled($db,$club))throw new InvalidArgumentException('Spielpartnerbörse nicht freigeschaltet.');
+    $q=$db->prepare("SELECT i.contact FROM partner_interest i JOIN partner_posts p ON p.ref=i.ref JOIN partner_interest_share s ON s.id=i.id WHERE i.id=? AND i.ref=? AND p.club=? AND p.state='published' AND i.expires>? AND p.expires>?");
+    $q->execute([$id,$ref,$club,$now,$now]);$contact=$q->fetchColumn();
+    if($contact===false)throw new InvalidArgumentException('Kontaktanfrage abgelaufen oder keine ausdrückliche Einwilligung zur Weitergabe vorhanden.');
+    $body="Ein vom Verein geprüftes Mitglied interessiert sich für dein Spielpartnergesuch ".$ref.".\n\nKontakt des interessierten Mitglieds:\n".$contact."\n\nDu entscheidest selbst, ob du Kontakt aufnehmen möchtest. Bitte nicht weitergeben.";
+    $send??=static fn($to,$subject,$body,$headers)=>@mail($to,$subject,$body,$headers);
+    if(!$send($email,'TENNILO ClubDisplay - Kontakt zu deinem Spielpartnergesuch',$body,"MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit"))throw new InvalidArgumentException('E-Mail-Versand fehlgeschlagen. Anfrage bleibt gespeichert.');
+    $q=$db->prepare('DELETE FROM partner_interest WHERE id=? AND ref=?');$q->execute([$id,$ref]);
 }
 
 function cd_partner_choices():array{
@@ -106,9 +129,9 @@ function cd_partner_rows(PDO $db,string $club,?int $now=null):array{
     $q=$db->prepare("SELECT ref,category,skill,availability,period,expires FROM partner_posts WHERE club=? AND state='published' AND expires>? ORDER BY created DESC LIMIT 30");$q->execute([$club,$now]);return $q->fetchAll();
 }
 function cd_partner_admin_rows(PDO $db,string $club,?string $scope,?int $now=null):array{
-    cd_scope($scope,$club);$now??=time();
+    cd_scope($scope,$club);cd_partner_mail_schema($db);$now??=time();
     $q=$db->prepare('SELECT * FROM partner_posts WHERE club=? AND expires>? ORDER BY created DESC LIMIT 100');$q->execute([$club,$now]);$rows=$q->fetchAll();
-    $q=$db->prepare('SELECT id,contact,created,expires FROM partner_interest WHERE ref=? AND expires>? ORDER BY created');
+    $q=$db->prepare('SELECT i.id,i.contact,i.created,i.expires,EXISTS(SELECT 1 FROM partner_interest_share s WHERE s.id=i.id) AS share FROM partner_interest i WHERE i.ref=? AND i.expires>? ORDER BY i.created');
     foreach($rows as &$r){$q->execute([$r['ref'],$now]);$r['interest']=$q->fetchAll();}unset($r);return $rows;
 }
 function cd_partner_admin(PDO $db,array $in,?string $scope,?int $now=null):?string{
@@ -133,14 +156,17 @@ function cd_partner_admin(PDO $db,array $in,?string $scope,?int $now=null):?stri
             $q=$db->prepare("SELECT 1 FROM partner_posts WHERE ref=? AND club=? AND state='pending' AND expires>?");$q->execute([$ref,$club,$now]);
             if(!$q->fetchColumn()||!cd_partner_enabled($db,$club)||cd_partner_mail_address($db,$club)==='')throw new InvalidArgumentException('Offenes Gesuch und E-Mail-Adresse erforderlich.');
             $sendRef=$ref;
-        }elseif(in_array($intent,['publish','delete','interest-delete'],true)){
+        }elseif(in_array($intent,['publish','delete','interest-delete','interest-forward'],true)){
             $ref=cd_text($in['ref']??'',32,true);
             $q=$db->prepare('SELECT * FROM partner_posts WHERE ref=? AND club=? AND expires>?');$q->execute([$ref,$club,$now]);$row=$q->fetch();if(!$row)throw new InvalidArgumentException('Gesuch nicht gefunden.');
             if($intent==='publish'){
                 if(!cd_partner_enabled($db,$club)||($in['reviewed']??'')!=='1'||$row['state']!=='pending')throw new InvalidArgumentException('Freigabe und Prüfung erforderlich.');
                 $q=$db->prepare("UPDATE partner_posts SET state='published',expires=? WHERE ref=? AND club=? AND state='pending'");$q->execute([$now+1209600,$ref,$club]);
             }elseif($intent==='delete'){$q=$db->prepare('DELETE FROM partner_posts WHERE ref=? AND club=?');$q->execute([$ref,$club]);}
-            else{$id=filter_var($in['interest_id']??null,FILTER_VALIDATE_INT);if(!$id)throw new InvalidArgumentException('Ungültige Anfrage.');$q=$db->prepare('DELETE FROM partner_interest WHERE id=? AND ref=?');$q->execute([$id,$ref]);}
+            else{$id=filter_var($in['interest_id']??null,FILTER_VALIDATE_INT);if(!$id)throw new InvalidArgumentException('Ungültige Anfrage.');
+                if($intent==='interest-forward')cd_partner_interest_forward($db,$club,$ref,$id,trim(is_string($in['verified_email']??null)?$in['verified_email']:''),($in['verified_both']??'')==='1',$now);
+                else{$q=$db->prepare('DELETE FROM partner_interest WHERE id=? AND ref=?');$q->execute([$id,$ref]);}
+            }
         }else throw new InvalidArgumentException('Unbekannte Aktion.');
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
@@ -152,6 +178,7 @@ function cd_partner_submit(PDO $db,string $club,array $in,?int $now=null,?string
     $contact=cd_text($in['contact']??'',200,true);
     $mode=$in['mode']??'';
     if(!in_array($mode,['post','interest'],true))throw new InvalidArgumentException('Aktion auswählen.');
+    if($mode==='interest'&&($in['share']??'')!=='1')throw new InvalidArgumentException('Bitte der geschützten Kontaktvermittlung zustimmen.');
     cd_partner_mail_schema($db);$db->exec('CREATE TABLE IF NOT EXISTS partner_rate (club TEXT NOT NULL, client TEXT NOT NULL, created INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS partner_rate_created ON partner_rate(created)');$fields=[];
     if($mode==='post'){foreach(cd_partner_choices() as $key=>$choices){$v=$in[$key]??'';if(!is_string($v)||!isset($choices[$v]))throw new InvalidArgumentException('Bitte Auswahl prüfen.');$fields[]=$v;}}
     $db->exec('BEGIN IMMEDIATE');
@@ -174,11 +201,13 @@ function cd_partner_submit(PDO $db,string $club,array $in,?int $now=null,?string
             $ref=strtoupper(cd_text($in['ref']??'',10,true));
             $q=$db->prepare("SELECT expires FROM partner_posts WHERE ref=? AND club=? AND state='published' AND expires>?");$q->execute([$ref,$club,$now]);$expires=$q->fetchColumn();if(!$expires)throw new InvalidArgumentException('Gesuch nicht mehr verfügbar.');
             $q=$db->prepare('SELECT COUNT(*) FROM partner_interest WHERE ref=?');$q->execute([$ref]);if((int)$q->fetchColumn()>=30)throw new InvalidArgumentException('Zu viele offene Anfragen.');
+            $q=$db->prepare('SELECT 1 FROM partner_interest WHERE ref=? AND contact=? AND expires>?');$q->execute([$ref,$contact,$now]);if($q->fetchColumn())throw new InvalidArgumentException('Diese Kontaktanfrage ist bereits vorhanden.');
             $q=$db->prepare('INSERT INTO partner_interest(ref,contact,created,expires) VALUES (?,?,?,?)');$q->execute([$ref,$contact,$now,min((int)$expires,$now+1209600)]);
+            $id=(int)$db->lastInsertId();$q=$db->prepare('INSERT INTO partner_interest_share VALUES (?)');$q->execute([$id]);
         }
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
-    if($mode==='post')cd_partner_mail_send($db,$club,$ref,$now);
+    if($mode==='post')cd_partner_mail_send($db,$club,$ref,$now);else cd_partner_interest_notify($db,$club,$ref);
 }
 function cd_partner_public(PDO $db):never{
     $club=is_string($_GET['club']??null)?$_GET['club']:'';
@@ -191,17 +220,6 @@ function cd_partner_public(PDO $db):never{
         header('Vary: Origin');header('Content-Type: application/json; charset=utf-8');
         try{cd_partner_cleanup($db);echo json_encode(['enabled'=>cd_partner_enabled($db,$club),'rows'=>cd_partner_rows($db,$club)],JSON_THROW_ON_ERROR);}catch(Throwable $e){http_response_code(503);echo '{"enabled":false,"rows":[]}';}exit;
     }
-    if($action==='request'){
-        $origin=$_SERVER['HTTP_ORIGIN']??'';
-        if($origin==='https://clubdisplay.ntc93.de'&&$club==='ntc93')header('Access-Control-Allow-Origin: https://clubdisplay.ntc93.de');
-        elseif($origin!==''&&$origin!=='https://clubdisplay.tennilo.de'){http_response_code(403);exit;}
-        header('Vary: Origin');header('Content-Type: application/json; charset=utf-8');
-        if($_SERVER['REQUEST_METHOD']!=='POST'){http_response_code(405);exit;}
-        if((int)($_SERVER['CONTENT_LENGTH']??0)>4096){http_response_code(413);exit;}
-        try{cd_partner_submit($db,$club,$_POST,null,$_SERVER['REMOTE_ADDR']??'unknown');echo json_encode(['ok'=>true]);}
-        catch(InvalidArgumentException $e){http_response_code(400);echo json_encode(['ok'=>false,'error'=>$e->getMessage()]);}
-        catch(Throwable $e){http_response_code(503);echo json_encode(['ok'=>false,'error'=>'Anfrage derzeit nicht möglich.']);}exit;
-    }
     if($action!=='submit'||!cd_partner_enabled($db,$club)){http_response_code(404);exit('Spielpartnerbörse nicht freigeschaltet.');}
     if(!in_array($_SERVER['REQUEST_METHOD'],['GET','POST'],true)){http_response_code(405);exit;}
     $error='';$success=false;
@@ -210,19 +228,23 @@ function cd_partner_public(PDO $db):never{
         if((int)($_SERVER['CONTENT_LENGTH']??0)>4096){http_response_code(413);exit;}
         try{cd_partner_submit($db,$club,$_POST,null,$_SERVER['REMOTE_ADDR']??'unknown');$success=true;}catch(InvalidArgumentException $e){$error=$e->getMessage();}catch(Throwable $e){http_response_code(503);$error='Anfrage derzeit nicht möglich.';}
     }
-    $c=cd_club($db,$club);
-    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnerbörse</title><link rel="stylesheet" href="admin.css?v=066"></head><body class="partner-page"><main><section class="panel"><span class="member-brand">TENNILO ClubDisplay · <?=cd_h($c['name'])?></span><h1>Spielpartner gesucht</h1>
+    $c=cd_club($db,$club);$choices=cd_partner_choices();$publicRows=cd_partner_rows($db,$club);
+    $mode=($_POST['mode']??$_GET['mode']??'')==='interest'?'interest':'post';
+    $selected=is_string($_POST['ref']??$_GET['ref']??null)?strtoupper($_POST['ref']??$_GET['ref']):'';
+    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnerbörse</title><link rel="stylesheet" href="admin.css?v=067"></head><body class="partner-page"><main><section class="panel"><span class="member-brand">TENNILO ClubDisplay · <?=cd_h($c['name'])?></span><h1>Spielpartner gesucht</h1>
     <?php if($success):?><p class="ok">Anfrage eingegangen. Dein Verein prüft sie und vermittelt den Kontakt. Es werden keine privaten Kontaktdaten veröffentlicht.</p>
     <?php else:?><?php if($error):?><p class="error"><?=cd_h($error)?></p><?php endif?>
     <p>Für volljährige Vereinsmitglieder. Die Vereinsmitgliedschaft und das Gesuch werden vor Veröffentlichung geprüft. Anfragen werden durch die Vereinsadministration vermittelt.</p>
-    <form method="post" class="profile"><h2 class="form-section">1. Anfrage</h2><div hidden><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
-    <label>Was möchtest du tun?<select name="mode"><option value="post">Gesuch erstellen</option><option value="interest">Auf Gesuch reagieren</option></select></label>
-    <label>Referenz für eine Antwort (bei Gesuch leer lassen)<input name="ref" maxlength="10" autocapitalize="characters" spellcheck="false" pattern="[A-Fa-f0-9]{10}"></label><h2 class="form-section">2. Spielwünsche</h2><p class="form-hint full">Bei einer Kontaktanfrage können die Spielwünsche unverändert bleiben.</p>
-    <?php foreach(cd_partner_choices() as $key=>$choices):?><label><?=cd_h(['category'=>'Spielart','skill'=>'Spielstärke','availability'=>'Wochentag','period'=>'Tageszeit'][$key])?><select name="<?=cd_h($key)?>"><?php foreach($choices as $v=>$label):?><option value="<?=cd_h($v)?>"><?=cd_h($label)?></option><?php endforeach?></select></label><?php endforeach?>
-    <h2 class="form-section">3. Kontakt &amp; Einwilligung</h2><label class="full">Name und private Kontaktmöglichkeit für den Verein<textarea name="contact" required maxlength="200" rows="2" autocomplete="off"></textarea></label>
+    <div class="partner-mode"><a class="<?=$mode==='post'?'active':''?>" href="?partner=submit&amp;club=<?=rawurlencode($club)?>">Gesuch erstellen</a><a class="<?=$mode==='interest'?'active':''?>" href="?partner=submit&amp;club=<?=rawurlencode($club)?>&amp;mode=interest">Spielpartner finden</a></div>
+    <form method="post" class="profile"><input type="hidden" name="mode" value="<?=cd_h($mode)?>"><div hidden><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <?php if($mode==='post'):?><h2 class="form-section">1. Spielwünsche</h2>
+    <?php foreach($choices as $key=>$options):?><label><?=cd_h(['category'=>'Spielart','skill'=>'Spielstärke','availability'=>'Wochentag','period'=>'Tageszeit'][$key])?><select name="<?=cd_h($key)?>"><?php foreach($options as $v=>$label):?><option value="<?=cd_h($v)?>"><?=cd_h($label)?></option><?php endforeach?></select></label><?php endforeach?>
+    <?php else:?><h2 class="form-section">1. Gesuch auswählen</h2><label class="full">Veröffentlichte Gesuche<select name="ref" required><option value="">Bitte auswählen</option><?php foreach($publicRows as $p):?><option value="<?=cd_h($p['ref'])?>" <?=$selected===$p['ref']?'selected':''?>><?=cd_h($p['ref'].' · '.$choices['category'][$p['category']].' · '.$choices['skill'][$p['skill']].' · '.$choices['availability'][$p['availability']].' · '.$choices['period'][$p['period']])?></option><?php endforeach?></select></label><?php if(!$publicRows):?><p class="form-hint full">Aktuell gibt es keine veröffentlichten Gesuche.</p><?php endif?><?php endif?>
+    <h2 class="form-section">2. Kontakt &amp; Einwilligung</h2><label class="full">Name und private Kontaktmöglichkeit für den Verein<textarea name="contact" required maxlength="200" rows="2" autocomplete="off"></textarea></label>
     <label class="check full"><input type="checkbox" name="adult" value="1" required> Ich bin mindestens 18 Jahre alt und Mitglied dieses Vereins.</label>
     <label class="check full"><input type="checkbox" name="consent" value="1" required> Ich willige in die Verarbeitung durch den Verein zur Spielpartnervermittlung ein. Nur die gewählten Kategorien und die anonyme Referenz werden nach Prüfung veröffentlicht. Gesuche laufen nach höchstens 14 Tagen ab; ich kann sie jederzeit über den Verein zurückziehen. Kontaktdaten werden nicht veröffentlicht.</label>
-    <button class="partner-submit">Anfrage absenden</button></form><?php endif?></section></main></body></html><?php
+    <?php if($mode==='interest'):?><label class="check full"><input type="checkbox" name="share" value="1" required> Ich bin einverstanden, dass der Verein meine angegebenen Kontaktdaten nach Prüfung beider Mitgliedschaften ausschließlich an den geprüften Gesuchsteller weiterleitet.</label><?php endif?>
+    <button class="partner-submit" <?=$mode==='interest'&&!$publicRows?'disabled':''?>>Anfrage absenden</button></form><?php endif?></section></main></body></html><?php
     exit;
 }
 function cd_partner_field(PDO $db,array $club,string $csrf,?string $scope):void{
@@ -232,6 +254,6 @@ function cd_partner_field(PDO $db,array $club,string $csrf,?string $scope):void{
     <?php if($enabled):?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="partner-board"><input type="hidden" name="club" value="<?=cd_h($slug)?>"><label class="full">E-Mail für Gesuchfreigaben<input type="email" name="moderator_email" maxlength="254" value="<?=cd_h($email)?>" placeholder="E-Mail-Adresse des Vereinsadministrators"></label><button name="intent" value="mail-settings">E-Mail speichern</button></form><p><?=$email===''?'Noch keine Freigabe-E-Mail hinterlegt. Gesuche müssen im Backend geprüft werden.':'Bei neuen Gesuchen wird ein Freigabelink verschickt. Der Link ist einmalig und maximal 48 Stunden gültig.'?></p><p>Mitgliederformular: <a href="?partner=submit&amp;club=<?=rawurlencode($slug)?>" target="_blank" rel="noopener">Öffnen</a>. Gesuche können ohne Einladungscode eingereicht werden.</p>
     <?php foreach($rows as $r):?><details class="entry"><summary><?=cd_h($r['ref'].' · '.$choices['category'][$r['category']])?> <small><?=$r['state']==='pending'?'Prüfung ausstehend':'Veröffentlicht'?></small></summary><p><?=cd_h($choices['skill'][$r['skill']].' · '.$choices['availability'][$r['availability']].' · '.$choices['period'][$r['period']])?></p><p>Privater Kontakt: <?=cd_h($r['contact'])?></p><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="partner-board"><input type="hidden" name="club" value="<?=cd_h($slug)?>"><input type="hidden" name="ref" value="<?=cd_h($r['ref'])?>">
     <?php if($r['state']==='pending'):?><?php $q=$db->prepare('SELECT status,expires FROM partner_mail_tokens WHERE ref=?');$q->execute([$r['ref']]);$mail=$q->fetch();?><p>Freigabe-E-Mail: <?=!$mail?'Nicht versendet':($mail['status']==='sent'?((int)$mail['expires']>time()?'An Mailserver übergeben':'Link abgelaufen'):'Versand fehlgeschlagen / nicht bestätigt')?></p><?php if($email!==''):?><button name="intent" value="mail-resend" formnovalidate>Freigabe-E-Mail erneut senden</button><?php endif?><label class="check full"><input type="checkbox" name="reviewed" value="1" required> Vereinsmitgliedschaft, Gesuch und Einwilligung geprüft</label><button name="intent" value="publish">14 Tage veröffentlichen</button><?php endif?><button class="danger" name="intent" value="delete" formnovalidate>Gesuch schließen und löschen</button></form>
-    <?php foreach($r['interest'] as $i):?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="partner-board"><input type="hidden" name="club" value="<?=cd_h($slug)?>"><input type="hidden" name="ref" value="<?=cd_h($r['ref'])?>"><input type="hidden" name="interest_id" value="<?=(int)$i['id']?>"><p>Kontaktanfrage (privat): <?=cd_h($i['contact'])?></p><button name="intent" value="interest-delete">Anfrage erledigt / löschen</button></form><?php endforeach?></details><?php endforeach?>
+    <?php foreach($r['interest'] as $i):?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="partner-board"><input type="hidden" name="club" value="<?=cd_h($slug)?>"><input type="hidden" name="ref" value="<?=cd_h($r['ref'])?>"><input type="hidden" name="interest_id" value="<?=(int)$i['id']?>"><p class="full">Kontaktanfrage (privat): <?=cd_h($i['contact'])?></p><?php if($i['share']):?><p class="full">Mitgliedschaft und Identität beider Personen anhand der Vereinsunterlagen prüfen. Nur die dort unabhängig bestätigte E-Mail-Adresse des ursprünglichen Gesuchstellers verwenden. Niemals ungeprüfte Formularangaben als Empfänger übernehmen.</p><label class="full">Geprüfte E-Mail des Gesuchstellers<input type="email" name="verified_email" maxlength="254" required autocomplete="off"></label><label class="check full"><input type="checkbox" name="verified_both" value="1" required> Beide Mitgliedschaften und Identitäten, Kontaktdaten und Empfängeradresse geprüft.</label><button name="intent" value="interest-forward">Freigeben &amp; Kontakt weiterleiten</button><?php else:?><p class="full">Ältere Anfrage ohne ausdrückliche Weitergabeeinwilligung. Vor einer Vermittlung Einwilligung einholen.</p><?php endif?><button class="danger" name="intent" value="interest-delete" formnovalidate>Ablehnen / erledigt löschen</button></form><?php endforeach?></details><?php endforeach?>
     <?php if(!$rows):?><p>Noch keine Gesuche.</p><?php endif;endif;
 }
