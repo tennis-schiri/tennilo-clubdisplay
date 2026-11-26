@@ -383,3 +383,10 @@ cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$genderEntry['r
 check(cd_partner_rows($db,'ntc93',$partnerNow)[0]['own_gender_label']==='Weiblich, Männlich');
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 echo "Partner gender: validated, persisted, public adult labels and legacy compatibility OK\n";
+
+$chunk=static fn($t,$v)=>pack('N',strlen($v)).$t.$v.hash('crc32b',$t.$v,true);
+$monoPng="\x89PNG\r\n\x1a\n".$chunk('IHDR',pack('NNCCCCC',574,574,1,0,0,0,0)).$chunk('IDAT',gzcompress(str_repeat("\0".str_repeat("\xff",72),574))).$chunk('IEND','');
+check(cd_community_png($monoPng)===$monoPng);
+try{cd_community_png(substr($monoPng,0,-4));throw new RuntimeException('Truncated PNG accepted');}catch(InvalidArgumentException $e){}
+try{cd_community_png($monoPng.'trailing');throw new RuntimeException('PNG trailing payload accepted');}catch(InvalidArgumentException $e){}
+echo "Community QR PNG: lossless 1-bit format and invalid structure checks OK\n";

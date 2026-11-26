@@ -10,7 +10,7 @@ header('Referrer-Policy: strict-origin');
 header("Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 function ntc_fail(int $status):never {
     http_response_code($status);header('Content-Type: text/plain; charset=utf-8');
-    exit($status===503?'Der Vereinsservice ist momentan nicht erreichbar. Bitte später erneut versuchen.':'Anfrage nicht verfügbar.');
+    exit($status===503?'Der Vereinsservice ist momentan nicht erreichbar. Bitte später erneut versuchen.':($status===413?'Datei zu groß oder Upload vom Server abgelehnt. Bitte das Uploadlimit prüfen.':'Anfrage nicht verfügbar.'));
 }
 if(!defined('CD_NTC_ROUTE')||!in_array(CD_NTC_ROUTE,['admin','partner'],true)||($_SERVER['HTTP_HOST']??'')!=='clubdisplay.ntc93.de'||empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off')ntc_fail(404);
 $method=$_SERVER['REQUEST_METHOD']??'';
@@ -77,7 +77,8 @@ if($method==='POST'){
             if(!in_array($key,['image','logo','newsletter_pdf'],true)||($key==='newsletter_pdf'&&($post['action']??'')!=='matchball')||!is_array($file)||is_array($file['error']??null))ntc_fail(400);
             if(($file['error']??null)===UPLOAD_ERR_NO_FILE)continue;
             if(($file['error']??null)!==UPLOAD_ERR_OK||!is_uploaded_file($file['tmp_name'])||filesize($file['tmp_name'])>($key==='newsletter_pdf'?10000000:2000000))ntc_fail(413);
-            $fields[$key]=new CURLFile($file['tmp_name'],'application/octet-stream','upload');
+            $isCommunity=($post['action']??'')==='community'&&$key==='image';
+            $fields[$key]=new CURLFile($file['tmp_name'],$isCommunity?'image/png':($key==='newsletter_pdf'?'application/pdf':'application/octet-stream'),$isCommunity?'community-qr.png':($key==='newsletter_pdf'?'newsletter.pdf':'upload'));
         }
         curl_setopt($ch,CURLOPT_POSTFIELDS,$fields);
     }else curl_setopt($ch,CURLOPT_POSTFIELDS,http_build_query($post,'','&',PHP_QUERY_RFC3986));

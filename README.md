@@ -285,3 +285,6 @@ Eigenständiger PDF-Upload legt neue Monate an oder ergänzt vorhandene Ausgaben
 
 ## 0.4.77
 Kompakte 2×2-Gesuchskarten mit zusammengefasster Alters-/Geschlechtszeile und kleinerem QR-Code. Freiwillige eigene Geschlechtsangabe (männlich/weiblich/divers), zusätzliche Gruppenangaben bei Doppel/Mixed und Wunschgeschlecht einschließlich egal. Unveränderte Altgesuche ohne Angaben; Jugendschutz unterdrückt öffentliche Geschlechtsangaben zu minderjährigen Suchenden und gesuchten Jugendgruppen. Speicherung, Prüfung und Smartphone-Ansicht erweitert.
+
+### WhatsApp-QR-Upload
+Originale quadratische PNGs (einschließlich 1-Bit-Schwarzweiß) werden ohne GD-Konvertierung übernommen. PNG-Signatur, Maße, Chunk-Längen/CRC und Abschluss werden geprüft, Metadaten entfernt. NTC-Gateway leitet PNG und PDF mit passenden MIME-Typen und Dateiendungen weiter. HTTP-Test verwendet ein künstliches 574×574-1-Bit-PNG ohne Einladungsdaten.

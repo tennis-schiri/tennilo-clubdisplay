@@ -142,7 +142,7 @@ get "$other" "$base?matchball=feed&club=ntc93" 200
 php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if(count($v["issues"])!==2)exit(1);' "$tmp/body"
 get "$other" "$base?matchball-display-pdf=1&club=ntc93&month=2026-11" 404
 # A test PNG stands in for a private QR; never use a real invitation in CI.
-php -r '$i=imagecreatetruecolor(256,256);imagepng($i,$argv[1]);' "$tmp/test-qr.png"
+php -r '$chunk=fn($t,$v)=>pack("N",strlen($v)).$t.$v.hash("crc32b",$t.$v,true);$p="\x89PNG\r\n\x1a\n".$chunk("IHDR",pack("NNCCCCC",574,574,1,0,0,0,0)).$chunk("IDAT",gzcompress(str_repeat("\0".str_repeat("\xff",72),574))).$chunk("IEND","");file_put_contents($argv[1],$p);' "$tmp/test-qr.png"
 get "$club" "$url" 200; t="$(csrf)"
 post "$club" "$url" 303 -F "csrf=$t" -F action=community -F club=ntc93 -F intent=save -F kind=youth -F "image=@$tmp/test-qr.png;type=image/png"
 get "$other" "$base?matchball=feed&club=ntc93" 200
