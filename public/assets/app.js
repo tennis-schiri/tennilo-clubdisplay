@@ -217,7 +217,7 @@ function eventView(){
     const time=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+(lang==='de'?' Uhr':'');
     const endTime=fmt(e.end,{hour:'2-digit',minute:'2-digit'});
     const endDate=fmt(e.end,{day:'2-digit',month:'2-digit',year:'numeric'});
-    const dateBlock=multi?'<span class="fixture-weekday">'+tr('Mehrtägig','Multi-day')+'</span><strong class="fixture-day">'+esc(date)+'</strong><span class="fixture-range-separator">'+tr('bis','to')+'</span><strong class="fixture-day">'+esc(endDate)+'</strong>':'<span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(date)+'</strong>';
+    const dateBlock=multi?'<strong class="fixture-day">'+esc(date)+'</strong><span class="fixture-range-separator">'+tr('bis','to')+'</span><strong class="fixture-day">'+esc(endDate)+'</strong>':'<span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(date)+'</strong>';
     const link=!info&&!pilot&&typeof e.url==='string'&&/^https:\/\/(?:www\.)?ntc93\.com\//i.test(e.url)?'<a class="event-link" href="'+esc(e.url)+'" target="_blank" rel="noopener noreferrer">'+tr('Details','Details')+'</a>':'';
     const period=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+endTime+(lang==='de'?' Uhr':'');
     const periodLabel=tr('Zeitraum','Time');

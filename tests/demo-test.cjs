@@ -53,3 +53,6 @@ assert.match(rangeBlocks[0],/31\.12\.2026.*bis.*01\.01\.2027/);
 assert.match(rangeBlocks[1],/15\.06\.2027.*bis.*20\.06\.2027.*Ganztägig/);
 assert.doesNotMatch(multiHtml,/class="fixture-details event-details"/);
 console.log('Multi-day dates fully inside leading date tiles OK');
+
+for(const block of rangeBlocks)assert.doesNotMatch(block,/Mehrtägig|Multi-day/);
+dateCtx.lang='en';assert.doesNotMatch(vm.runInContext('eventView()',dateCtx),/Multi-day/);
