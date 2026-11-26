@@ -62,3 +62,8 @@ dateCtx.lang='en';assert.doesNotMatch(vm.runInContext('eventView()',dateCtx),/Mu
 const enCalendar=vm.runInContext('eventView()',dateCtx);
 for(const block of enCalendar.matchAll(/<time class="fixture-date-block[^>]*>(.*?)<\/time>/g))assert.doesNotMatch(block[1],/All day/);
 assert.match(enCalendar,/<strong>All day<\/strong>/);
+
+assert.doesNotMatch(source,/Interaktiver Modus|Interactive mode/);
+assert.ok(source.includes("$('mode').hidden=view!=='info'"));
+assert.ok(source.includes("$('mode-dot').hidden=view!=='info'"));
+assert.match(displayHtml,/id="mode-dot"/);
