@@ -16,6 +16,8 @@ php -l public/admin-pin.php
 php -l public/terminal.php
 php -l public/ntc/ebusy-occupancy.php
 php tests/ebusy-occupancy-test.php
+php -l public/ntc/devices.php
+php tests/test-devices.php
 php tests/events-test.php
 php -l public/news.php
 php tests/news-test.php
@@ -114,6 +116,23 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   curl --silent --show-error --max-time 55 --header @"$tmp/ebusy-header" -o "$tmp/ebusy-status" "https://$DOMAIN/ebusy-occupancy.php"
   php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!isset($v["status"]))exit(1); echo "eBuSy diagnostic: ".json_encode(array_intersect_key($v,array_flip(["status","reason","slotCount","onsiteConfigured"])))."\n";' "$tmp/ebusy-status"
   if ! php -r '$v=json_decode(file_get_contents($argv[1]),true); exit(($v["status"]??null)==="ok"?0:1);' "$tmp/ebusy-status"; then echo "::warning::eBuSy connection or mapping not confirmed. No live occupancy is shown."; fi
+
+
+  # Local test-browser management: protect SQLite/config before upload.
+  printf 'Require all denied\n' > "$tmp/devices-deny"
+  printf 'protected\n' > "$tmp/devices-probe"
+  upload "$tmp/devices-deny" devices-private/.htaccess
+  upload "$tmp/devices-probe" devices-private/probe.txt
+  code="$(curl --silent --show-error --max-time 25 -o /dev/null -w '%{http_code}' "https://$DOMAIN/devices-private/probe.txt")"
+  [[ "$code" == 403 ]] || { echo "::error::Device storage is not protected (HTTP $code)"; exit 1; }
+  php -r '$pin=getenv("ADMIN_PIN")?: ""; $hash=$pin!==""?password_hash($pin,PASSWORD_BCRYPT):""; file_put_contents($argv[1],"<?php\nreturn ".var_export(["hash"=>$hash],true).";\n");' "$tmp/devices-config.php"
+  upload "$tmp/devices-config.php" devices-private/config.php
+  upload public/ntc/devices.php devices.php
+  curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/devices.php?status=1" -o "$tmp/devices-status"
+  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(($v["registered"]??null)!==false)exit(1); echo "Unregistered browser denied test mode.\n";' "$tmp/devices-status"
+  curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/devices.php?manage=1" -o "$tmp/devices-login"
+  grep -Fq 'Admin-Anmeldung' "$tmp/devices-login"
+  grep -Fq 'Admin-PIN' "$tmp/devices-login"
 
   php -l public/ntc/ntc-gateway.php
   php -l public/ntc/admin/index.php

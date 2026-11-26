@@ -732,11 +732,15 @@ function sponsorView(){
 }
 // Court overview: only confirmed eBuSy data may mark a court free or occupied.
 const occupancyCourts={outdoor:[1,2,3,4,5,6,7],indoor:[1,2]};
-let occupancyData=null,occupancyHourKey='',occupancyBusy=false,occupancyRestricted=false;
+let occupancyData=null,occupancyHourKey='',occupancyBusy=false,occupancyRestricted=false,occupancyTest=false;
 async function refreshOccupancy(){
   if(!pilot||occupancyBusy)return;
   occupancyBusy=true;
   try{
+    let test=false;
+    try{const response=await fetch('devices.php?status=1',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(6000)});test=response.ok&&(await response.json()).registered===true;}catch{}
+    occupancyTest=test;
+    if(test){occupancyData=null;occupancyRestricted=false;return;}
     const r=await fetch('ebusy-occupancy.php',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(55000)});
     occupancyRestricted=r.status===403;
     const d=r.ok?await r.json():null;
@@ -782,11 +786,11 @@ function occupancyBookingText(area,court,hour){
 }
 function occupancyView(){
   const hours=occupancyHours();occupancyHourKey=hours[0].start;
-  if(!pilot)occupancyData=demoOccupancy(hours);
+  if(!pilot||occupancyTest)occupancyData=demoOccupancy(hours);
   const ready=hours.some(hour=>Object.keys(occupancyCourts).some(area=>occupancyCourts[area].some(court=>occupancySlot(area,court,hour)!=='unknown')));
   const header='<div class="occupancy-timeline-head"><span>'+tr('Platz','Court')+'</span>'+hours.map((hour,i)=>'<div class="occupancy-hour-head'+(i===0?' occupancy-hour-current':'')+'"><strong>'+occupancyTime(hour.start)+' – '+occupancyTime(hour.end)+'</strong><small>'+(i===0?tr('Aktuelle Stunde','Current hour'):tr('Danach','Upcoming'))+'</small></div>').join('')+'</div>';
   const group=(area,title)=>'<section class="occupancy-roster-group occupancy-roster-'+area+'"><div class="occupancy-roster-caption">'+title+'</div>'+occupancyCourts[area].map(court=>'<article class="occupancy-roster-row occupancy-court-'+area+'" aria-label="'+title+' · '+tr('Platz ','Court ')+court+'"><div class="occupancy-court-ident">'+occupancyCourtGraphic(court)+'<strong>'+tr('Platz ','Court ')+court+'</strong></div>'+hours.map(hour=>occupancyBookingText(area,court,hour)).join('')+'</article>').join('')+'</section>';
-  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(!pilot?tr('Fiktive Buchungen · TENNILO-Demo','Fictional bookings · TENNILO demo'):ready?tr('Buchungsübersicht · eBuSy','Booking overview · eBuSy'):occupancyRestricted?tr('Live-Belegung nur auf der Vereinsanlage','Live occupancy only at the club'):tr('Belegungsdaten derzeit nicht verfügbar','Occupancy data currently unavailable'))+'</span></div><div class="occupancy-roster">' +header+(smartSeason()==='winter'?group('indoor',tr('Hallenplätze','Indoor courts'))+group('outdoor',tr('Außenplätze','Outdoor courts')):group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts')))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+(pilot?tr('Ohne Spielernamen · nicht gebucht bedeutet nicht automatisch bespielbar.','No player names · not booked does not guarantee availability.'):tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.'))+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
+  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(!pilot?tr('Fiktive Buchungen · TENNILO-Demo','Fictional bookings · TENNILO demo'):occupancyTest?tr('TESTMODUS · ausschließlich Beispieldaten','TEST MODE · sample data only'):ready?tr('Buchungsübersicht · eBuSy','Booking overview · eBuSy'):occupancyRestricted?tr('Live-Belegung nur auf der Vereinsanlage','Live occupancy only at the club'):tr('Belegungsdaten derzeit nicht verfügbar','Occupancy data currently unavailable'))+'</span></div><div class="occupancy-roster">' +header+(smartSeason()==='winter'?group('indoor',tr('Hallenplätze','Indoor courts'))+group('outdoor',tr('Außenplätze','Outdoor courts')):group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts')))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+(occupancyTest?tr('Fiktive Belegung · keine echten Buchungen.','Fictional occupancy · no real bookings.'):pilot?tr('Ohne Spielernamen · nicht gebucht bedeutet nicht automatisch bespielbar.','No player names · not booked does not guarantee availability.'):tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.'))+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
 }
 function refreshOccupancyHour(now){
   if(view==='info'&&smartScreenKey(screens[slide])==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();
