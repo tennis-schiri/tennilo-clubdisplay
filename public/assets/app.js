@@ -108,12 +108,27 @@ function smartSeason(now=Date.now()){
   const day=smartDate(now).slice(5);
   return day>='05-01'&&day<'10-01'?'summer':'winter';
 }
+// Fourth Advent is the Sunday strictly before Christmas Day, even when Christmas is a Sunday.
+// Saturday and Sunday of each Advent weekend use the same local calendar date calculation.
+function smartAdvent(now=Date.now()){
+  const date=smartDate(now);
+  if(!date)return 0;
+  const year=Number(date.slice(0,4)),today=Date.parse(date+'T00:00:00Z')/86400000;
+  const christmas=Date.UTC(year,11,25)/86400000;
+  const fourth=christmas-(new Date(christmas*86400000).getUTCDay()||7);
+  for(let n=1;n<=4;n++){
+    const sunday=fourth-(4-n)*7;
+    if(today===sunday-1||today===sunday)return n;
+  }
+  return 0;
+}
 function smartHoliday(now=Date.now()){
   const day=smartDate(now).slice(5);
   if(day>='12-24'&&day<='12-26')return 'holiday:christmas';
   if(day==='12-31')return 'holiday:eve';
   if(day>='01-01'&&day<='01-06')return 'holiday:newyear';
-  return '';
+  const advent=smartAdvent(now);
+  return advent?'holiday:advent:'+advent:'';
 }
 function smartScreenKey(key){return typeof key==='string'&&key.startsWith('priority:')?key.slice(9):key;}
 function smartDayNumber(value){
@@ -187,7 +202,18 @@ function smartRotation(base,matches,events,matchKeys,eventKeys,now=Date.now()){
   }
   return out;
 }
+function adventCandles(count){
+  return '<svg viewBox="0 0 220 110" role="presentation"><g fill="none" stroke="#88ac79" stroke-width="2.5" stroke-linecap="round"><path d="M12 101Q110 72 208 101M30 98l-8-10m23 6-7-12m27 9-5-14m100 14 5-14m15 17 7-12m8 16 8-10"/></g>'+Array.from({length:4},(_,i)=>{
+    const x=38+i*48,lit=i<count;
+    return '<g><rect x="'+(x-10)+'" y="46" width="20" height="43" rx="3" fill="'+(lit?'#ebd3a0':'#b7b7a5')+'"/><path d="M'+x+' 46v-6" stroke="#573c28" stroke-width="2"/>'+(lit?'<path d="M'+x+' 13q-19 24 0 27q19-3 0-27Z" fill="#ffce72"/><path d="M'+x+' 26q-7 12 0 13q7-1 0-13Z" fill="#fff5c3"/>':'')+'</g>';
+  }).join('')+'</svg>';
+}
 function smartHolidayView(key){
+  if(/^holiday:advent:[1-4]$/.test(key)){
+    const n=Number(key.split(':')[2]);
+    const heading=tr('Einen schönen '+n+'. Advent!','Happy '+['first','second','third','fourth'][n-1]+' Advent!');
+    return '<div class="greeting-hero event-greeting-hero holiday-hero holiday-advent"><div class="holiday-art advent-art" aria-hidden="true">'+adventCandles(n)+'</div><h1 class="event-greeting-title">'+esc(heading)+'</h1><p class="greeting-farewell">'+tr('Wir wünschen euch ein gemütliches Adventswochenende.','Wishing you a lovely Advent weekend.')+'</p></div>';
+  }
   const copy=key==='holiday:christmas'?[tr('Frohe Weihnachten!','Merry Christmas!'),tr('Wir wünschen euch und euren Familien schöne Feiertage.','Wishing you and your families a wonderful holiday.')]:key==='holiday:eve'?[tr('Guten Rutsch!','Happy New Year’s Eve!'),tr('Kommt gut ins neue Jahr.','Have a wonderful start to the new year.')]:[tr('Frohes neues Jahr!','Happy New Year!'),tr('Wir wünschen euch Gesundheit, Glück und viel Freude auf dem Tennisplatz.','Wishing you health, happiness and plenty of joy on the tennis court.')];
   return '<div class="greeting-hero event-greeting-hero holiday-hero '+(key==='holiday:christmas'?'holiday-christmas':'holiday-newyear')+'"><div class="holiday-art" aria-hidden="true">'+(key==='holiday:christmas'?'<svg viewBox="0 0 160 110"><path d="M80 8 53 43h15L38 75h26L28 99h104L96 75h26L92 43h15Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M80 0v12m-6-6h12" stroke="currentColor" stroke-width="2"/><circle cx="80" cy="52" r="3" fill="currentColor"/><circle cx="60" cy="80" r="3" fill="currentColor"/><circle cx="100" cy="80" r="3" fill="currentColor"/></svg>':'<svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M80 12v26m0 24v26M42 50h26m24 0h26M53 23l18 18m18 18 18 18M53 77l18-18m18-18 18-18M24 5v20m-10-10h20m102 65v20m-10-10h20"/><circle cx="80" cy="50" r="5"/></svg>')+'</div><h1 class="event-greeting-title">'+esc(copy[0])+'</h1><p class="greeting-farewell">'+esc(copy[1])+'</p></div>';
 }
@@ -565,7 +591,38 @@ function headerWeatherSymbol(kind){
   };
   return '<svg class="wx-head-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(shapes[kind]||'')+'</svg>';
 }
+// Decorative only: uses the same current-weather value as the header, never the rain probability.
+function headerWeatherEffect(data,now=Date.now()){
+  if(data?.status!=='ok'||!Number.isFinite(data.fetchedAt)||Math.abs(now/1000-data.fetchedAt)>1800)return '';
+  const c=data.current;
+  if(!c||!Number.isFinite(c.time)||Math.abs(now/1000-c.time)>10800)return '';
+  const effects={'rain':'rain','sleet':'sleet','snow':'snow','hail':'hail','thunderstorm':'storm','fog':'fog','wind':'wind','clear-day':'sun','clear-night':'stars','partly-cloudy-day':'cloud','partly-cloudy-night':'cloud','cloudy':'cloud'};
+  return Object.prototype.hasOwnProperty.call(effects,c.icon)?effects[c.icon]:'';
+}
+function headerSeasonEffect(now=Date.now()){
+  const key=smartHoliday(now);
+  return key==='holiday:christmas'?'christmas':key.startsWith('holiday:advent:')?'advent-'+key.slice(-1):'';
+}
+function syncHeaderDecor(now=Date.now()){
+  const header=document.querySelector('body > header'),layer=$('header-weather-effect'),season=$('header-season-effect');
+  if(!header||!layer||!season)return;
+  const effect=headerWeatherEffect(weatherData,now),festive=headerSeasonEffect(now);
+  if(header.dataset.weatherEffect!==effect){
+    header.dataset.weatherEffect=effect;
+    const count=({rain:22,sleet:20,snow:19,hail:17,storm:24,stars:14,wind:8})[effect]||0;
+    layer.innerHTML=Array.from({length:count},(_,i)=>{
+      const snow=effect==='snow'||(effect==='sleet'&&i%2===0);
+      const kind=snow?'flake':effect==='hail'?'pellet':effect==='stars'?'star':effect==='wind'?'gust':'drop';
+      return '<i class="'+kind+'" style="--x:'+((i*37+7)%100)+'%;--y:'+((i*19+5)%95)+'%;--delay:-'+((i*17)%90/10)+'s;--duration:'+(snow?4+i%5:effect==='stars'?5+i%4:1.6+i%4*.45)+'s;--size:'+(2+i%4)+'px"></i>';
+    }).join('');
+  }
+  if(header.dataset.seasonEffect!==festive){
+    header.dataset.seasonEffect=festive;
+    season.innerHTML=festive?Array.from({length:12},(_,i)=>'<i style="--x:'+((i+0.5)*100/12)+'%;--tone:'+(i%3===0?'#ead9a1':i%3===1?'#e7b45e':'#c4d2a4')+'"></i>').join(''):'';
+  }
+}
 function renderWeatherHeader(){
+  syncHeaderDecor();
   const w=weatherData,c=w?.current,s=w?.sun,day=w?.daily?.[0];
   const upcoming=w?.hourly?.find(x=>x.time>=Date.now()/1000);
   const item=(kind,label,value)=>'<span class="wx-head-item">'+headerWeatherSymbol(kind)+'<span><small>'+label+'</small><b>'+value+'</b></span></span>';
@@ -1106,7 +1163,7 @@ adminForm.addEventListener('submit',async e=>{
 });
 syncFullscreen();
 let lastSmartSecond=-1;
-setInterval(()=>{const now=Date.now();clock();const second=Math.floor(now/1000);if(second!==lastSmartSecond){lastSmartSecond=second;syncMatchGreetings(now);}if(adminDialog.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+setInterval(()=>{const now=Date.now();clock();const second=Math.floor(now/1000);if(second!==lastSmartSecond){lastSmartSecond=second;syncMatchGreetings(now);if(second%60===0)syncHeaderDecor(now);}if(adminDialog.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
