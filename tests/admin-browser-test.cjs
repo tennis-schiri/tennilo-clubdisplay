@@ -76,6 +76,8 @@ const {chromium}=require('playwright');
   await mobile.getByText('Änderungen gespeichert.',{exact:true}).waitFor();
   await noOverflow();
   await mobile.screenshot({path:'artifacts/club-admin-mobile.png'});
+  await mobile.getByText('Übersicht · Spielpartnerbörse',{exact:true}).waitFor();
+  assert.equal(await mobile.locator('.partner-admin-section').count(),5);
   await mobile.goto(base+'?partner=submit&club=ntc93');
   await mobile.getByRole('heading',{name:'Spielpartner gesucht'}).waitFor();
   await mobile.getByRole('heading',{name:'Aktuelle Gesuche'}).waitFor();

@@ -327,3 +327,16 @@ cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$entry['ref'],'
 $entryPublic=cd_partner_rows($db,'ntc93',$partnerNow)[0];check($entryPublic['availability']==='mon,wed,fri'&&$entryPublic['wanted_age_label']==='Geschützte Vermittlung'&&!str_contains(json_encode($entryPublic),'16-17'));
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 echo "Multi-choice preferences, single/group ages and protected minor age display OK\n";
+
+$oneAge=$prefsInput;unset($oneAge['age_group']);$oneAge['age_primary']='30-39';
+check(cd_partner_validate_submission($oneAge,false)[0]==='adult');
+try{cd_partner_validate_submission(array_replace($oneAge,['age_primary'=>'u16']),false);throw new RuntimeException('Missing guardian accepted');}catch(InvalidArgumentException $e){}
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
+cd_partner_submit($db,'ntc93',$oneAge,$partnerNow);
+$renewRef=cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)[0]['ref'];
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$renewRef,'reviewed'=>'1'],'ntc93',$partnerNow);
+check(count(cd_partner_rows($db,'ntc93',$partnerNow))===1);
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'renew-admin','ref'=>$renewRef],'ntc93',$partnerNow);
+check(cd_partner_rows($db,'ntc93',$partnerNow)===[]);
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
+echo "Single age input, administrative renewal requires fresh review OK\n";
