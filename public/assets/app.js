@@ -4,6 +4,8 @@ const $ = id => document.getElementById(id);
 const pilot = location.hostname === 'clubdisplay.ntc93.de';
 const personalDemo=!pilot&&location.hostname==='clubdisplay.tennilo.de'&&new URLSearchParams(location.search).get('customize')==='1';
 let personalBrand=null;
+let premiereActive=false,premiereIndex=0,premiereDeadline=0,premiereRemaining=0,premierePaused=false;
+const premiereDwell=18000,feedbackUrl='https://clubdisplay.ntc93.de/feedback.php';
 if(pilot){const logo=document.getElementById('brand-logo');logo.src='assets/ntc93-logo.png';logo.alt='Neuenhagener Tennisclub 93 e. V.';}
 let lang='de', view='info', slide=0, last=Date.now(), started=Date.now(), court=null, message='';
 const dwell=12000, idle=60000;
@@ -1063,7 +1065,7 @@ function syncLanguageButton(){
   button.setAttribute('aria-label',label);
   button.title=label;
 }
-function render(){if(nightActive)return;const l=t();document.documentElement.lang=lang;$('club').textContent=personalBrand?personalBrand.name:l.club;$('mode').textContent=view==='info'?l.info:'';$('mode').hidden=view!=='info';$('mode-dot').hidden=view!=='info';$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}syncLanguageButton();syncFullscreen();renderWeatherHeader();infoControls();
+function render(){if(nightActive||premiereActive)return;syncPremiereLaunch();const l=t();document.documentElement.lang=lang;$('club').textContent=personalBrand?personalBrand.name:l.club;$('mode').textContent=view==='info'?l.info:'';$('mode').hidden=view!=='info';$('mode-dot').hidden=view!=='info';$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}syncLanguageButton();syncFullscreen();renderWeatherHeader();infoControls();
 renderNav();
 const active=view==='info'?smartScreenKey(screens[slide]):view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('weekend-screen',active.startsWith('weekend:'));document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active)||greetingEvents.has(active)||active.startsWith('holiday:'));document.body.classList.toggle('restaurant-screen',active==='restaurant');let html='';
 if(greetingMatches.has(active))html=matchGreetingView(active);else if(greetingEvents.has(active))html=eventGreetingView(active);else if(active.startsWith('holiday:'))html=smartHolidayView(active);else if(active.startsWith('weekend:'))html=smartWeekendView(active);else if(active==='open-countdown')html=smartCountdownView();else if(active==='partners'||active.startsWith('partners:'))html=partnerBoardView(active);else switch(active){
@@ -1077,7 +1079,7 @@ case 'home':{
     ['news',l.announcements,tr('Vereinsmeldungen, Hinweise und Informationen aus dem Club.','Read club announcements, notices and information.')]
   ];
   if(partnerBoardData?.enabled)tiles.push(['partners',tr('Spielpartner gesucht','Find a partner'),tr('Gesuch erstellen oder Spielpartner finden.','Create a request or find a partner.')]);
-  html='<div class="home-welcome"><h1>'+esc(l.welcome)+'</h1><p>'+esc(l.intro)+'</p></div><div class="home-tiles'+(tiles.length===6?' home-tiles-six':'')+'">'+tiles.map(([key,title,description])=>'<button type="button" class="tile home-tile" data-action="'+key+'"><span class="home-tile-top"><span class="home-tile-label">'+sectionIcon(key)+'<strong>'+esc(title)+'</strong></span><svg class="home-tile-arrow" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="home-tile-description">'+esc(description)+'</span></button>').join('')+'</div>'+communityStart();
+  html='<div class="home-welcome"><h1>'+esc(l.welcome)+'</h1><p>'+esc(l.intro)+'</p></div><div class="home-tiles'+(tiles.length===6?' home-tiles-six':'')+'">'+tiles.map(([key,title,description])=>'<button type="button" class="tile home-tile" data-action="'+key+'"><span class="home-tile-top"><span class="home-tile-label">'+sectionIcon(key)+'<strong>'+esc(title)+'</strong></span><svg class="home-tile-arrow" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="home-tile-description">'+esc(description)+'</span></button>').join('')+'</div>'+communityStart()+(pilot?'<div class="premiere-home-links"><button data-action="intro">'+tr('So funktioniert ClubDisplay','How ClubDisplay works')+'</button><button data-action="feedback">'+tr('Feedback geben','Give feedback')+'</button></div>':'');
   break;
 }
 case 'courts':if(pilot){html=ebusyView();break;}html='<h1>'+l.booking+'</h1><p>'+l.select+'</p>'+courtList();if(court!==null)html+='<div class="panel" style="margin-top:1rem"><h2>'+l.court+' '+court+'</h2><p>'+l.slot+'</p><div class="actions">'+button(l.confirm,'confirm','primary')+button(l.reset,'reset')+'</div><p role="status" class="message">'+message+'</p></div>';break;
@@ -1204,6 +1206,63 @@ function scheduleScreenFit(){
   });
 }
 
+function premiereAvailable(now=Date.now()){
+  return pilot&&(smartDate(now)==='2026-12-06'||new URLSearchParams(location.search).get('premiere')==='1');
+}
+function syncPremiereLaunch(now=Date.now()){
+  const b=$('premiere-launch');if(b){b.hidden=!premiereAvailable(now);b.textContent=tr('Premiere','Premiere');}
+}
+function premierePages(){
+  return [
+    ['birthday','33 Jahre NTC 93','6. Dezember 1993 – 6. Dezember 2026',tr('Danke an alle, die unseren Verein mit Leben füllen.','Thank you to everyone who brings our club to life.')],
+    ['welcome',tr('Ein neues Kapitel im Clubhaus','A new chapter in the clubhouse'),tr('Willkommen beim NTC ClubDisplay','Welcome to NTC ClubDisplay'),tr('Unser digitales Informations- und Buchungsterminal. Für unseren Verein. Für euch.','Our digital information and booking terminal. For our club. For you.')],
+    ['touch',tr('Einfach antippen','Simply tap'),tr('1 · Vom Infomodus zum Menü','1 · From info mode to menu'),tr('Berührt den Bildschirm und entdeckt die verschiedenen Bereiche.','Touch the screen to discover the different sections.')],
+    ['courts',tr('Plätze im Blick','Courts at a glance'),tr('2 · Platzbelegung und Buchung','2 · Availability and booking'),tr('Im Vereinsnetz die Außenplätze buchen und die Belegung der Plätze ansehen.','Book outdoor courts and see court availability on the club network.')],
+    ['teams',tr('Immer informiert','Stay informed'),tr('3 · Das Vereinsleben auf einen Blick','3 · Club life at a glance'),tr('Punktspiele, Termine, Meldungen, Wetter, Gastronomie und Spielpartnerbörse.','League matches, events, news, weather, restaurant and playing partners.')],
+    ['info',tr('Zurück zum Infomodus','Back to information mode'),tr('Automatische Anzeige','Automatic display'),tr('Über die Navigation oder nach einer kurzen Pause wechselt ClubDisplay zurück in den Infomodus.','Use the navigation or wait a short while to return to information mode.')],
+    ['feedback',tr('Eure Meinung zählt','Your opinion matters'),tr('Helft uns, ClubDisplay weiterzuentwickeln.','Help us improve ClubDisplay.'),tr('QR-Code scannen und Ideen oder Anregungen senden. Ohne Namen und E-Mail-Adresse.','Scan the QR code and send ideas or suggestions. No name or email required.')],
+    ['end',tr('Viel Spaß beim Entdecken!','Enjoy exploring!'),tr('Ein Display. Unser Verein.','One display. Our club.'),tr('Entwickelt für den NTC – mit TENNILO ClubDisplay.','Developed for NTC – with TENNILO ClubDisplay.')]
+  ];
+}
+let premiereSelection=null;
+function premiereRender(){
+  const pages=premiereSelection||premierePages(),p=pages[premiereIndex];if(!p)return;
+  const [kind,title,sub,copy]=p;
+  const icons={welcome:'home',touch:'home',courts:'courts',teams:'teams',info:'info',end:'home'};
+  const art=kind==='birthday'?'<div class="premiere-confetti" aria-hidden="true">'+Array.from({length:36},(_,i)=>'<i style="--x:'+((i*37+7)%100)+'%;--delay:-'+(i%9*.6)+'s;--turn:'+(i*29%180)+'deg"></i>').join('')+'</div><img class="premiere-logo" src="assets/ntc93-logo.png" alt="NTC 93">':kind==='feedback'?'<div class="premiere-qr">'+partnerQrSvg(feedbackUrl,tr('QR-Code zum Feedback','Feedback QR code'))+'</div>':'<div class="premiere-icon">'+sectionIcon(icons[kind]||'home')+'</div>';
+  $('premiere-content').innerHTML='<article class="premiere-page premiere-'+kind+'">'+art+'<div class="premiere-copy"><p class="premiere-kicker">'+tr('NTC CLUBDISPLAY · VEREINSPREMIERE','NTC CLUBDISPLAY · CLUB PREMIERE')+'</p><h1>'+esc(title)+'</h1><h2>'+esc(sub)+'</h2><p>'+esc(copy)+'</p>'+(kind==='feedback'?'<a href="'+feedbackUrl+'" target="_blank" rel="noopener noreferrer">clubdisplay.ntc93.de/feedback.php</a>':'')+'</div></article>';
+  $('premiere-position').textContent=(premiereIndex+1)+' / '+pages.length;
+  $('premiere-prev').disabled=premiereIndex===0;
+  $('premiere-pause').textContent=premierePaused?tr('Fortsetzen','Resume'):tr('Pause','Pause');
+  $('premiere-next').textContent=premiereIndex===pages.length-1?tr('Fertig','Done'):tr('Weiter ›','Next ›');
+  $('premiere-stop').textContent=tr('Beenden','Exit');
+}
+function startPremiere(mode='full'){
+  if(!pilot||nightActive||premiereActive||adminDialog.open||(mode==='full'&&!premiereAvailable())||(view==='courts'&&courtMode==='outdoor'))return;
+  const pages=premierePages();premiereSelection=mode==='intro'?pages.slice(2,6):mode==='feedback'?[pages[6]]:pages;
+  premiereIndex=0;premiereActive=true;premierePaused=mode==='feedback';premiereRemaining=premiereDwell;premiereDeadline=Date.now()+premiereDwell;
+  $('premiere-overlay').hidden=false;document.body.classList.add('premiere-active');
+  for(const el of document.querySelectorAll('body>header,body>main,body>nav,body>footer'))el.inert=true;
+  premiereRender();$('premiere-stop').focus();
+}
+function stopPremiere(){
+  if(!premiereActive)return;
+  premiereActive=false;premiereSelection=null;$('premiere-overlay').hidden=true;document.body.classList.remove('premiere-active');
+  for(const el of document.querySelectorAll('body>header,body>main,body>nav,body>footer'))el.inert=false;
+  nightLastInput=Date.now();go('info');
+}
+function premiereStep(delta,now=Date.now()){
+  if(!premiereActive)return;
+  const next=premiereIndex+delta;
+  if(next>=premiereSelection.length){stopPremiere();return;}
+  if(next<0)return;
+  premiereIndex=next;premiereRemaining=premiereDwell;premiereDeadline=now+premiereDwell;premiereRender();
+}
+function premiereTick(now=Date.now()){
+  if(!premiereActive)return false;
+  if(!premierePaused&&now>=premiereDeadline)premiereStep(1,now);
+  return premiereActive;
+}
 function nightWindow(now=Date.now()){
   const hour=Number(nightHourFormat.format(new Date(now)));
   return hour>=22||hour<10;
@@ -1236,7 +1295,7 @@ function leaveNightMode(interactive=false){
   go(interactive?'home':'info');clock();refreshDayData();
 }
 function syncNightMode(now=Date.now(),initial=false){
-  if(!pilot)return false;
+  if(!pilot||premiereActive)return false;
   if(nightActive){if(!nightWindow(now)){leaveNightMode();return false;}renderNightClock(now);return true;}
   const modal=adminDialog.open||$('personal-demo-dialog')?.open;
   if(!nightShouldSleep(now,nightLastInput,initial,modal))return false;
@@ -1251,7 +1310,7 @@ function syncNightMode(now=Date.now(),initial=false){
 }
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
 function go(next){openedNews=null;if(next!=='courts'||view!=='courts')bookingExpanded=false;if(next==='weather'&&view!=='weather')weatherPage='all';if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info'){slide=0;infoPaused=false;infoElapsed=0;infoPauseUntil=0;}render();}
-document.addEventListener('click',e=>{if(nightActive)return;infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a.startsWith('matchball-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);if(Number.isInteger(index)&&matchballIssues[index]){openedNews={matchballId:matchballIssues[index].id};view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a==='booking-expand'){toggleBookingExpansion();}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;bookingExpanded=false;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='partners-prev'&&view==='partners'){partnerPage=Math.max(0,partnerPage-1);render();}else if(a==='partners-next'&&view==='partners'){partnerPage++;render();}else if(a==='partners'&&partnerBoardData?.enabled){partnerPage=0;go('partners');}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
+document.addEventListener('click',e=>{if(nightActive||premiereActive)return;infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='intro'||a==='feedback'){startPremiere(a);}else if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a.startsWith('matchball-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);if(Number.isInteger(index)&&matchballIssues[index]){openedNews={matchballId:matchballIssues[index].id};view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a==='booking-expand'){toggleBookingExpansion();}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;bookingExpanded=false;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='partners-prev'&&view==='partners'){partnerPage=Math.max(0,partnerPage-1);render();}else if(a==='partners-next'&&view==='partners'){partnerPage++;render();}else if(a==='partners'&&partnerBoardData?.enabled){partnerPage=0;go('partners');}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown','wheel','touchmove'])document.addEventListener(event,()=>{if(!nightActive)infoInput();});
 $('night-screen').addEventListener('click',e=>{e.stopPropagation();leaveNightMode(true);});
 // Moving focus into the embedded booking frame counts as real interaction, not an indefinite exemption.
@@ -1301,8 +1360,14 @@ adminForm.addEventListener('submit',async e=>{
   finally{$('admin-submit').disabled=false;if(adminDialog.open)adminPin.focus();}
 });
 syncFullscreen();
+$('premiere-launch').addEventListener('click',()=>startPremiere());
+$('premiere-prev').addEventListener('click',()=>premiereStep(-1));
+$('premiere-next').addEventListener('click',()=>premiereStep(1));
+$('premiere-stop').addEventListener('click',stopPremiere);
+$('premiere-pause').addEventListener('click',()=>{if(!premiereActive)return;const now=Date.now();if(premierePaused){premiereDeadline=now+premiereRemaining;premierePaused=false;}else{premiereRemaining=Math.max(0,premiereDeadline-now);premierePaused=true;}premiereRender();});
+document.addEventListener('keydown',e=>{if(!premiereActive)return;if(e.key==='Escape'){e.preventDefault();stopPremiere();}else if(e.key==='ArrowRight'){e.preventDefault();premiereStep(1);}else if(e.key==='ArrowLeft'){e.preventDefault();premiereStep(-1);}});
 let lastSmartSecond=-1;
-setInterval(()=>{const now=Date.now();if(syncNightMode(now))return;clock();const second=Math.floor(now/1000);if(second!==lastSmartSecond){lastSmartSecond=second;syncMatchGreetings(now);if(second%60===0)syncHeaderDecor(now);}if(adminDialog.open||$('personal-demo-dialog')?.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+setInterval(()=>{const now=Date.now();if(premiereTick(now))return;if(syncNightMode(now))return;clock();const second=Math.floor(now/1000);if(second!==lastSmartSecond){lastSmartSecond=second;syncMatchGreetings(now);if(second%60===0){syncHeaderDecor(now);syncPremiereLaunch(now);}}if(adminDialog.open||$('personal-demo-dialog')?.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);

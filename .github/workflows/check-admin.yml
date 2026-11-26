@@ -63,6 +63,8 @@ jobs:
         run: node tests/header-weather-browser.cjs
       - name: Nachtmodus im Browser prüfen
         run: node tests/night-mode-browser.cjs
+      - name: NTC-Premiere prüfen
+        run: node tests/premiere-browser.cjs
       - name: Personalisierte Vereinsdemo prüfen
         run: node tests/personal-demo-browser.cjs
       - name: Browser-Screenshots

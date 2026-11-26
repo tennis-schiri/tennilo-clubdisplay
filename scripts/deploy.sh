@@ -132,6 +132,14 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   php -r '$pin=getenv("ADMIN_PIN")?: ""; $hash=$pin!==""?password_hash($pin,PASSWORD_BCRYPT):""; file_put_contents($argv[1],"<?php\nreturn ".var_export(["hash"=>$hash],true).";\n");' "$tmp/devices-config.php"
   upload "$tmp/devices-config.php" devices-private/config.php
   upload public/ntc/devices.php devices.php
+  php -l public/ntc/feedback.php
+  upload public/ntc/feedback.php feedback.php
+  curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/feedback.php?release=$RELEASE_ID" -o "$tmp/feedback-form"
+  grep -Fq 'Feedback senden' "$tmp/feedback-form"
+  curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/feedback.php?manage=1&release=$RELEASE_ID" -o "$tmp/feedback-admin"
+  grep -Fq 'Admin-Anmeldung' "$tmp/feedback-admin"
+  code="$(curl --silent --show-error --max-time 25 -o /dev/null -w '%{http_code}' "https://$DOMAIN/devices-private/feedback.sqlite")"
+  [[ "$code" == 403 ]] || { echo 'Feedback storage not protected'; exit 1; }
   curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/devices.php?status=1" -o "$tmp/devices-status"
   php -r '$v=json_decode(file_get_contents($argv[1]),true); if(($v["registered"]??null)!==false)exit(1); echo "Unregistered browser has no device authorization.\n";' "$tmp/devices-status"
   curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/devices.php?manage=1" -o "$tmp/devices-login"
