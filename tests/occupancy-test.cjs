@@ -39,3 +39,10 @@ check("occupancyData={status:'ok',fetchedAt:Date.now()/1000,slots:[{area:'outdoo
 assert.ok(check("occupancyView().includes('occupancy-occupied booking-kind-match')"));
 assert.equal(check("occupancyCategory('unexpected')"),'regular');
 console.log('Booking category colors OK');
+
+check("occupancyData.slots[0].bookings[0].bookingType='Punktspiel'");
+assert.ok(check("occupancyView().includes('<span class=\"occupancy-booking-type\">Punktspiel</span>')"));
+assert.ok(check("occupancyView().includes('<span class=\"occupancy-booking-name\">Herren 30 II</span>')"));
+check("occupancyData.slots[0].bookings[0].displayLabel='Punktspiel'");
+assert.ok(!check("occupancyView().includes('<span class=\"occupancy-booking-name\">Punktspiel</span>')"));
+console.log('Visible booking type and duplicate suppression OK');

@@ -103,12 +103,12 @@ function eb_slots(array $courts,array $rows,string $area,int $start,DateTimeZone
         $court=$map[$b['courtId']];
         $team=eb_match_team($b);
         if($team!==''&&$z>$start)$matchBookings[]=['team'=>$team,'area'=>$area,'court'=>$court,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$a),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$z)];
-        if($a<$start+10800&&$z>$start)$intervals[$court][]=[$a,$z,$b['type']==='BLOCKING',eb_label($b),eb_category($b)];
+        if($a<$start+10800&&$z>$start)$intervals[$court][]=[$a,$z,$b['type']==='BLOCKING',eb_label($b),eb_category($b),eb_display($b['bookingTypeName']??null)];
     }
     $slots=[];
     foreach($map as $court)for($i=0;$i<3;$i++){
         $a=$start+$i*3600;$z=$a+3600;$pieces=[];$booked=false;$bookings=[];
-        foreach($intervals[$court]??[] as [$x,$y,$blocked,$label,$category])if($x<$z&&$y>$a){$pieces[]=[max($a,$x),min($z,$y)];if(!$blocked)$booked=true;$bookings[]=['displayLabel'=>$label,'category'=>$category,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$x),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$y)];}
+        foreach($intervals[$court]??[] as [$x,$y,$blocked,$label,$category,$bookingType])if($x<$z&&$y>$a){$pieces[]=[max($a,$x),min($z,$y)];if(!$blocked)$booked=true;$bookings[]=['displayLabel'=>$label,'category'=>$category,'bookingType'=>$bookingType,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$x),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$y)];}
         sort($pieces);$covered=0;$end=$a;
         foreach($pieces as [$x,$y]){if($y>$end){$covered+=$y-max($x,$end);$end=$y;}}
         $status=$covered===0?'free':($covered<3600?'partial':($booked?'occupied':'blocked'));
@@ -194,7 +194,7 @@ if(!$check&&!$local){
     if(!$registered)eb_reply(403,['status'=>'restricted']);
 }
 if(empty($cfg['user'])||empty($cfg['password'])||!function_exists('curl_init'))eb_reply(503,['status'=>'unconfigured']);
-$lock=@fopen(__DIR__.'/ebusy-private/cache-v4.lock','c+');
+$lock=@fopen(__DIR__.'/ebusy-private/cache-v5.lock','c+');
 if(!$lock||!flock($lock,LOCK_EX)){eb_reply(503,['status'=>'unavailable']);}
 $now=time();$cache=json_decode((string)stream_get_contents($lock),true);
 if(!is_array($cache)||($cache['retryAt']??0)<=$now){

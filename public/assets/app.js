@@ -807,10 +807,13 @@ function occupancyBookingText(area,court,hour){
   const entries=(status==='occupied'||status==='partial'||status==='blocked')&&Array.isArray(record?.bookings)?record.bookings.filter(r=>typeof r?.displayLabel==='string'&&(r.displayLabel.trim()||r.category)):[];
   const body=entries.length?entries.map(r=>{
     const category=occupancyCategory(r.category||(status==='blocked'?'blocked':'regular'));
-    const label=r.displayLabel.trim()||occupancyCategoryLabel(category);
+    const bookingType=lang==='de'&&typeof r.bookingType==='string'&&r.bookingType.trim()?r.bookingType.trim():occupancyCategoryLabel(category);
+    const label=r.displayLabel.trim();
+    const name=label&&label.toLocaleLowerCase('de-DE')!==bookingType.toLocaleLowerCase('de-DE')?'<span class="occupancy-booking-name">'+esc(label)+'</span>':'';
+    const kind='<span class="occupancy-booking-type">'+esc(bookingType)+'</span>';
     const timed=typeof r.start==='string'&&typeof r.end==='string'&&Number.isFinite(Date.parse(r.start))&&Number.isFinite(Date.parse(r.end))&&Date.parse(r.start)<Date.parse(r.end);
     const extra=timed&&(entries.length>1||status==='partial')?'<span class="occupancy-booking-time">'+esc(occupancyTime(r.start)+'–'+occupancyTime(r.end))+'</span>':'';
-    return '<div class="occupancy-booking-entry booking-kind-'+category+'" title="'+esc(occupancyCategoryLabel(category))+'">'+extra+'<span class="occupancy-booking-name">'+esc(label)+'</span></div>';
+    return '<div class="occupancy-booking-entry booking-kind-'+category+'">'+name+'<div class="occupancy-booking-meta">'+kind+extra+'</div></div>';
   }).join(''):'<span class="occupancy-booking-placeholder">'+fallback[status]+'</span>';
   const kinds=[...new Set(entries.map(r=>occupancyCategory(r.category||(status==='blocked'?'blocked':'regular'))))];
   return '<div class="occupancy-cell occupancy-'+status+(kinds.length===1?' booking-kind-'+kinds[0]:kinds.length>1?' booking-kind-multiple':'')+'">'+body+'</div>';
