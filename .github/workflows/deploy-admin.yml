@@ -130,6 +130,8 @@ jobs:
           if [[ "$status" == 200 ]]; then
             grep -Fq 'Spielpartner gesucht' "$tmp/partner-form"
             grep -Fq 'Eigenes Gesuch erstellen' "$tmp/partner-form"
+            curl --fail --silent --show-error --max-time 30 "https://clubdisplay.tennilo.de/admin/?partner=submit&club=ntc93&mode=post" -o "$tmp/partner-create"
+            for marker in 'name="availability[]"' 'name="period[]"' 'name="age_primary"' 'name="age_wanted[]"' 'name="email"'; do grep -Fq "$marker" "$tmp/partner-create"; done
             echo 'NTC QR form reachable.'
           elif [[ "$status" == 404 ]] && grep -Fq 'Spielpartnerbörse nicht freigeschaltet.' "$tmp/partner-form"; then
             echo 'NTC board intentionally disabled; public route reachable.'

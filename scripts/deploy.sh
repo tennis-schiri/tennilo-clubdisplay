@@ -106,6 +106,9 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   code="$(curl --silent --show-error --max-time 55 -w '%{http_code}' "https://$DOMAIN/spielpartner/?release=$RELEASE_ID" -o "$tmp/ntc-partner")"
   if [[ "$code" == 200 ]]; then
     grep -Fq 'Spielpartner gesucht' "$tmp/ntc-partner"
+    # Verify the actual smartphone form through the NTC gateway.
+    curl --fail --silent --show-error --max-time 55 "https://$DOMAIN/spielpartner/?mode=post" -o "$tmp/ntc-partner-create"
+    for marker in 'name="availability[]"' 'name="period[]"' 'name="age_primary"' 'name="age_wanted[]"' 'name="email"'; do grep -Fq "$marker" "$tmp/ntc-partner-create"; done
     # Exercise POST routing with intentionally incomplete data: no real request or email.
     for origin in "https://$DOMAIN" null; do
       code="$(curl --silent --show-error --max-time 55 -w '%{http_code}' -H "Origin: $origin" -H 'Sec-Fetch-Site: same-origin' --data 'mode=post' "https://$DOMAIN/spielpartner/?partner=submit&club=ntc93&mode=post" -o "$tmp/ntc-partner-post")"

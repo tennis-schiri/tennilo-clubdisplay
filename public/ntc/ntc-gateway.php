@@ -36,7 +36,7 @@ if($partner){
     $action=$_GET['partner']??'submit';
     if(!in_array($action,['submit','moderate','verify','manage'],true))ntc_fail(404);
     $query['partner']=$action;
-    foreach(['mode','ref','token','decision','category','lk_filter'] as $key)if(isset($_GET[$key])&&is_string($_GET[$key]))$query[$key]=$_GET[$key];
+    foreach(['mode','ref','token','decision','category','lk_filter','day_filter','time_filter'] as $key)if(isset($_GET[$key])&&is_string($_GET[$key]))$query[$key]=$_GET[$key];
 }else{
     foreach(['preview','preview-data','screen','media','image','partner_review'] as $key)if(isset($_GET[$key])&&is_string($_GET[$key]))$query[$key]=$_GET[$key];
     if(isset($_GET['preview'])||isset($_GET['preview-data'])||isset($_GET['media']))$query['club']='ntc93';

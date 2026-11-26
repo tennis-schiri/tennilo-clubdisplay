@@ -261,3 +261,6 @@ NTC-ClubDisplay: jeder freigegebene Eintrag erhält einen lokal berechneten QR-C
 
 ## 0.4.68
 Mehrfachauswahl Wochentage und Tageszeiten als kanonische, kommaseparierte Auswahlschlüssel (bisherige Einzelauswahl bleibt kompatibel). Eigene Altersgruppe einmalig für Einzel/Training; weitere Altersgruppen für Doppel/Mixed. Gesuchte Altersgruppen mehrfach. Bei Beteiligung Minderjähriger greift die strengste Schutzstufe; konkrete Jugend-Altersangaben und Suchwünsche mit Jugendgruppen werden öffentlich durch 'Geschützte Vermittlung' ersetzt. Nur grobe Erwachsenen-Altersbereiche erscheinen nach Freigabe. Altgesuche ohne Alterswünsche bleiben funktionsfähig.
+
+## 0.4.71
+Geschützte Vereinsverwaltung in Übersicht, Einstellungen, Freigaben, aktive Gesuche, Kontaktvermittlung und E-Mail-Warteschlange gegliedert. Wiederholung ausstehender Statusmails auf Vereinskennung beschränkt. Verlängerung durch erneute Freigabe, keine Veröffentlichung ohne Prüfung. Öffentliche Smartphone-Ansicht: Altersgruppe bei eigenem Gesuch nur einmal erfassen, Altersprüfung daraus serverseitig ableiten; Tages-/Zeitfilter, Formularwerte bei Fehlern erhalten, sichtbare Versionsnummer. Upload prüft die tatsächlichen Eingabefelder auf TENNILO und NTC. Versandstatus bedeutet Annahme, keine Zustellbestätigung.
