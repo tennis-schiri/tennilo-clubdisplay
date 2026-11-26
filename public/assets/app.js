@@ -166,7 +166,7 @@ function matchView(){
   const dateParts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
   const part=k=>dateParts.find(p=>p.type===k)?.value;
   const day=part('year')+'-'+part('month')+'-'+part('day');
-  const future=m=>m.date.slice(0,10)>=day;
+  const future=m=>Number.isFinite(Date.parse(m.date))&&fixtureCalendarDay(Date.parse(m.date))>=fixtureCalendarDay(new Date());
   let rows=d.matches.filter(m=>filter==='results'?!!m.score:future(m)&&!m.score&&(filter==='all'||(filter==='home'?m.isHome:!m.isHome)));
   if(filter==='results')rows=rows.slice().reverse();
   if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine passenden Begegnungen im von nuLiga gelieferten Zeitraum.','No matching fixtures in the period supplied by nuLiga.')+'</p>'+(d.range?'<p>'+esc(d.range.from)+' – '+esc(d.range.to)+'</p>':'')+'</div>'+source;
@@ -181,10 +181,47 @@ function matchView(){
     const courtStrip='<div class="fixture-court-strip'+(!m.isHome?' fixture-away-strip':'')+'" aria-label="'+(m.isHome?tr('Plätze','Courts'):tr('Auswärtsspiel','Away match'))+'">'+(!m.isHome?'<span class="fixture-away-label">'+tr('Auswärts','Away')+'</span>':courtNumbers.length?courtNumbers.map(n=>'<span class="fixture-court-icon" aria-label="'+tr('Platz ','Court ')+esc(n)+'"><svg viewBox="0 0 36 22" aria-hidden="true"><rect x="1" y="1" width="34" height="20" rx="3" fill="currentColor"/><path d="M5 4H31V18H5Z M18 4V18 M5 7H31 M5 15H31 M11 7V15 M25 7V15" fill="none" stroke="var(--court-icon-ink)" stroke-width=".8"/><rect x="10" y="3" width="16" height="16" rx="2" fill="currentColor"/><text x="18" y="15" text-anchor="middle" font-size="'+(n.length>2?'8':'13')+'" font-weight="800" fill="var(--court-icon-ink)">'+esc(n)+'</text></svg></span>').join(''):'<span class="fixture-court-unknown">'+tr('Plätze','Courts')+'<strong>–</strong></span>')+'</div>';
     const showVenue=venueLabel&&(!m.isHome||venueLabel.toLocaleLowerCase('de-DE')!=='neuenhagen');
     const meta=showVenue?'<div class="fixture-venue"><span>'+tr('Halle','Indoor venue')+'</span><strong>'+esc(venueLabel)+'</strong></div>':'';
-    return '<article class="fixture-card"><time class="fixture-date-block" datetime="'+esc(m.date)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(dayLabel)+'</strong><span class="fixture-time">'+esc(timeLabel)+(lang==='de'?' Uhr':'')+'</span></time>'+courtStrip+'<div class="fixture-content fixture-match-content"><div class="fixture-match-main"><span class="fixture-identity">'+esc(identity.team)+'</span><div class="fixture-pair"><strong class="fixture-team '+(m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.home))+'</strong><span class="fixture-versus">–</span><strong class="fixture-team '+(!m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.away))+'</strong></div></div><div class="fixture-match-meta">'+(identity.league?'<span class="fixture-league">'+esc(identity.league)+'</span>':'')+meta+'</div></div><div class="fixture-result"><span>'+tr('Ergebnis','Result')+'</span><strong class="'+(m.score?'fixture-result-value':'fixture-result-pending')+'">'+(m.score?esc(m.score):'– : –')+'</strong></div></article>';
+    return '<article class="fixture-card"><time class="fixture-date-block" datetime="'+esc(m.date)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(dayLabel)+'</strong><span class="fixture-time">'+esc(timeLabel)+(lang==='de'?' Uhr':'')+'</span></time>'+courtStrip+'<div class="fixture-content fixture-match-content"><div class="fixture-match-main"><span class="fixture-identity">'+esc(identity.team)+'</span><div class="fixture-pair"><strong class="fixture-team '+(m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.home))+'</strong><span class="fixture-versus">–</span><strong class="fixture-team '+(!m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.away))+'</strong></div></div><div class="fixture-match-meta">'+(identity.league?'<span class="fixture-league">'+esc(identity.league)+'</span>':'')+meta+'</div></div>'+fixtureStatusMarkup(m)+'</article>';
   }).join('');
   const pagination='<div class="actions match-pages"><button data-action="match-prev" aria-label="'+tr('Vorherige Seite','Previous page')+'">‹</button><span class="match-page-number"></span><button data-action="match-next" aria-label="'+tr('Nächste Seite','Next page')+'">›</button></div>';
   return title+warning+'<div class="fixture-list">'+cards+'</div>'+pagination+source;
+}
+function fixtureCalendarDay(value){
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
+  const get=k=>Number(parts.find(p=>p.type===k)?.value);
+  return Date.UTC(get('year'),get('month')-1,get('day'))/86400000;
+}
+function fixtureStatus(start,now=Date.now()){
+  const when=Date.parse(start);
+  if(!Number.isFinite(when))return {kind:'pending',label:tr('Spielbeginn','Start'),value:tr('Unbekannt','Unknown')};
+  const days=fixtureCalendarDay(when)-fixtureCalendarDay(now);
+  const remaining=when-now;
+  if(remaining<=0){
+    if(days===0)return {kind:'running',label:tr('Nach Zeitplan','Scheduled status'),value:tr('Läuft gerade','In progress')};
+    return {kind:'pending',label:tr('Status','Status'),value:tr('Ergebnis ausstehend','Result pending')};
+  }
+  if(remaining<=3600000){
+    const min=Math.ceil(remaining/60000);
+    return {kind:'upcoming',label:tr('Spielbeginn','Start'),value:tr('In '+min+' Min.','In '+min+' min')};
+  }
+  return {kind:'upcoming',label:tr('Spielbeginn','Start'),value:days===0?tr('Heute','Today'):days===1?tr('Morgen','Tomorrow'):tr('In '+days+' Tagen','In '+days+' days')};
+}
+function fixtureStatusMarkup(m){
+  if(m.score)return '<div class="fixture-result"><span>'+tr('Ergebnis','Result')+'</span><strong class="fixture-result-value">'+esc(m.score)+'</strong></div>';
+  const status=fixtureStatus(m.date);
+  return '<div class="fixture-result fixture-status fixture-status-'+status.kind+'" data-match-start="'+esc(m.date)+'"><span>'+esc(status.label)+'</span><strong>'+esc(status.value)+'</strong></div>';
+}
+function refreshFixtureStatuses(now=Date.now()){
+  if(view!=='teams'&&!(view==='info'&&screens[slide]==='teams'))return;
+  for(const el of document.querySelectorAll('[data-match-start]')){
+    const status=fixtureStatus(el.dataset.matchStart,now);
+    const label=el.querySelector('span'),value=el.querySelector('strong');
+    if(label.textContent!==status.label)label.textContent=status.label;
+    if(value.textContent!==status.value)value.textContent=status.value;
+    el.classList.toggle('fixture-status-running',status.kind==='running');
+    el.classList.toggle('fixture-status-upcoming',status.kind==='upcoming');
+    el.classList.toggle('fixture-status-pending',status.kind==='pending');
+  }
 }
 async function refreshLeague(){
   if(!pilot){leagueData=demoLeague();syncMatchGreetings();if(view==='teams'||(view==='info'&&screens[slide]==='teams'))render();return;}
@@ -199,6 +236,7 @@ async function refreshLeague(){
   finally{fetching=false;syncMatchGreetings();if(view==='teams'||(view==='info'&&screens[slide]==='teams'))render();}
 }
 setInterval(refreshLeague,300000);
+setInterval(refreshFixtureStatuses,10000);
 let eventData=null,eventPage=0,eventFetching=false;
 function eventView(){
   const info=view==='info',d=eventData,title='<div class="match-heading"><h1>'+t().upcoming+'</h1></div>';
