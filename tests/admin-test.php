@@ -360,3 +360,12 @@ echo "MATCHBALL seed, draft, review, tenant scope, withdrawal and non-reappearin
 check(cd_community_public($db)===[]);
 try{cd_community_save($db,['club'=>'ntc93','kind'=>'youth','intent'=>'publish','reviewed'=>'1'],[],'test-club');throw new RuntimeException('Cross-club community write accepted');}catch(InvalidArgumentException $e){}
 try{cd_community_save($db,['club'=>'ntc93','kind'=>'youth','intent'=>'publish','reviewed'=>'1'],[],'ntc93');throw new RuntimeException('Missing QR published');}catch(InvalidArgumentException $e){}
+
+foreach([['availability'=>['flexible','mon']],['period'=>['any','morning']]] as $conflict){
+    try{cd_partner_validate_submission(array_replace($prefsInput,$conflict),false);throw new RuntimeException('Contradictory flexible selection accepted');}catch(InvalidArgumentException $e){}
+}
+$explicit=cd_partner_validate_submission(array_replace($prefsInput,['availability'=>['tue','sat'],'period'=>['afternoon','evening'],'lk'=>'11-15']),false);
+check($explicit[2][2]==='tue,sat'&&$explicit[2][3]==='afternoon,evening'&&$explicit[3]==='11-15');
+$flex=cd_partner_validate_submission(array_replace($prefsInput,['availability'=>['flexible'],'period'=>['any']]),false);
+check($flex[2][2]==='flexible'&&$flex[2][3]==='any');
+echo "Partner availability and time: explicit choices preserved, contradictory flexibility rejected\n";
