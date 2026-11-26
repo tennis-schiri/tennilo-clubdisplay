@@ -745,3 +745,6 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 .partner-board .partner-board-grid>.panel:only-child{grid-column:1/-1}
 
 .partner-board-card .partner-age-copy{font-size:clamp(.72rem,1.05vw,1.1rem);line-height:1.25;margin:.18rem 0}
+
+/* Partner-board instructions: individual scan hint below cards, general QR actions on the right. */
+.partner-board-requests{display:flex;flex-direction:column;min-width:0;gap:.45rem}.partner-board-requests>.partner-board-grid{flex:1 1 auto}.partner-board-scan-note{margin:0;padding:.4rem .25rem 0;color:var(--muted);font-size:clamp(.85rem,1.25vw,1.25rem);line-height:1.3;text-align:center}.partner-board-qr-purpose{display:flex;flex-direction:column;align-items:center;gap:.15rem;font-size:clamp(1rem,1.55vw,1.55rem);line-height:1.25;margin:.25rem 0 .5rem}.partner-board-qr-purpose strong{font-weight:700}
