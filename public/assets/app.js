@@ -116,6 +116,61 @@ function smartHoliday(now=Date.now()){
   return '';
 }
 function smartScreenKey(key){return typeof key==='string'&&key.startsWith('priority:')?key.slice(9):key;}
+function smartDayNumber(value){
+  const day=smartDate(value);
+  return day?Date.parse(day+'T00:00:00Z')/86400000:NaN;
+}
+function smartWeekend(matches,events,now=Date.now()){
+  const day=smartDayNumber(now),weekday=new Date(day*86400000).getUTCDay();
+  if(![4,5,6,0].includes(weekday))return null;
+  const saturday=day+(weekday===0?-1:6-weekday),sunday=saturday+1;
+  const rows=[];
+  if(matches?.status!=='unavailable')for(const m of matches?.matches||[]){
+    const d=smartDayNumber(m.date);
+    if(m.isHome!==true||m.cancelled===true||m.cancelled==='true'||String(m.status||'').toLowerCase()==='cancelled'||!Number.isFinite(d)||d<saturday||d>sunday)continue;
+    rows.push({kind:'match',date:m.date,match:m});
+  }
+  if(events?.status!=='unavailable')for(const e of events?.events||[]){
+    const a=smartDayNumber(e.start),b=smartDayNumber(e.end);
+    if(!e.title||e.cancelled===true||e.cancelled==='true'||String(e.status||'').toLowerCase()==='cancelled'||!Number.isFinite(a)||!Number.isFinite(b)||Date.parse(e.end)<Date.parse(e.start)||a>sunday||b<saturday)continue;
+    rows.push({kind:'event',date:e.start,event:e});
+  }
+  const unique=new Map(rows.map(r=>[r.kind+':'+(r.kind==='match'?matchGreetingKey(r.match):eventGreetingKey(r.event)),r]));
+  return {saturday,sunday,rows:[...unique.values()].sort((a,b)=>Date.parse(a.date)-Date.parse(b.date))};
+}
+function smartOpenCountdown(events,now=Date.now()){
+  if(events?.status==='unavailable')return [];
+  const today=smartDayNumber(now),unique=new Map();
+  for(const e of events?.events||[]){
+    if(!e||typeof e.title!=='string'||!/^\s*(?:\d+\.?\s*)?NEUENHAGEN\s+(?:SENIOR\s+)?OPEN\s*$/i.test(e.title)||e.cancelled===true||e.cancelled==='true'||String(e.status||'').toLowerCase()==='cancelled')continue;
+    const start=Date.parse(e.start),end=Date.parse(e.end),days=smartDayNumber(e.start)-today;
+    if(!Number.isFinite(days)||days<0||days>100||!Number.isFinite(end)||end<=start||now>=start-1800000)continue;
+    unique.set(eventGreetingKey(e),{event:e,days});
+  }
+  return [...unique.values()].sort((a,b)=>Date.parse(a.event.start)-Date.parse(b.event.start));
+}
+function smartWeekendView(key){
+  const data=smartWeekend(leagueData,eventData);
+  if(!data)return '';
+  const locale=lang==='de'?'de-DE':'en-GB';
+  const day=n=>new Date(n*86400000).toLocaleDateString(locale,{timeZone:'UTC',day:'2-digit',month:'2-digit',year:'numeric'});
+  const date=s=>new Date(s).toLocaleDateString(locale,{timeZone:'Europe/Berlin',weekday:'short',day:'2-digit',month:'2-digit'});
+  const time=s=>new Date(s).toLocaleTimeString(locale,{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+  const page=Number(key.split(':')[1])||0;
+  const rows=data.rows.slice(page*5,page*5+5).map(r=>{
+    const m=r.match,e=r.event;
+    const title=m?teamAndLeague(m).team+' · '+shortClub(m.home)+' – '+shortClub(m.away):e.title;
+    const span=m?date(m.date)+' · '+time(m.date):date(e.start)+(smartDate(e.start)!==smartDate(e.end)?' – '+date(e.end):'')+(e.allDay?' · '+tr('Ganztägig','All day'):' · '+time(e.start));
+    return '<article class="smart-weekend-row"><span>'+esc(span)+'</span><strong>'+esc(title)+'</strong><small>'+esc(m?(m.score?tr('Ergebnis','Result')+' '+m.score:tr('Heimspiel','Home match')):tr('Veranstaltung','Event'))+'</small></article>';
+  }).join('');
+  const incomplete=[leagueData,eventData].some(d=>!d||d.status!=='ok');
+  return '<div class="smart-feature"><div class="match-heading"><h1>'+tr('Das Wochenende','This weekend')+'</h1><span>'+esc(day(data.saturday)+' – '+day(data.sunday))+'</span></div><div class="smart-weekend-list">'+rows+'</div><p class="match-source">'+tr('Quelle: nuLiga und Veranstaltungskalender','Source: nuLiga and events calendar')+(incomplete?' · '+tr('Daten teilweise nicht aktuell oder verfügbar','Some data may be outdated or unavailable'):'')+(data.rows.length>5?' · '+(page+1)+' / '+Math.ceil(data.rows.length/5):'')+'</p></div>';
+}
+function smartCountdownView(){
+  const rows=smartOpenCountdown(eventData);
+  const fmt=s=>new Date(s).toLocaleDateString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'});
+  return '<div class="smart-feature smart-countdown"><div class="match-heading"><h1>'+tr('Turnier-Countdown','Tournament countdown')+'</h1></div><div class="smart-countdown-grid">'+rows.map(({event:e,days})=>'<article><h2>'+esc(e.title)+'</h2><div class="smart-countdown-number">'+esc(String(days))+'</div><div class="smart-countdown-unit">'+esc(days===0?tr('Heute','Today'):days===1?tr('Tag bis zum Start','day until start'):tr('Tage bis zum Start','days until start'))+'</div><p>'+esc(fmt(e.start)+' – '+fmt(e.end))+'</p></article>').join('')+'</div><p class="match-source">'+tr('Quelle: NTC-Veranstaltungskalender','Source: NTC event calendar')+'</p></div>';
+}
 function smartRotation(base,matches,events,matchKeys,eventKeys,now=Date.now()){
   const today=smartDate(now);
   const matchDay=matches?.status!=='unavailable'&&(matches?.matches||[]).some(m=>m.isHome===true&&!m.cancelled&&!m.score&&smartDate(m.date)===today);
@@ -123,6 +178,11 @@ function smartRotation(base,matches,events,matchKeys,eventKeys,now=Date.now()){
   const holiday=smartHoliday(now);
   const greetings=[...matchKeys,...eventKeys];
   const out=[base[0],...greetings,...(holiday?[holiday]:[])];
+  if(base.includes('calendar')&&base.includes('teams')&&base.includes('news')){
+    const weekend=smartWeekend(matches,events,now);
+    if(weekend?.rows.length)for(let i=0;i<Math.ceil(weekend.rows.length/5);i++)out.push('weekend:'+i);
+    if(smartOpenCountdown(events,now).length)out.push('open-countdown');
+  }
   for(const key of base.slice(1)){
     out.push(key);
     if(key==='news'){
@@ -635,7 +695,7 @@ function toggleInfoPause(){
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:'';$('mode').hidden=view!=='info';$('mode-dot').hidden=view!=='info';$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();infoControls();
 $('nav').innerHTML=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news],['info',l.back]].map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
 const active=view==='info'?smartScreenKey(screens[slide]):view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active)||greetingEvents.has(active)||active.startsWith('holiday:'));document.body.classList.toggle('restaurant-screen',pilot&&active==='restaurant');let html='';
-if(greetingMatches.has(active))html=matchGreetingView(active);else if(greetingEvents.has(active))html=eventGreetingView(active);else if(active.startsWith('holiday:'))html=smartHolidayView(active);else switch(active){
+if(greetingMatches.has(active))html=matchGreetingView(active);else if(greetingEvents.has(active))html=eventGreetingView(active);else if(active.startsWith('holiday:'))html=smartHolidayView(active);else if(active.startsWith('weekend:'))html=smartWeekendView(active);else if(active==='open-countdown')html=smartCountdownView();else switch(active){
 case 'welcome':html=occupancyView();break;
 case 'home':{
   const tiles=[

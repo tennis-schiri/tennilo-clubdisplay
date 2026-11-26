@@ -231,3 +231,6 @@ Verwaltete Geräte zeigen die zusätzliche Begrüßungsfolie nur bei aktiviertem
 
 ## SmartDisplay – public displays 0.4.51
 The rotation automatically repeats today's home fixtures and currently scheduled events plus active welcome slides once per cycle; normal slides remain available. Season ordering: indoor first Oct 1–Apr 30, outdoor first May 1–Sep 30. Additional seasonal slides Dec 24–26, Dec 31 and Jan 1–6, local Europe/Berlin time. No private booking data, actual live-match status, automatic physical screen power control or weather alerts are inferred. Managed display settings are not changed by this release.
+
+## Public display 0.4.53
+Thursday–Sunday: weekend preview of Saturday/Sunday home fixtures and overlapping calendar events, five items per page. No preview when no entries are known. Individual Neuenhagen Open countdowns start 100 local calendar days before each event and expire when the welcome window starts 30 minutes before the scheduled beginning. No youth-training integration. Both slides use existing feeds and do not require manual event maintenance.

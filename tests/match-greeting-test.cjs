@@ -76,3 +76,16 @@ assert.equal(run('smartRotation(fullBase,{status:"unavailable"},null,[],[],testN
 assert.equal(run('smartRotation(fullBase,null,eventDayData,[],[],testNow+9*3600000).includes("priority:calendar")'),false);
 assert.equal(run('smartRotation(fullBase,null,null,[],[],Date.parse("2027-12-25T12:00:00+01:00")).includes("holiday:christmas")'),true);
 console.log('Smart seasonal dates, priorities, expiry and alias routing OK');
+
+ctx.juneEvents={status:'ok',events:[{title:'22. NEUENHAGEN OPEN',start:'2027-06-15T00:00:00+02:00',end:'2027-06-20T23:59:59+02:00'},{title:'10. NEUENHAGEN SENIOR OPEN',start:'2027-06-18T00:00:00+02:00',end:'2027-06-23T23:59:59+02:00'}]};
+assert.equal(run('smartOpenCountdown(juneEvents,Date.parse("2027-03-06T12:00:00+01:00")).length'),0);
+assert.equal(run('smartOpenCountdown(juneEvents,Date.parse("2027-03-07T12:00:00+01:00"))[0].days'),100);
+assert.equal(run('smartOpenCountdown(juneEvents,Date.parse("2027-03-10T12:00:00+01:00")).length'),2);
+assert.equal(run('smartOpenCountdown(juneEvents,Date.parse("2027-06-14T23:30:00+02:00")).length'),1);
+assert.equal(run('smartOpenCountdown(juneEvents,Date.parse("2027-06-18T00:00:00+02:00")).length'),0);
+ctx.weekNow=Date.parse('2027-05-06T12:00:00+02:00');
+assert.equal(run('smartWeekend(data,eventDayData,weekNow).rows.length'),3);
+assert.equal(run('smartWeekend(data,eventDayData,weekNow-86400000)'),null);
+assert.equal(run('smartRotation(fullBase,data,eventDayData,[],[],weekNow).includes("weekend:0")'),true);
+assert.equal(run('smartRotation(fullBase,null,juneEvents,[],[],Date.parse("2027-03-07T12:00:00+01:00")).includes("open-countdown")'),true);
+console.log('Weekend preview and individual 100-calendar-day countdowns OK');
