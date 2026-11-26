@@ -55,17 +55,32 @@ function eb_slots(array $courts,array $rows,string $area,int $start,DateTimeZone
     }
     return $slots;
 }
-function eb_snapshot(array $cfg,int $now): array {
+function eb_snapshot(array $cfg,int $now,array &$diagnostics=[]): array {
     $tz=new DateTimeZone('Europe/Berlin');$local=(new DateTimeImmutable('@'.$now))->setTimezone($tz);
     $start=$now-(int)$local->format('i')*60-(int)$local->format('s');
     $from=$local->format('Y-m-d');$to=(new DateTimeImmutable('@'.($start+10799)))->setTimezone($tz)->format('Y-m-d');
     // Local booking times are ambiguous on DST transition days. Fail closed.
     if(count($tz->getTransitions($start-86400,$start+86400))>1)throw new RuntimeException('dst_transition');
-    $slots=[];
+    $slots=[];$failure=null;$results=[];
     foreach(['indoor'=>'court/modules/3076','outdoor'=>'lite/modules/1731'] as $area=>$path){
-        $courts=eb_get($cfg,$path.'/courts');
-        $rows=eb_get($cfg,$path.'/reservations',['fromDate'=>$from,'toDate'=>$to,'includeCancelled'=>'false']);
-        $slots=array_merge($slots,eb_slots($courts,$rows,$area,$start,$tz));
+        foreach(['courts','reservations'] as $kind){
+            $endpoint=$path.'/'.$kind;
+            try{
+                $results[$area][$kind]=eb_get($cfg,$endpoint,$kind==='reservations'?['fromDate'=>$from,'toDate'=>$to,'includeCancelled'=>'false']:[]);
+                $diagnostics[$endpoint]='ok';
+            }catch(Throwable $e){
+                $reason=$e instanceof RuntimeException?$e->getMessage():'unexpected_response';
+                $diagnostics[$endpoint]=preg_match('/^(http_\d{3}|api_error|unexpected_response)$/D',$reason)?$reason:'unexpected_response';
+                $failure??=$e;
+                // Do not continue after rate limits, maintenance or invalid authentication.
+                if(in_array($reason,['http_429','http_503','http_401'],true))throw $e;
+            }
+        }
+    }
+    if($failure)throw $failure;
+    foreach($results as $area=>$data){
+        try{$slots=array_merge($slots,eb_slots($data['courts'],$data['reservations'],$area,$start,$tz));$diagnostics[$area.'_mapping']='ok';}
+        catch(Throwable $e){$diagnostics[$area.'_mapping']='failed';throw $e;}
     }
     return ['status'=>'ok','fetchedAt'=>$now,'slots'=>$slots];
 }
@@ -87,10 +102,12 @@ $lock=@fopen(__DIR__.'/ebusy-private/cache.lock','c+');
 if(!$lock||!flock($lock,LOCK_EX)){eb_reply(503,['status'=>'unavailable']);}
 $now=time();$cache=json_decode((string)stream_get_contents($lock),true);
 if(!is_array($cache)||($cache['retryAt']??0)<=$now){
-    try{$cache=['retryAt'=>$now+60,'data'=>eb_snapshot($cfg,$now)];}
+    $diagnostics=[];
+    try{$cache=['retryAt'=>$now+60,'data'=>eb_snapshot($cfg,$now,$diagnostics)];}
     catch(Throwable $e){$code=$e instanceof RuntimeException?$e->getMessage():'unexpected_response';if(!preg_match('/^(http_\d{3}|api_error|unexpected_response|court_id|court_mapping|no_courts|invalid_booking|booking_mapping|invalid_time|booking_range|dst_transition)$/D',$code))$code='unexpected_response';$cache=['retryAt'=>$now+max(60,(int)$e->getCode()),'data'=>['status'=>'unavailable','reason'=>$code]];}
+    $cache['diagnostics']=$diagnostics;
     rewind($lock);if(!ftruncate($lock,0)||fwrite($lock,json_encode($cache))===false||!fflush($lock)){fclose($lock);eb_reply(503,['status'=>'unavailable']);}
 }
 fclose($lock);$data=$cache['data']??['status'=>'unavailable'];
-if($check)eb_reply(200,['status'=>$data['status'],'reason'=>$data['reason']??null,'slotCount'=>count($data['slots']??[]),'onsiteConfigured'=>filter_var($ip,FILTER_VALIDATE_IP)!==false]);
+if($check)eb_reply(200,['status'=>$data['status'],'reason'=>$data['reason']??null,'slotCount'=>count($data['slots']??[]),'endpoints'=>$cache['diagnostics']??[],'onsiteConfigured'=>filter_var($ip,FILTER_VALIDATE_IP)!==false]);
 eb_reply(200,$data['status']==='ok'?$data:['status'=>'unavailable']);

@@ -114,7 +114,7 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   # The diagnostic returns only status/count, not bookings. No secret in URL.
   printf 'X-ClubDisplay-Check: %s\n' "$(cat "$tmp/ebusy-check")" > "$tmp/ebusy-header"
   curl --silent --show-error --max-time 55 --header @"$tmp/ebusy-header" -o "$tmp/ebusy-status" "https://$DOMAIN/ebusy-occupancy.php"
-  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!isset($v["status"]))exit(1); echo "eBuSy diagnostic: ".json_encode(array_intersect_key($v,array_flip(["status","reason","slotCount","onsiteConfigured"])))."\n";' "$tmp/ebusy-status"
+  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!isset($v["status"]))exit(1); echo "eBuSy diagnostic: ".json_encode(array_intersect_key($v,array_flip(["status","reason","slotCount","onsiteConfigured","endpoints"])))."\n";' "$tmp/ebusy-status"
   if ! php -r '$v=json_decode(file_get_contents($argv[1]),true); exit(($v["status"]??null)==="ok"?0:1);' "$tmp/ebusy-status"; then echo "::warning::eBuSy connection or mapping not confirmed. No live occupancy is shown."; fi
 
 

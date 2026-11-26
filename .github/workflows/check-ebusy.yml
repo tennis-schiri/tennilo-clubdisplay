@@ -10,15 +10,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
-      EBUSY_USER: ${{ secrets.EBUSY_API_USERNAME }}
-      EBUSY_PASSWORD: ${{ secrets.EBUSY_API_PASSWORD }}
+      EBUSY_USER: ${{ secrets.NTC_EBUSY_API_USERNAME }}
+      EBUSY_PASSWORD: ${{ secrets.NTC_EBUSY_API_PASSWORD }}
     steps:
       - name: Leserechte für Hallen- und Freiplatzmodule prüfen
         shell: bash
         run: |
           set -euo pipefail
           if [[ -z "$EBUSY_USER" || -z "$EBUSY_PASSWORD" ]]; then
-            echo "::error::EBUSY_API_USERNAME oder EBUSY_API_PASSWORD fehlt"
+            echo "::error::NTC_EBUSY_API_USERNAME oder NTC_EBUSY_API_PASSWORD fehlt"
             exit 1
           fi
           tmp="$(mktemp -d)"
