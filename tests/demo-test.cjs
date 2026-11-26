@@ -81,3 +81,7 @@ assert.match(fixtureCards[2],/fixture-away-strip.*fixture-away-label">Auswärts<
 assert.doesNotMatch(fixtureCards[2],/fixture-court-icon|fixture-side/);
 dateCtx.lang='en';assert.match(vm.runInContext('matchView()',dateCtx),/fixture-away-label">Away</);
 console.log('Match card layout: venues and away markers OK');
+
+dateCtx.lang='de';assert.match(vm.runInContext('matchView()',dateCtx),/class="fixture-venue"><span>Halle<\/span>/);
+assert.doesNotMatch(vm.runInContext('matchView()',dateCtx),/Platzanlage/);
+dateCtx.lang='en';assert.match(vm.runInContext('matchView()',dateCtx),/class="fixture-venue"><span>Indoor venue<\/span>/);
