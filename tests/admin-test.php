@@ -278,3 +278,13 @@ try{cd_partner_admin($db,['club'=>'ntc93','intent'=>'interest-youth-complete','r
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'interest-youth-complete','ref'=>$youthRef,'interest_id'=>$id,'verified_youth'=>'1'],'ntc93',$partnerNow);
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 echo "Youth age bands, guardian requirement, private age metadata and no direct forwarding OK\n";
+
+$mailPreview=cd_partner_mail_message('ntc93','Test & Text','Neues Gesuch','Vereinsprüfung',['Referenz'=>'ABCDEF1234','Test'=>'<script>alert(1)</script>'],[['label'=>'Prüfen','url'=>'https://clubdisplay.ntc93.de/spielpartner/?a=1&b=2']],'Nur für den Empfänger.');
+$decoded=quoted_printable_decode($mailPreview['body']);
+check(str_contains($mailPreview['headers'],'multipart/alternative')&&str_contains($mailPreview['headers'],'From: NTC 93 <gesucht@ntc93.de>'));
+check(str_contains($decoded,'Content-Type: text/plain')&&str_contains($decoded,'Content-Type: text/html'));
+check(str_contains($decoded,'https://clubdisplay.ntc93.de/assets/ntc93-logo.png')&&str_contains($decoded,'#f7dc14'));
+check(str_contains($decoded,'&lt;script&gt;alert(1)&lt;/script&gt;')&&!str_contains($decoded,'<script>'));
+check(str_contains($decoded,'?a=1&amp;b=2')&&str_contains($decoded,'Test & Text'));
+check(cd_partner_mail_message('tennilo-demo','Plain','Title','Intro',[],[],'Note')['body']==='Plain');
+echo "NTC email branding, MIME fallback and HTML escaping OK\n";

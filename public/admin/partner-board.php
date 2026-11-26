@@ -32,6 +32,35 @@ function cd_partner_mail_headers(string $club):string{
     if($club==='ntc93')$headers.="\r\nFrom: NTC 93 <gesucht@ntc93.de>\r\nReply-To: gesucht@ntc93.de";
     return $headers;
 }
+
+// Email-safe NTC layout: inline styles, table layout, no scripts or tracking.
+// Public logo URL contains no member or moderation identifiers.
+function cd_partner_mail_message(string $club,string $plain,string $title,string $intro,array $details,array $actions,string $note):array{
+    if($club!=='ntc93')return ['body'=>$plain,'headers'=>cd_partner_mail_headers($club)];
+    $e=static fn(string $value):string=>htmlspecialchars($value,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
+    $rows='';
+    foreach($details as $label=>$value){
+        $rows.='<tr><td style="padding:10px 12px;border-bottom:1px solid #dce8e7;color:#426569;font-size:13px;vertical-align:top;width:35%">'.$e((string)$label).'</td><td style="padding:10px 12px;border-bottom:1px solid #dce8e7;font-size:15px;font-weight:600;color:#123b3d;overflow-wrap:anywhere;word-break:break-word">'.nl2br($e((string)$value),false).'</td></tr>';
+    }
+    $buttons='';
+    foreach($actions as $action){
+        $url=$action['url'];
+        if(!str_starts_with($url,'https://clubdisplay.ntc93.de/'))throw new InvalidArgumentException('Ungültiger E-Mail-Link.');
+        $secondary=($action['secondary']??false)===true;
+        $style=$secondary?'background-color:#ffffff;color:#8b3434;border:1px solid #c78b8b;':'background-color:#f7dc14;color:#06383c;border:1px solid #f7dc14;';
+        $buttons.='<tr><td style="padding:6px 0;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="'.$style.'border-radius:8px;"><a href="'.$e($url).'" style="display:block;padding:15px 12px;color:'.($secondary?'#8b3434':'#06383c').';font-weight:bold;font-size:16px;text-decoration:none;">'.$e($action['label']).'</a></td></tr></table></td></tr>';
+    }
+    $html='<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.$e($title).'</title></head><body style="margin:0;padding:0;background-color:#edf3f2;font-family:Arial,Helvetica,sans-serif;color:#123b3d;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#edf3f2;"><tr><td align="center" style="padding:20px 10px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background-color:#ffffff;border:1px solid #cbdcda;border-radius:14px;overflow:hidden;"><tr><td style="background-color:#06383c;padding:24px 20px;color:#ffffff;border-bottom:5px solid #f7dc14;"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="padding-right:16px;vertical-align:middle;"><img src="https://clubdisplay.ntc93.de/assets/ntc93-logo.png" alt="NTC 93" width="64" height="64" style="display:block;width:64px;height:64px;object-fit:contain;"></td><td style="vertical-align:middle;"><div style="font-size:12px;font-weight:bold;letter-spacing:1.2px;color:#f7dc14;">NEUENHAGENER TENNISCLUB 93 E. V.</div><div style="font-size:23px;font-weight:bold;margin-top:6px;">Spielpartner gesucht</div></td></tr></table></td></tr><tr><td style="padding:26px 22px;"><h1 style="margin:0 0 12px;font-size:25px;line-height:1.2;color:#06383c;">'.$e($title).'</h1><p style="margin:0 0 20px;font-size:16px;line-height:1.55;">'.$e($intro).'</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f2f7f6;border:1px solid #dce8e7;border-radius:8px;">'.$rows.'</table>'.($buttons!==''?'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:18px;">'.$buttons.'</table>':'').'<p style="margin:20px 0 0;font-size:13px;line-height:1.55;color:#426569;">'.$e($note).'</p></td></tr><tr><td align="center" style="padding:17px 20px;background-color:#06383c;color:#d9e7e6;font-size:12px;line-height:1.6;">NTC 93 · Spielpartnerbörse<br>Powered by TENNILO ClubDisplay</td></tr></table></td></tr></table></body></html>';
+    $boundary='cd-alt-'.bin2hex(random_bytes(18));
+    $headers="MIME-Version: 1.0\r\nContent-Type: multipart/alternative; boundary=\"".$boundary."\"\r\nFrom: NTC 93 <gesucht@ntc93.de>\r\nReply-To: gesucht@ntc93.de";
+    $encode=static fn(string $value):string=>quoted_printable_encode(preg_replace('/\r\n|\r|\n/',"\r\n",$value));
+    $body='--'.$boundary."\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n".$encode($plain)."\r\n--".$boundary."\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n".$encode($html)."\r\n--".$boundary."--\r\n";
+    return ['body'=>$body,'headers'=>$headers];
+}
+function cd_partner_mail_subject(string $club,string $subject):string{
+    return ($club==='ntc93'?'NTC 93 - ':'TENNILO ClubDisplay - ').$subject;
+}
+
 function cd_partner_mail_address(PDO $db,string $club):string{
     $q=$db->prepare('SELECT email FROM partner_mail_settings WHERE club=?');$q->execute([$club]);$saved=$q->fetchColumn();
     // NTC's designated role mailbox; an explicitly saved address (including empty) overrides it.
@@ -57,8 +86,11 @@ function cd_partner_mail_send(PDO $db,string $club,string $ref,int $now):void{
         $body="Ein neues Spielpartnergesuch wartet auf Freigabe.\n\nVerein: ".cd_club($db,$club)['name']."\nReferenz: ".$ref."\n";
         foreach($choices as $key=>$options){$body.=$options[$row[$key]]."\n";}
         $body.="\nGesuch freigeben (mit Bestätigung):\n".$base."&decision=publish\n\nGesuch ablehnen (mit Bestätigung):\n".$base."&decision=delete\n\nDie Links sind einmalig verwendbar und höchstens 48 Stunden gültig. Private Kontaktdaten stehen nur auf der Prüfseite. Bitte diese Nachricht nicht weiterleiten.\n";
+        $details=['Referenz'=>$ref];
+        foreach(['category'=>'Spielart','skill'=>'Spielstärke','availability'=>'Wochentag','period'=>'Tageszeit'] as $key=>$label)$details[$label]=$choices[$key][$row[$key]];
+        $message=cd_partner_mail_message($club,$body,'Neues Spielpartnergesuch','Ein neues Gesuch wartet auf deine Prüfung. Bitte prüfe Mitgliedschaft, Identität und gegebenenfalls den Jugendschutz vor der Freigabe.',$details,[['label'=>'Gesuch prüfen und freigeben','url'=>$base.'&decision=publish'],['label'=>'Gesuch prüfen und ablehnen','url'=>$base.'&decision=delete','secondary'=>true]],'Die Links sind einmalig verwendbar und höchstens 48 Stunden gültig. Die Entscheidung erfolgt erst auf der Prüfseite. Keine privaten Kontaktdaten in dieser Nachricht. Bitte nicht weiterleiten.');
         $sent=false;
-        try{$sent=@mail($notice['email'],'TENNILO ClubDisplay - Neues Spielpartnergesuch',$body,cd_partner_mail_headers($club));}catch(Throwable $e){}
+        try{$sent=@mail($notice['email'],cd_partner_mail_subject($club,'Neues Spielpartnergesuch'),$message['body'],$message['headers']);}catch(Throwable $e){}
         $q=$db->prepare('UPDATE partner_mail_tokens SET status=? WHERE ref=? AND hash=?');$q->execute([$sent?'sent':'failed',$ref,hash('sha256',$notice['token'])]);
     }catch(Throwable $e){error_log('ClubDisplay partner notification could not be prepared or sent.');}
 }
@@ -112,7 +144,8 @@ function cd_partner_interest_notify(PDO $db,string $club,string $ref):void{
         $email=cd_partner_mail_address($db,$club);if($email==='')return;
         $url=$club==='ntc93'?'https://clubdisplay.ntc93.de/admin/?partner_review=1':'https://clubdisplay.tennilo.de/admin/?portal=club&partner_review=1';
         $body="Neue Kontaktanfrage zu einem Spielpartnergesuch.\nVerein: ".cd_club($db,$club)['name']."\nReferenz: ".$ref."\n\nBitte im geschützten Vereinsbackend beide Mitgliedschaften und Kontaktangaben prüfen. Erst dann den Kontakt vermitteln.\n".$url."\n\nKeine privaten Kontaktdaten in dieser Nachricht.";
-        if(!@mail($email,'TENNILO ClubDisplay - Neue Kontaktanfrage',$body,cd_partner_mail_headers($club)))error_log('ClubDisplay interest notification not accepted.');
+        $message=cd_partner_mail_message($club,$body,'Neue Kontaktanfrage','Ein Mitglied hat Interesse an einem veröffentlichten Gesuch bekundet. Bitte prüfe beide Mitgliedschaften und Identitäten.',['Referenz'=>$ref],[['label'=>'Kontaktanfrage im Vereinsbackend prüfen','url'=>$url]],'Keine privaten Kontaktdaten in dieser Nachricht. Sobald Minderjährige beteiligt sind, vermittelt der Verein persönlich und geschützt.');
+        if(!@mail($email,cd_partner_mail_subject($club,'Neue Kontaktanfrage'),$message['body'],$message['headers']))error_log('ClubDisplay interest notification not accepted.');
     }catch(Throwable $e){error_log('ClubDisplay interest notification failed.');}
 }
 // Recipient must be independently verified by the administrator, not taken from an unverified submission.
@@ -125,7 +158,8 @@ function cd_partner_interest_forward(PDO $db,string $club,string $ref,int $id,st
     if(cd_partner_post_age($db,$ref)!=='adult'||cd_partner_interest_age($db,$id)!=='adult')throw new InvalidArgumentException('Bei Minderjährigen ist eine direkte Weiterleitung ausgeschlossen. Vermittlung nur durch den Verein.');
     $body="Ein vom Verein geprüftes Mitglied interessiert sich für dein Spielpartnergesuch ".$ref.".\n\nKontakt des interessierten Mitglieds:\n".$contact."\n\nDu entscheidest selbst, ob du Kontakt aufnehmen möchtest. Bitte nicht weitergeben.";
     $send??=static fn($to,$subject,$body,$headers)=>@mail($to,$subject,$body,$headers);
-    if(!$send($email,'TENNILO ClubDisplay - Kontakt zu deinem Spielpartnergesuch',$body,cd_partner_mail_headers($club)))throw new InvalidArgumentException('E-Mail-Versand fehlgeschlagen. Anfrage bleibt gespeichert.');
+    $message=cd_partner_mail_message($club,$body,'Ein Spielpartner hat Interesse!','Ein vom Verein geprüftes Mitglied möchte mit dir Tennis spielen.',['Referenz'=>$ref,'Kontakt des interessierten Mitglieds'=>$contact],[],'Du entscheidest selbst, ob du Kontakt aufnimmst. Diese Kontaktdaten sind nur für dich bestimmt. Bitte nicht weitergeben.');
+    if(!$send($email,cd_partner_mail_subject($club,'Kontakt zu deinem Spielpartnergesuch'),$message['body'],$message['headers']))throw new InvalidArgumentException('E-Mail-Versand fehlgeschlagen. Anfrage bleibt gespeichert.');
     $q=$db->prepare('DELETE FROM partner_interest WHERE id=? AND ref=?');$q->execute([$id,$ref]);
 }
 
