@@ -320,3 +320,5 @@ BASIC (INFO): automatische Infotafel ohne Bedienelemente, Sprache im Backend, Br
 
 ## 0.5.0 – NTC-Pilot / Nachtmodus
 NTC-Host: tägliche Ruhezeit 22:00–10:00 Europe/Berlin (inklusive Zeitumstellung). Beim Start in der Ruhezeit direkt dunkle Uhranzeige, sonst nach fünf Minuten ohne Bedienung. Berührung aktiviert das normale Menü; nach fünf Minuten Inaktivität wieder Nachtmodus. Um 10 Uhr normale Rotation und Aktualisierung. Laufendes Außenplatz-Buchungsterminal und Admin-Dialog werden nicht unterbrochen. Während Ruhezeit pausieren die Folienrotation, Wetteranimation und reguläre Datenabfragen, der Release-Check bleibt aktiv. Kein Ausschalten der Hardware oder Änderung der Monitorhelligkeit; öffentliche TENNILO-Demo und verwaltete Kundenplayer bleiben unverändert.
+
+0.5.1: Ruhezeit richtet sich nach tatsächlicher Bedienung statt internen Ansichtswechseln. Ein offener Außenplatz-Buchungsiframe wird bei Inaktivität überblendet und beim Aufwecken unverändert weiter angezeigt; AutoUpdate bleibt während dieser Buchungsansicht gesperrt. Externe eBuSy-Sitzungsablaufzeiten sind davon unabhängig.

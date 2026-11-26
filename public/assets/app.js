@@ -8,7 +8,7 @@ if(pilot){const logo=document.getElementById('brand-logo');logo.src='assets/ntc9
 let lang='de', view='info', slide=0, last=Date.now(), started=Date.now(), court=null, message='';
 const dwell=12000, idle=60000;
 const nightIdle=300000;
-let nightActive=false,nightLastMinute=-1;
+let nightActive=false,nightLastMinute=-1,nightLastInput=0,nightPreserveBooking=false;
 const nightHourFormat=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',hourCycle:'h23'});
 const infoPauseLimit=25000;
 let infoPaused=false,infoElapsed=0,infoPauseUntil=0;
@@ -1034,6 +1034,7 @@ function tickInfo(now=Date.now()){
 }
 function infoInput(){
   last=Date.now();
+  if(pilot&&!nightActive)nightLastInput=last;
   if(view==='info'&&infoPaused){infoPauseUntil=last+infoPauseLimit;updateInfoCountdown(last);}
 }
 function updateInfoProgress(now=Date.now()){
@@ -1207,8 +1208,8 @@ function nightWindow(now=Date.now()){
   const hour=Number(nightHourFormat.format(new Date(now)));
   return hour>=22||hour<10;
 }
-function nightShouldSleep(now,lastInput,initial,booking,modal){
-  return nightWindow(now)&&!booking&&!modal&&(initial||now-lastInput>=nightIdle);
+function nightShouldSleep(now,lastInput,initial,modal){
+  return nightWindow(now)&&!modal&&(initial||now-lastInput>=nightIdle);
 }
 function renderNightClock(now=Date.now()){
   const minute=Math.floor(now/60000);if(minute===nightLastMinute)return;nightLastMinute=minute;
@@ -1226,17 +1227,24 @@ function leaveNightMode(interactive=false){
   if(!nightActive)return;
   nightActive=false;document.body.classList.remove('night-mode');$('night-screen').hidden=true;
   for(const el of document.querySelectorAll('body>header,body>main,body>nav,body>footer'))el.inert=false;
-  nightLastMinute=-1;go(interactive?'home':'info');clock();refreshDayData();
+  nightLastMinute=-1;
+  if(interactive)nightLastInput=Date.now();
+  if(nightPreserveBooking){
+    // Leave the existing iframe attached: do not reload or reset a booking session.
+    nightPreserveBooking=false;last=Date.now();clock();refreshDayData();return;
+  }
+  go(interactive?'home':'info');clock();refreshDayData();
 }
 function syncNightMode(now=Date.now(),initial=false){
   if(!pilot)return false;
   if(nightActive){if(!nightWindow(now)){leaveNightMode();return false;}renderNightClock(now);return true;}
-  const booking=view==='courts'&&courtMode==='outdoor',modal=adminDialog.open||$('personal-demo-dialog')?.open;
-  if(!nightShouldSleep(now,last,initial,booking,modal))return false;
-  // Retain the normal info state for the existing idle-only software updater.
-  if(view!=='info'){view='info';slide=0;openedNews=null;court=null;message='';}
+  const modal=adminDialog.open||$('personal-demo-dialog')?.open;
+  if(!nightShouldSleep(now,nightLastInput,initial,modal))return false;
+  // Cover a booking view without removing its iframe; never force an auto-update during that session.
+  nightPreserveBooking=view==='courts'&&courtMode==='outdoor'&&!!document.querySelector('#screen iframe.booking-frame');
+  if(!nightPreserveBooking&&view!=='info'){view='info';slide=0;openedNews=null;court=null;message='';}
   infoPaused=false;infoElapsed=0;infoPauseUntil=0;started=now;
-  if(initial)last=now-nightIdle;
+  if(!nightPreserveBooking)last=Math.min(last,now-nightIdle);
   nightActive=true;document.body.classList.add('night-mode');$('night-screen').hidden=false;
   for(const el of document.querySelectorAll('body>header,body>main,body>nav,body>footer'))el.inert=true;
   renderNightClock(now);return true;
@@ -1246,6 +1254,9 @@ function go(next){openedNews=null;if(next!=='courts'||view!=='courts')bookingExp
 document.addEventListener('click',e=>{if(nightActive)return;infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a.startsWith('matchball-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);if(Number.isInteger(index)&&matchballIssues[index]){openedNews={matchballId:matchballIssues[index].id};view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a==='booking-expand'){toggleBookingExpansion();}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;bookingExpanded=false;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='partners-prev'&&view==='partners'){partnerPage=Math.max(0,partnerPage-1);render();}else if(a==='partners-next'&&view==='partners'){partnerPage++;render();}else if(a==='partners'&&partnerBoardData?.enabled){partnerPage=0;go('partners');}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
 for(const event of ['pointerdown','keydown','wheel','touchmove'])document.addEventListener(event,()=>{if(!nightActive)infoInput();});
 $('night-screen').addEventListener('click',e=>{e.stopPropagation();leaveNightMode(true);});
+// Moving focus into the embedded booking frame counts as real interaction, not an indefinite exemption.
+window.addEventListener('blur',()=>{if(pilot&&!nightActive)setTimeout(()=>{if(view==='courts'&&document.activeElement?.matches('iframe.booking-frame'))nightLastInput=Date.now();},0);});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNightMode();});
 document.addEventListener('keydown',e=>{if(nightActive&&(e.key==='Enter'||e.key===' ')){e.preventDefault();leaveNightMode(true);}});
 $('language').addEventListener('click',()=>{if(pilot&&view==='courts'&&courtMode==='outdoor')return;lang=lang==='de'?'en':'de';message='';render();});
 

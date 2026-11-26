@@ -2,6 +2,7 @@
 const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{const browser=await chromium.launch();try{
   const page=await browser.newPage({viewport:{width:1440,height:900}});
+  await page.clock.install({time:new Date('2026-11-26T19:00:00+01:00')});
   await page.route('**/*',async route=>{
     const u=new URL(route.request().url());
     if(u.hostname==='clubdisplay.ntc93.de'){
