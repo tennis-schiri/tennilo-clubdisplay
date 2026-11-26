@@ -105,7 +105,7 @@ function cd_partner_flush(PDO $db):void{
     try{cd_partner_outbox($db,null,8);}catch(Throwable $e){error_log('ClubDisplay partner outbox pending.');}
 }
 function cd_partner_meta_email(PDO $db,string $ref,?int $id=null):string{
-    $q=$db->prepare($id===null?'SELECT email FROM partner_post_meta WHERE ref=?':'SELECT email FROM partner_interest_meta WHERE id=?');$q->execute([$id??$ref]);return (string)($q->fetchColumn()?:'');
+    $q=$db->prepare($id===null?'SELECT email FROM partner_post_meta WHERE ref=?':'SELECT m.email FROM partner_interest_meta m JOIN partner_interest i ON i.id=m.id WHERE i.id=? AND i.ref=?');$q->execute($id===null?[$ref]:[$id,$ref]);return (string)($q->fetchColumn()?:'');
 }
 function cd_partner_post_decision_notice(PDO $db,string $club,string $ref,bool $publish):void{
     $email=cd_partner_meta_email($db,$ref);if($email==='')return;
@@ -158,7 +158,7 @@ function cd_partner_start_verification(PDO $db,string $club,array $in,string $cl
     $plain="Bitte bestätige deine E-Mail-Adresse für die Spielpartnerbörse.\n".$url."\nDer Link ist 24 Stunden gültig. Falls du nichts beantragt hast, ignoriere diese E-Mail.";
     $m=cd_partner_mail_message($club,$plain,'E-Mail-Adresse bestätigen','Bitte bestätige deine E-Mail-Adresse. Erst danach wird deine Anfrage dem Verein zur Prüfung vorgelegt.',[],[['label'=>'E-Mail-Adresse bestätigen','url'=>$url]],'24 Stunden gültig. Wenn du keine Anfrage gestellt hast, ignoriere diese E-Mail.');
     $send??=static fn($to,$subject,$body,$headers)=>@mail($to,$subject,$body,$headers);
-    if(!$send($email,cd_partner_mail_subject($club,'E-Mail-Adresse bestätigen'),$m['body'],$m['headers'])){$q=$db->prepare('DELETE FROM partner_verify WHERE hash=?');$q->execute([$hash]);throw new InvalidArgumentException('Bestätigungs-E-Mail konnte nicht versendet werden. Bitte später erneut versuchen.');}
+    if(!$send($email,cd_partner_mail_subject($club,'E-Mail-Adresse bestätigen'),$m['body'],$m['headers'])){throw new InvalidArgumentException('Bestätigungs-E-Mail konnte nicht versendet werden. Bitte später erneut versuchen.');}
     return $token;
 }
 function cd_partner_confirm(PDO $db,string $club,string $token,int $now):bool{
@@ -196,7 +196,12 @@ function cd_partner_action_page(PDO $db,string $club,string $action):never{
     cd_partner_mail_schema($db);$method=$_SERVER['REQUEST_METHOD']??'';
     if(!in_array($method,['GET','POST'],true)){http_response_code(405);exit;}
     $in=$method==='POST'?$_POST:$_GET;$token=is_string($in['token']??null)?$in['token']:'';$decision=is_string($in['decision']??null)?$in['decision']:'';
-    $title=$action==='verify'?'E-Mail bestätigen':($decision==='renew'?'Gesuch verlängern':'Gesuch zurückziehen');$message='';$valid=preg_match('/^[a-f0-9]{64}$/D',$token)&&($action==='verify'||in_array($decision,['renew','withdraw'],true));
+    $title=$action==='verify'?'E-Mail bestätigen':($decision==='renew'?'Gesuch verlängern':'Gesuch zurückziehen');$message='';$valid=preg_match('/^[a-f0-9]{64}$/D',$token)&&($action==='verify'||in_array($decision,['renew','withdraw'],true))&&cd_partner_enabled($db,$club);
+    if($method==='GET'&&$valid){
+        if($action==='verify'){$q=$db->prepare('SELECT 1 FROM partner_verify WHERE hash=? AND club=? AND expires>?');$q->execute([hash('sha256',$token),$club,time()]);}
+        else{$q=$db->prepare("SELECT 1 FROM partner_posts p JOIN partner_post_meta m ON m.ref=p.ref WHERE p.club=? AND p.expires>? AND m.manage_hash=? AND (p.state='published' OR ?='withdraw')");$q->execute([$club,time(),hash('sha256',$token),$decision]);}
+        $valid=(bool)$q->fetchColumn();if(!$valid)http_response_code(410);
+    }
     if($method==='POST'){
         if(isset($_SERVER['HTTP_ORIGIN'])&&$_SERVER['HTTP_ORIGIN']!=='https://clubdisplay.tennilo.de'){http_response_code(403);exit;}
         if((int)($_SERVER['CONTENT_LENGTH']??0)>4096){http_response_code(413);exit;}
