@@ -84,19 +84,33 @@ function eb_snapshot(array $cfg,int $now,array &$diagnostics=[]): array {
     }
     return ['status'=>'ok','fetchedAt'=>$now,'slots'=>$slots];
 }
+// Authorization is checked on every request before reading the occupancy cache.
+define('CD_DEVICE_LIBRARY_ONLY',true);
+require_once __DIR__.'/devices.php';
+function eb_registered_device(?PDO $db,string $token,int $now):bool{
+    return $db!==null&&cdtest_lookup($db,$token,$now)!==null;
+}
 if(PHP_SAPI==='cli')return;
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, private');header('X-Content-Type-Options: nosniff');header('Referrer-Policy: no-referrer');
 ini_set('display_errors','0');
 function eb_reply(int $status,array $body): never {http_response_code($status);echo json_encode($body);exit;}
-if(($_SERVER['HTTP_HOST']??'')!=='clubdisplay.ntc93.de'||($_SERVER['REQUEST_METHOD']??'')!=='GET')eb_reply(404,['status'=>'unavailable']);
+if(($_SERVER['HTTP_HOST']??'')!=='clubdisplay.ntc93.de'||($_SERVER['REQUEST_METHOD']??'')!=='GET'||empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off')eb_reply(404,['status'=>'unavailable']);
 $file=__DIR__.'/ebusy-private/config.php';
 if(!is_file($file))eb_reply(403,['status'=>'restricted']);
 $cfg=require $file;
 $check=isset($_SERVER['HTTP_X_CLUBDISPLAY_CHECK'])&&is_string($cfg['check']??null)&&strlen($cfg['check'])===64&&hash_equals($cfg['check'],$_SERVER['HTTP_X_CLUBDISPLAY_CHECK']);
 $ip=$cfg['ip']??'';
 $local=filter_var($ip,FILTER_VALIDATE_IP)!==false&&inet_pton($ip)===inet_pton($_SERVER['REMOTE_ADDR']??'');
-if(!$check&&!$local)eb_reply(403,['status'=>'restricted']);
+if(!$check&&!$local){
+    $registered=false;$token=$_COOKIE['__Host-CD_TEST']??'';
+    $private=__DIR__.'/devices-private';
+    // Fail closed on missing/corrupt registration storage. Never trust a client-side flag.
+    if(is_string($token)&&preg_match('/^[a-f0-9]{64}$/D',$token)&&is_file($private.'/devices.sqlite')&&is_file($private.'/.htaccess')&&is_file($private.'/config.php')){
+        try{$db=cdtest_db($private.'/devices.sqlite');$registered=eb_registered_device($db,$token,time());}catch(Throwable $e){$registered=false;}
+    }
+    if(!$registered)eb_reply(403,['status'=>'restricted']);
+}
 if(empty($cfg['user'])||empty($cfg['password'])||!function_exists('curl_init'))eb_reply(503,['status'=>'unconfigured']);
 $lock=@fopen(__DIR__.'/ebusy-private/cache.lock','c+');
 if(!$lock||!flock($lock,LOCK_EX)){eb_reply(503,['status'=>'unavailable']);}

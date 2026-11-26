@@ -1,5 +1,5 @@
 <?php
-// NTC-only browser registrations for fictional occupancy data.
+// NTC-only browser registrations for authorized occupancy access.
 declare(strict_types=1);
 function cdtest_hash(string $token):string{return hash('sha256',$token);}
 function cdtest_code():string{return strtoupper(bin2hex(random_bytes(10)));}
@@ -44,14 +44,14 @@ function cdtest_attempt(PDO $db,int $now):bool{
         $db->exec('COMMIT');return $ok;
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
-if(PHP_SAPI==='cli')return;
+if(PHP_SAPI==='cli'||defined('CD_DEVICE_LIBRARY_ONLY'))return;
 ini_set('display_errors','0');
 header('Cache-Control: no-store, private');header('X-Robots-Tag: noindex, nofollow');header('X-Content-Type-Options: nosniff');header('Referrer-Policy: strict-origin');
 header("Content-Security-Policy: default-src 'none'; style-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 if(($_SERVER['HTTP_HOST']??'')!=='clubdisplay.ntc93.de'||empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off'){http_response_code(404);exit;}
 $method=$_SERVER['REQUEST_METHOD']??'';
 if(!in_array($method,['GET','POST'],true)){http_response_code(405);exit;}
-function cdtest_json(bool $registered):never{header('Content-Type: application/json; charset=utf-8');echo json_encode(['registered'=>$registered,'mode'=>$registered?'sample':'none']);exit;}
+function cdtest_json(bool $registered):never{header('Content-Type: application/json; charset=utf-8');echo json_encode(['registered'=>$registered,'mode'=>$registered?'live':'none']);exit;}
 function cdtest_h(mixed $v):string{return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}
 function cdtest_cookie(string $value,int $expires):void{setcookie('__Host-CD_TEST',$value,['expires'=>$expires,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Strict']);}
 $mode=isset($_GET['manage'])?'manage':'register';
@@ -115,11 +115,11 @@ header('Content-Type: text/html; charset=utf-8');
 $csrf=cdtest_h($_SESSION['csrf']);
 function cdtest_field(string $csrf,string $action):string{return '<input type="hidden" name="csrf" value="'.$csrf.'"><input type="hidden" name="action" value="'.cdtest_h($action).'">';}
 function cdtest_date(int $ts):string{return (new DateTimeImmutable('@'.$ts))->setTimezone(new DateTimeZone('Europe/Berlin'))->format('d.m.Y H:i');}
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>NTC · Gerätefreigaben</title><link rel="stylesheet" href="/admin/admin.css"></head><body class="ntc-portal"><main><section class="panel"><h1>NTC · Gerätefreigaben</h1><p>Registrierte Browser erhalten ausschließlich fiktive Platzbelegungsdaten. Keine eBuSy-Live-Daten außerhalb der Vereinsanlage.</p><?php if($message!==''):?><p role="status"><?=cdtest_h($message)?></p><?php endif?>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>NTC · Gerätefreigaben</title><link rel="stylesheet" href="/admin/admin.css"></head><body class="ntc-portal"><main><section class="panel"><h1>NTC · Gerätefreigaben</h1><p>Registrierte Browser erhalten Zugriff auf die aktuelle NTC-Platzbelegung ohne Spielernamen. Nur berechtigte Vereins- und Wartungsgeräte registrieren; die eBuSy-Lizenzbedingungen sind zu beachten.</p><?php if($message!==''):?><p role="status"><?=cdtest_h($message)?></p><?php endif?>
 <?php if($mode==='manage'&&!$auth):?><h2>Admin-Anmeldung</h2><form method="post" action="/devices.php?manage=1"><?=cdtest_field($csrf,'login')?><label>Bestehender ClubDisplay-Admin-PIN <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{6,20}" required autocomplete="off"></label><button>Anmelden</button></form>
 <?php elseif($mode==='manage'):?><h2>Neuen Browser freigeben</h2><form method="post" action="/devices.php?manage=1"><?=cdtest_field($csrf,'issue')?><label>Gerätename <input name="label" maxlength="100" placeholder="Büro-Rechner" required></label><button>Registrierungscode erzeugen</button></form>
-<?php if($issued!==''):?><p><strong>Einmaliger Code (15 Minuten gültig):</strong></p><input readonly value="<?=cdtest_h($issued)?>" aria-label="Registrierungscode"><p>Auf dem Testgerät <a href="/devices.php">clubdisplay.ntc93.de/devices.php</a> öffnen und den Code eingeben.</p><?php endif?>
+<?php if($issued!==''):?><p><strong>Einmaliger Code (15 Minuten gültig):</strong></p><input readonly value="<?=cdtest_h($issued)?>" aria-label="Registrierungscode"><p>Auf dem freizugebenden Gerät <a href="/devices.php">clubdisplay.ntc93.de/devices.php</a> öffnen und den Code eingeben.</p><?php endif?>
 <h2>Freigegebene Browser</h2><p>Die Freigabe läuft nach 365 Tagen ohne Nutzung ab. Jederzeit widerrufbar.</p>
 <?php foreach($db->query('SELECT id,label,created,seen,expires FROM devices ORDER BY seen DESC')->fetchAll(PDO::FETCH_ASSOC) as $d):?><form method="post" action="/devices.php?manage=1"><?=cdtest_field($csrf,'revoke')?><input type="hidden" name="id" value="<?=cdtest_h($d['id'])?>"><p><strong><?=cdtest_h($d['label'])?></strong> · gekoppelt <?=cdtest_date((int)$d['created'])?> · zuletzt <?=cdtest_date((int)$d['seen'])?><?=((int)$d['expires']<=$now?' · abgelaufen':'')?></p><button class="danger">Widerrufen</button></form><?php endforeach?>
 <h2>Offene Registrierungscodes</h2><?php $q=$db->prepare('SELECT id,label,expires FROM codes WHERE expires>? ORDER BY expires');$q->execute([$now]);foreach($q->fetchAll(PDO::FETCH_ASSOC) as $c):?><form method="post" action="/devices.php?manage=1"><?=cdtest_field($csrf,'cancel')?><input type="hidden" name="id" value="<?=cdtest_h($c['id'])?>"><p><?=cdtest_h($c['label'])?> · gültig bis <?=cdtest_date((int)$c['expires'])?></p><button>Code widerrufen</button></form><?php endforeach?><form method="post" action="/devices.php?manage=1"><?=cdtest_field($csrf,'logout')?><button>Abmelden</button></form>
-<?php else:?><h2>Testbrowser registrieren</h2><?php if($device):?><p>Dieser Browser ist als <?=cdtest_h($device['label'])?> freigegeben.</p><form method="post" action="/devices.php"><?=cdtest_field($csrf,'forget')?><button>Freigabe dieses Browsers entfernen</button></form><p><a href="/">ClubDisplay öffnen</a></p><?php else:?><form method="post" action="/devices.php"><?=cdtest_field($csrf,'register')?><label>Einmaliger Registrierungscode <input name="code" maxlength="32" autocomplete="off" required></label><button>Browser freigeben</button></form><?php endif?><?php endif?><p><a href="<?=$mode==='manage'?'/admin/':'/'?>">Zurück</a></p></section></main></body></html>
+<?php else:?><h2>Browser registrieren</h2><?php if($device):?><p>Dieser Browser ist als <?=cdtest_h($device['label'])?> freigegeben.</p><form method="post" action="/devices.php"><?=cdtest_field($csrf,'forget')?><button>Freigabe dieses Browsers entfernen</button></form><p><a href="/">ClubDisplay öffnen</a></p><?php else:?><form method="post" action="/devices.php"><?=cdtest_field($csrf,'register')?><label>Einmaliger Registrierungscode <input name="code" maxlength="32" autocomplete="off" required></label><button>Browser freigeben</button></form><?php endif?><?php endif?><p><a href="<?=$mode==='manage'?'/admin/':'/'?>">Zurück</a></p></section></main></body></html>

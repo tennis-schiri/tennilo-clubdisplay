@@ -7,4 +7,9 @@ $rows=[['courtId'=>11,'date'=>'26.11.2026','fromTime'=>'14:15','toTime'=>'14:45'
 $s=eb_slots([['id'=>11,'name'=>'Halle 1']],$rows,'indoor',$start,$tz);
 if(array_column($s,'status')!==['partial','blocked','free']||str_contains(json_encode($s),'SECRET')||$s[0]['start']!=='2026-11-26T13:00:00.000Z')throw new RuntimeException('slot test failed');
 try{eb_slots([['id'=>11,'name'=>'Unknown']],[],'indoor',$start,$tz);throw new LogicException('mapping accepted');}catch(RuntimeException $e){if($e->getMessage()!=='court_mapping')throw $e;}
-echo "NTC eBuSy adapter tests OK\n";
+$db=cdtest_db(':memory:');$now=time();
+$code=cdtest_issue($db,'Büro',$now);$token=cdtest_register($db,$code,$now);
+if(!$token||!eb_registered_device($db,$token,$now)||eb_registered_device($db,str_repeat('a',64),$now)||eb_registered_device($db,'',$now)||eb_registered_device(null,$token,$now)||eb_registered_device($db,$token,$now+31536001))throw new RuntimeException('live browser authorization');
+$db->exec('DELETE FROM devices');
+if(eb_registered_device($db,$token,$now))throw new RuntimeException('revoked browser still authorized');
+echo "NTC eBuSy adapter and browser access tests OK\n";

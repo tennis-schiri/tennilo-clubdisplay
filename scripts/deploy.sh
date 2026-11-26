@@ -110,6 +110,7 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   php -l "$tmp/ebusy-config.php"
   upload "$tmp/ebusy-config.php" ebusy-private/config.php
   php -l public/ntc/ebusy-occupancy.php
+  upload public/ntc/devices.php devices.php
   upload public/ntc/ebusy-occupancy.php ebusy-occupancy.php
   # The diagnostic returns only status/count, not bookings. No secret in URL.
   printf 'X-ClubDisplay-Check: %s\n' "$(cat "$tmp/ebusy-check")" > "$tmp/ebusy-header"
@@ -129,10 +130,14 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   upload "$tmp/devices-config.php" devices-private/config.php
   upload public/ntc/devices.php devices.php
   curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/devices.php?status=1" -o "$tmp/devices-status"
-  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(($v["registered"]??null)!==false)exit(1); echo "Unregistered browser denied test mode.\n";' "$tmp/devices-status"
+  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(($v["registered"]??null)!==false)exit(1); echo "Unregistered browser has no device authorization.\n";' "$tmp/devices-status"
   curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/devices.php?manage=1" -o "$tmp/devices-login"
   grep -Fq 'Admin-Anmeldung' "$tmp/devices-login"
   grep -Fq 'Admin-PIN' "$tmp/devices-login"
+  # CI runner is outside the club network and has no registered device cookie.
+  code="$(curl --silent --show-error --max-time 25 -o "$tmp/ebusy-anonymous" -w '%{http_code}' "https://$DOMAIN/ebusy-occupancy.php")"
+  [[ "$code" == 403 ]] || { echo "::error::Anonymous occupancy request not denied (HTTP $code)"; exit 1; }
+  echo "Anonymous live occupancy request denied."
 
   php -l public/ntc/ntc-gateway.php
   php -l public/ntc/admin/index.php
