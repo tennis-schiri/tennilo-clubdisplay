@@ -407,3 +407,11 @@ if(function_exists('imagejpeg')){
     check(str_starts_with(cd_community_png($jpg),"\x89PNG\r\n\x1a\n"));
 }
 echo "Community QR: RGB and monochrome PNG, JPEG conversion and precise dimensions OK\n";
+
+// BASIC license is passive, does not include partner search or booking, and snapshots enforce the plan.
+check(cd_plan_modules('INFO')===CD_BASIC_MODULES);
+check(!in_array('partner_search',cd_plan_modules('INFO'),true)&&in_array('partner_search',cd_plan_modules('INTERACTIVE'),true));
+try{cd_save($db,array_replace($in,['slug'=>'basic-plan-test','modules'=>['welcome','partner_search']]),true);throw new RuntimeException('BASIC partner module accepted');}catch(InvalidArgumentException $e){}
+check(cd_snapshot($db,'test-club','clubhaus','test-club')['plan']==='INFO');
+check(cd_snapshot($db,'ntc93','managed-one','ntc93')['plan']==='INTERACTIVE');
+echo "BASIC/PLUS entitlement tests passed\n";

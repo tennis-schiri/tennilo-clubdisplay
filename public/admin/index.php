@@ -206,12 +206,12 @@ function field(array $c,bool $new,string $csrf):void{
       <label>Akzentfarbe <input type="color" name="color" value="<?=cd_h($c['color']??'#21d5db')?>"></label>
       <label>Sprache <select name="language"><option value="de" <?=($c['language']??'de')==='de'?'selected':''?>>Deutsch</option><option value="en" <?=($c['language']??'de')==='en'?'selected':''?>>English</option></select></label>
       <label>Folienwechsel (Sekunden) <input type="number" name="dwell" min="5" max="120" required value="<?=cd_h((string)($c['dwell']??12))?>"></label>
-      <fieldset><legend>Module</legend><?php foreach($labels as $k=>$v):?><label class="check"><input type="checkbox" name="modules[]" value="<?=$k?>" <?=in_array($k,$modules,true)?'checked':''?>><?=cd_h($v)?></label><?php endforeach?></fieldset>
+      <fieldset><legend>Module</legend><p>BASIC: automatische Infotafel ohne Bedienung. PLUS zusätzlich: Buchung, Spielpartnerbörse, SmartDisplay und interaktive Funktionen. Plus-Module nur bei PLUS-Lizenz.</p><?php foreach($labels as $k=>$v):?><label class="check"><input type="checkbox" name="modules[]" value="<?=$k?>" <?=in_array($k,$modules,true)?'checked':''?>><?=cd_h($v)?></label><?php endforeach?></fieldset>
       <button><?=$new?'Verein anlegen':'Änderungen speichern'?></button>
     </form><?php
 }
 function displayField(PDO $db,array $c,array $d,bool $new,string $csrf):void{
-    $allowed=json_decode($c['modules'],true)?:[];$active=json_decode($d['modules']??'["welcome"]',true)?:[];
+    $allowed=array_values(array_intersect(json_decode($c['modules'],true)?:[],cd_plan_modules($c['plan'])));$active=json_decode($d['modules']??'["welcome"]',true)?:[];
     $layout=$new?['welcome'=>'','order'=>[],'dwell'=>[]]:cd_layout($db,$c['slug'],$d['slug']);
     $ordered=array_values(array_intersect($layout['order'],$allowed));foreach($allowed as $k)if(!in_array($k,$ordered,true))$ordered[]=$k;
     $labels=['welcome'=>'Willkommen','weather'=>'Wetter','calendar'=>'Termine','teams'=>'Mannschaften','news'=>'Vereinsinfos','partner'=>'Sponsoren','restaurant'=>'Gastronomie','courts'=>'Buchung / Plätze','partner_search'=>'Spielpartnerbörse'];
@@ -225,7 +225,7 @@ function displayField(PDO $db,array $c,array $d,bool $new,string $csrf):void{
     <label class="check"><input type="checkbox" name="enabled" <?=($d['enabled']??1)?'checked':''?>> Profil aktiviert</label>
     <label class="full">Eigene Begrüßung für diesen Bildschirm <textarea name="screen_welcome" rows="3" maxlength="1000" placeholder="Leer = gemeinsame Vereinsbegrüßung"><?=cd_h($layout['welcome'])?></textarea></label>
     <fieldset class="screen-layout"><legend>Bildschirminhalte &amp; Folienablauf</legend>
-    <p>Nur ausgewählte Module werden angezeigt. Kleinere Positionsnummern erscheinen zuerst. Eine leere Anzeigezeit übernimmt den Standardwert des Bildschirms. Willkommen ist verpflichtend; die Buchung ist nur mit PLUS verfügbar.</p>
+    <p>Nur ausgewählte Module werden angezeigt. Kleinere Positionsnummern erscheinen zuerst. Eine leere Anzeigezeit übernimmt den Standardwert des Bildschirms. Willkommen ist verpflichtend; BASIC wird ohne Bedienelemente angezeigt. Buchung und Spielpartnerbörse erfordern PLUS.</p>
     <div class="screen-layout-head"><span>Modul</span><span>Position</span><span>Sekunden / Folie</span></div>
     <?php foreach($ordered as $pos=>$k):?><div class="screen-layout-row"><label class="check"><input type="checkbox" name="modules[]" value="<?=cd_h($k)?>" <?=in_array($k,$active,true)?'checked':''?>><?=cd_h($labels[$k]??$k)?></label><label><span class="screen-label-mobile">Position</span><input type="number" name="module_rank[<?=cd_h($k)?>]" aria-label="<?=cd_h($labels[$k]??$k)?>: Position" min="1" max="100" value="<?=$pos+1?>" required></label><label><span class="screen-label-mobile">Sekunden / Folie</span><input type="number" name="module_dwell[<?=cd_h($k)?>]" aria-label="<?=cd_h($labels[$k]??$k)?>: Sekunden pro Folie" min="5" max="120" placeholder="Standard" value="<?=cd_h((string)($layout['dwell'][$k]??''))?>"></label></div><?php endforeach?></fieldset>
     <button><?=$new?'Bildschirm anlegen':'Bildschirm speichern'?></button></form><?php

@@ -5,6 +5,8 @@ require_once __DIR__.'/partner-board.php';
 require_once __DIR__.'/matchball.php';
 function cd_plan_label(string $key):string{return match($key){'INFO'=>'BASIC','INTERACTIVE'=>'PLUS',default=>$key};}
 const CD_MODULES=['welcome','weather','calendar','teams','news','partner','restaurant','courts','partner_search'];
+const CD_BASIC_MODULES=['welcome','weather','calendar','teams','news','partner','restaurant'];
+function cd_plan_modules(string $plan):array{return $plan==='INTERACTIVE'?CD_MODULES:CD_BASIC_MODULES;}
 function cd_db(string $path): PDO {
     $db=new PDO('sqlite:'.$path,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
     $db->exec('PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON');
@@ -37,6 +39,7 @@ function cd_validate(array $in): array {
 }
 function cd_save(PDO $db,array $in,bool $create): void {
     $v=cd_validate($in);
+    if(array_diff(json_decode($v[6],true),cd_plan_modules($v[2])))throw new InvalidArgumentException('Spielpartnerbörse und Buchung sind nur mit PLUS verfügbar.');
     if($create){$q=$db->prepare('INSERT INTO clubs VALUES (?,?,?,?,?,?,?,?)');$q->execute($v);}
     else{cd_club($db,$v[0]);foreach(cd_displays($db,$v[0]) as $d){if(($v[2]==='INFO'&&$d['mode']==='INTERACTIVE')||array_diff(json_decode($d['modules'],true)?:[],json_decode($v[6],true)?:[]))throw new InvalidArgumentException('Zuerst betroffene Bildschirmprofile anpassen.');}$q=$db->prepare('UPDATE clubs SET name=?,plan=?,color=?,language=?,dwell=?,modules=?,updated=? WHERE slug=?');$slug=array_shift($v);$v[]=$slug;$q->execute($v);}
 }
@@ -58,7 +61,7 @@ function cd_save_display(PDO $db,array $in,bool $create,?string $scope):void {
     $mode=(string)($in['mode']??'');
     if($c['plan']==='INFO'&&$mode!=='INFO')throw new InvalidArgumentException('PLUS ist für diesen Verein nicht freigeschaltet.');
     $v=cd_validate(array_replace($in,['plan'=>$mode,'color'=>$c['color']]));
-    $allowed=json_decode($c['modules'],true)?:[];
+    $allowed=array_intersect(json_decode($c['modules'],true)?:[],cd_plan_modules($c['plan']));
     if(array_diff(json_decode($v[6],true),$allowed))throw new InvalidArgumentException('Modul für diesen Verein nicht freigeschaltet.');
     $row=[$club,$v[0],$v[1],$mode,$v[4],$v[5],$v[6],isset($in['enabled'])?1:0,$v[7]];
     $layout=cd_validate_layout($in,json_decode($v[6],true),$create?[]:cd_layout($db,$club,$v[0]));

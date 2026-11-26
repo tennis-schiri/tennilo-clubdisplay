@@ -423,7 +423,7 @@ function cd_partner_choices():array{
         'period'=>['any'=>'Zeitlich flexibel','morning'=>'Vormittags','afternoon'=>'Nachmittags','evening'=>'Abends']];
 }
 function cd_partner_enabled(PDO $db,string $club):bool{
-    $q=$db->prepare('SELECT enabled FROM partner_board WHERE club=?');$q->execute([$club]);return (int)$q->fetchColumn()===1;
+    $q=$db->prepare("SELECT p.enabled FROM partner_board p JOIN clubs c ON c.slug=p.club WHERE p.club=? AND c.plan='INTERACTIVE'");$q->execute([$club]);return (int)$q->fetchColumn()===1;
 }
 function cd_partner_cleanup(PDO $db,?int $now=null):void{
     $now??=time();cd_partner_mail_schema($db);
@@ -456,6 +456,7 @@ function cd_partner_admin(PDO $db,array $in,?string $scope,?int $now=null):?stri
         cd_partner_cleanup($db,$now);$token=null;
         if($intent==='toggle'){
             $enabled=isset($in['enabled'])?1:0;
+            if($enabled&&cd_club($db,$club)['plan']!=='INTERACTIVE')throw new InvalidArgumentException('Die Spielpartnerbörse erfordert PLUS.');
             $q=$db->prepare('INSERT INTO partner_board VALUES (?,?) ON CONFLICT(club) DO UPDATE SET enabled=excluded.enabled');$q->execute([$club,$enabled]);
             if(!$enabled){$q=$db->prepare('DELETE FROM partner_verify WHERE club=?');$q->execute([$club]);$q=$db->prepare('DELETE FROM partner_outbox WHERE club=?');$q->execute([$club]);$q=$db->prepare('DELETE FROM partner_invites WHERE club=?');$q->execute([$club]);$q=$db->prepare('DELETE FROM partner_posts WHERE club=?');$q->execute([$club]);}
         }elseif($intent==='mail-settings'){

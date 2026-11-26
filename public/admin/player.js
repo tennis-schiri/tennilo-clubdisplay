@@ -27,7 +27,7 @@ function textPages(value){
   if(rest)pages.push(rest);return pages;
 }
 function activeEventGreetingRows(s,now=Date.now()){
-  if(!s?.modules?.includes('calendar')||!s.feeds?.calendar||s.feeds.calendar.status==='unavailable')return [];
+  if(s?.plan==='INFO'||!s?.modules?.includes('calendar')||!s.feeds?.calendar||s.feeds.calendar.status==='unavailable')return [];
   const unique=new Map();
   for(const r of s.feeds.calendar.rows||[]){
     if(!r||typeof r.title!=='string'||!r.title.trim()||r.cancelled===true||r.cancelled==='true'||String(r.status||'').toLowerCase()==='cancelled')continue;
@@ -61,6 +61,7 @@ function syncEventGreetings(){
 function build(s){
   const out=[];
   for(const kind of s.modules||[]){
+    if(s.plan==='INFO'&&['weather','courts','partner_search'].includes(kind))continue;
     const start=out.length;
     if(kind==='calendar')out.push(...activeEventGreetingRows(s));
     if(kind==='partner_search')groups((s.partner_search||[]).filter(r=>r.expires>Date.now()/1000),4).forEach((rows,i)=>out.push({key:'partner-search:'+i,kind:'partner-search',rows}));
@@ -153,6 +154,11 @@ async function poll(){
    const nextSignature=JSON.stringify(s);
    if(signature!==nextSignature){
      const key=slides[index]?.key;snapshot=s;signature=nextSignature;document.documentElement.lang=s.language==='en'?'en':'de';
+     const basic=s.plan==='INFO';document.body.classList.toggle('basic-player',basic);
+     for(const id of ['prev','next','pause','full'])$(id).hidden=basic;
+     if(basic){paused=false;$('pause').textContent='Ⅱ';$('pause').setAttribute('aria-label','Pause');}
+     const current=s.feeds?.weather?.current,wx=$('basic-weather');
+     if(wx){wx.hidden=!basic||!s.modules.includes('weather');wx.textContent=current&&typeof current.temperature==='number'?Math.round(current.temperature)+' °C':tr('Wetter nicht verfügbar','Weather unavailable');}
      document.documentElement.style.setProperty('--accent',/^#[a-f0-9]{6}$/i.test(s.color)?s.color:'#21d5db');
      clearImage('logo');slides=build(s);index=Math.max(0,slides.findIndex(x=>x.key===key));render();schedule();
    }
@@ -163,7 +169,7 @@ async function poll(){
    $('status').textContent='Offline · erneuter Versuch / retrying';
  }finally{polling=false;if(!denied)setTimeout(poll,60000);}
 }
-$('prev').addEventListener('click',()=>move(-1));$('next').addEventListener('click',()=>move(1));$('pause').addEventListener('click',()=>{paused=!paused;$('pause').textContent=paused?'▶':'Ⅱ';$('pause').setAttribute('aria-label',paused?'Play':'Pause');schedule();});$('full').addEventListener('click',()=>{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else document.documentElement.requestFullscreen().catch(()=>{});});
+$('prev').addEventListener('click',()=>{if(snapshot?.plan!=='INFO')move(-1);});$('next').addEventListener('click',()=>{if(snapshot?.plan!=='INFO')move(1);});$('pause').addEventListener('click',()=>{if(snapshot?.plan==='INFO')return;paused=!paused;$('pause').textContent=paused?'▶':'Ⅱ';$('pause').setAttribute('aria-label',paused?'Play':'Pause');schedule();});$('full').addEventListener('click',()=>{if(snapshot?.plan==='INFO')return;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else document.documentElement.requestFullscreen().catch(()=>{});});
 function clock(){const now=new Date(),l=snapshot?.language==='en'?'en-GB':'de-DE';$('clock').textContent=now.toLocaleTimeString(l,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});$('date').textContent=now.toLocaleDateString(l,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'});}
 clock();setInterval(clock,1000);setInterval(syncEventGreetings,1000);
 if(!preview&&!/^[a-f0-9]{64}$/.test(token)){message('Gerät nicht gekoppelt','Bitte die persönliche Geräteadresse aus der Vereinsadministration verwenden.');$('status').textContent='Nicht gekoppelt';}else poll();

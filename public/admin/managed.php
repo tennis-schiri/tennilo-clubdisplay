@@ -102,7 +102,7 @@ function cd_dining_today(array $d,DateTimeImmutable $now):array{
 }
 function cd_snapshot(PDO $db,string $club,string $slug,?string $scope,?DateTimeImmutable $now=null):array{
     $c=cd_club($db,$club);$d=cd_display($db,$club,$slug,$scope);
-    $modules=array_values(array_intersect(json_decode($d['modules'],true)?:[],json_decode($c['modules'],true)?:[]));
+    $modules=array_values(array_intersect(json_decode($d['modules'],true)?:[],json_decode($c['modules'],true)?:[],cd_plan_modules($c['plan'])));
     $layout=cd_layout($db,$club,$slug);
     $ordered=array_values(array_intersect($layout['order'],$modules));
     foreach($modules as $k)if(!in_array($k,$ordered,true))$ordered[]=$k;
@@ -110,7 +110,13 @@ function cd_snapshot(PDO $db,string $club,string $slug,?string $scope,?DateTimeI
     $now??=new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin'));$today=$now->format('Y-m-d');
     $b=cd_brand($db,$club);$sources=cd_sources($db,$club,$scope);$activeSources=[];
     foreach($sources as $kind=>$row)if(in_array($kind,$modules,true))$activeSources[$kind]=$row['provider'];
-    return ['club'=>$c['name'],'screen'=>$d['name'],'mode'=>$d['mode'],'language'=>$d['language'],'dwell'=>(int)$d['dwell'],'partner_search'=>in_array('partner_search',$modules,true)?cd_partner_rows($db,$club,$now->getTimestamp()):[],'module_dwell'=>(object)array_intersect_key($layout['dwell'],array_flip($modules)),'color'=>$c['color'],'modules'=>$modules,'welcome'=>$layout['welcome']!==''?$layout['welcome']:$b['welcome'],'has_logo'=>(bool)$b['logo_size'],'brand_revision'=>$c['updated'],'date'=>$today,'content'=>cd_active_content($db,$club,$modules,$today,$slug),'dining'=>in_array('restaurant',$modules,true)?cd_dining_today(cd_dining_get($db,$club,$scope),$now):null,'sources'=>$activeSources];
+    $dining=null;
+    if(in_array('restaurant',$modules,true)){
+        $config=cd_dining_get($db,$club,$scope);
+        if($c['plan']==='INFO'){$config['special']=[];$config['offers']=[];}
+        $dining=cd_dining_today($config,$now);
+    }
+    return ['club'=>$c['name'],'screen'=>$d['name'],'plan'=>$c['plan'],'mode'=>$c['plan']==='INFO'?'INFO':$d['mode'],'language'=>$d['language'],'dwell'=>(int)$d['dwell'],'partner_search'=>in_array('partner_search',$modules,true)?cd_partner_rows($db,$club,$now->getTimestamp()):[],'module_dwell'=>(object)array_intersect_key($layout['dwell'],array_flip($modules)),'color'=>$c['color'],'modules'=>$modules,'welcome'=>$layout['welcome']!==''?$layout['welcome']:$b['welcome'],'has_logo'=>(bool)$b['logo_size'],'brand_revision'=>$c['updated'],'date'=>$today,'content'=>cd_active_content($db,$club,$modules,$today,$slug),'dining'=>$dining,'sources'=>$activeSources];
 }
 function cd_snapshot_image(PDO $db,string $club,string $slug,?string $scope,mixed $id):?string{
     $snapshot=cd_snapshot($db,$club,$slug,$scope);
