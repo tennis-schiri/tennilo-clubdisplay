@@ -2,6 +2,8 @@
 // TENNILO ClubDisplay | Copyright © 2026 TENNILO | Alle Rechte vorbehalten.
 const $ = id => document.getElementById(id);
 const pilot = location.hostname === 'clubdisplay.ntc93.de';
+const personalDemo=!pilot&&location.hostname==='clubdisplay.tennilo.de'&&new URLSearchParams(location.search).get('customize')==='1';
+let personalBrand=null;
 if(pilot){const logo=document.getElementById('brand-logo');logo.src='assets/ntc93-logo.png';logo.alt='Neuenhagener Tennisclub 93 e. V.';}
 let lang='de', view='info', slide=0, last=Date.now(), started=Date.now(), court=null, message='';
 const dwell=12000, idle=60000;
@@ -1056,7 +1058,7 @@ function syncLanguageButton(){
   button.setAttribute('aria-label',label);
   button.title=label;
 }
-function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:'';$('mode').hidden=view!=='info';$('mode-dot').hidden=view!=='info';$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}syncLanguageButton();syncFullscreen();renderWeatherHeader();infoControls();
+function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=personalBrand?personalBrand.name:l.club;$('mode').textContent=view==='info'?l.info:'';$('mode').hidden=view!=='info';$('mode-dot').hidden=view!=='info';$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}syncLanguageButton();syncFullscreen();renderWeatherHeader();infoControls();
 renderNav();
 const active=view==='info'?smartScreenKey(screens[slide]):view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('weekend-screen',active.startsWith('weekend:'));document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active)||greetingEvents.has(active)||active.startsWith('holiday:'));document.body.classList.toggle('restaurant-screen',active==='restaurant');let html='';
 if(greetingMatches.has(active))html=matchGreetingView(active);else if(greetingEvents.has(active))html=eventGreetingView(active);else if(active.startsWith('holiday:'))html=smartHolidayView(active);else if(active.startsWith('weekend:'))html=smartWeekendView(active);else if(active==='open-countdown')html=smartCountdownView();else if(active==='partners'||active.startsWith('partners:'))html=partnerBoardView(active);else switch(active){
@@ -1249,4 +1251,46 @@ setInterval(()=>{const now=Date.now();clock();const second=Math.floor(now/1000);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
-if(!pilot)leagueData=demoLeague();syncMatchGreetings();render();refreshLeague();refreshEvents();refreshWeather();refreshNews();refreshMatchball();refreshPartnerBoard();if(pilot){refreshOccupancy();setInterval(refreshOccupancy,60000);}setInterval(refreshMatchball,60000);setInterval(refreshPartnerBoard,60000);setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);
+function applyPersonalBrand(brand){
+  if(!personalDemo)return;
+  personalBrand=brand;
+  const root=document.documentElement;
+  root.dataset.personalDemo='true';
+  root.style.setProperty('--club-color',brand.color);
+  const title=$('ntc-brand-title');title.replaceChildren(document.createTextNode(brand.name+' '));
+  const small=document.createElement('small');small.textContent='ClubDisplay';title.append(small);
+  const logo=$('brand-logo');logo.src=brand.logo||'assets/clubdisplay.png';logo.alt=brand.logo?brand.name:'TENNILO ClubDisplay';
+  document.title=brand.name+' · ClubDisplay Demo';
+  leagueData=demoLeague();
+  for(const row of leagueData.matches)for(const key of ['home','away'])row[key]=row[key].replace('TC Demo',brand.name);
+  syncMatchGreetings();go('home');
+}
+function initPersonalDemo(){
+  if(!personalDemo)return;
+  const dialog=$('personal-demo-dialog'),form=$('personal-demo-form'),edit=$('personal-demo-edit');
+  edit.hidden=false;
+  const open=()=>{if(personalBrand){$('personal-name').value=personalBrand.name;$('personal-color').value=personalBrand.color;}if(!dialog.open)dialog.showModal();};
+  edit.addEventListener('click',open);
+  $('personal-cancel').addEventListener('click',()=>dialog.close());
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const name=$('personal-name').value.trim(),color=$('personal-color').value,file=$('personal-logo').files[0],status=$('personal-status'),submit=$('personal-submit');
+    if(!name||name.length>60||!/^#[0-9a-f]{6}$/i.test(color))return;
+    status.textContent='';submit.disabled=true;
+    try{
+      let logo=$('personal-remove-logo').checked?'':personalBrand?.logo||'';
+      if(file){
+        if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('Bitte PNG, JPG oder WebP bis 5 MB wählen.');
+        const bitmap=await createImageBitmap(file);
+        const scale=Math.min(1,512/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+        canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+        logo=canvas.toDataURL('image/png');
+      }
+      applyPersonalBrand({name,color,logo});
+      dialog.close();$('personal-logo').value='';$('personal-remove-logo').checked=false;
+    }catch(err){status.textContent=err.message||'Logo konnte nicht gelesen werden.';}finally{submit.disabled=false;}
+  });
+  open();
+}
+if(!pilot)leagueData=demoLeague();syncMatchGreetings();render();initPersonalDemo();refreshLeague();refreshEvents();refreshWeather();refreshNews();refreshMatchball();refreshPartnerBoard();if(pilot){refreshOccupancy();setInterval(refreshOccupancy,60000);}setInterval(refreshMatchball,60000);setInterval(refreshPartnerBoard,60000);setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);

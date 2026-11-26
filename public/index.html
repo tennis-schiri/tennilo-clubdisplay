@@ -17,9 +17,9 @@
     document.getElementById('favicon').href = 'assets/ntc93-logo.png';
   }
 </script>
-<link rel="stylesheet" href="assets/app.css?v=04100">
-<script defer src="assets/app.js?v=04100"></script>
-<script defer src="assets/auto-update.js?v=04100"></script>
+<link rel="stylesheet" href="assets/app.css?v=04101">
+<script defer src="assets/app.js?v=04101"></script>
+<script defer src="assets/auto-update.js?v=04101"></script>
 </head>
 <body class="fixed-screen">
 <header>
@@ -27,7 +27,7 @@
   <div class="brand"><img id="brand-logo" src="assets/clubdisplay.png" alt="TENNILO ClubDisplay"><span class="ntc-brand-title" id="ntc-brand-title">NTC 93 <small>ClubDisplay</small></span><span id="header-advent-candles" class="header-advent-candles" aria-hidden="true" hidden></span><span id="header-birthday" class="header-birthday" hidden></span><span class="brand-subline"><span id="club">Vereinsdisplay</span><a id="product-link" class="product-link" href="https://tennilo.de/clubdisplay/" target="_blank" rel="noopener noreferrer" hidden>Zur Produktseite ↗</a></span></div>
   <div class="clock"><strong id="clock">--:--</strong><span id="date"></span></div>
   <button id="weather-head" data-action="weather" aria-label="Wetterdetails">Wetter …</button>
-  <div class="tools"><button id="language" aria-label="Switch to English"><svg class="language-flag" viewBox="0 0 60 36" aria-hidden="true" focusable="false"><path fill="#012169" d="M0 0h60v36H0z"/><path stroke="#fff" stroke-width="8" d="m0 0 60 36M60 0 0 36"/><path stroke="#C8102E" stroke-width="3" d="m0 0 30 18m0 0 30 18m0-36L30 18m0 0L0 36"/><path fill="#fff" d="M24 0h12v36H24zM0 12h60v12H0z"/><path fill="#C8102E" d="M27 0h6v36h-6zM0 15h60v6H0z"/></svg><span>EN</span></button><button id="fullscreen" aria-label="Vollbild">⛶</button></div>
+  <div class="tools"><button id="personal-demo-edit" type="button" hidden aria-label="Vereinsvorschau bearbeiten">Verein ändern</button><button id="language" aria-label="Switch to English"><svg class="language-flag" viewBox="0 0 60 36" aria-hidden="true" focusable="false"><path fill="#012169" d="M0 0h60v36H0z"/><path stroke="#fff" stroke-width="8" d="m0 0 60 36M60 0 0 36"/><path stroke="#C8102E" stroke-width="3" d="m0 0 30 18m0 0 30 18m0-36L30 18m0 0L0 36"/><path fill="#fff" d="M24 0h12v36H24zM0 12h60v12H0z"/><path fill="#C8102E" d="M27 0h6v36h-6zM0 15h60v6H0z"/></svg><span>EN</span></button><button id="fullscreen" aria-label="Vollbild">⛶</button></div>
 </header>
 <main id="main" tabindex="-1">
   <div class="eyebrow"><span class="status-dot" id="mode-dot"></span><span id="mode"></span><span class="tag" id="demo"></span></div>
@@ -44,7 +44,7 @@
   </div>
 </main>
 <nav id="nav" aria-label="Menü"></nav>
-<footer><span id="notice"></span><span class="footer-credit"><span id="credit-label">Design &amp; Entwicklung</span><img src="assets/tennilo-footer-logo.png" alt="TENNILO" width="184" height="34"><span class="footer-credit-domain">tennilo.de</span></span><span class="version">v0.4.100</span></footer>
+<footer><span id="notice"></span><span class="footer-credit"><span id="credit-label">Design &amp; Entwicklung</span><img src="assets/tennilo-footer-logo.png" alt="TENNILO" width="184" height="34"><span class="footer-credit-domain">tennilo.de</span></span><span class="version">v0.4.101</span></footer>
 <dialog id="admin-dialog" aria-labelledby="admin-title">
   <form id="admin-form">
     <h2 id="admin-title">Admin-Freigabe</h2>
@@ -54,5 +54,11 @@
     <div class="actions"><button type="button" id="admin-cancel">Abbrechen</button><button type="submit" id="admin-submit" class="primary">Vollbild verlassen</button></div>
   </form>
 </dialog>
+<dialog id="personal-demo-dialog" aria-labelledby="personal-title"><form id="personal-demo-form">
+<h2 id="personal-title">ClubDisplay für euren Verein</h2><p>Kostenlose, interaktive Vorschau mit fiktiven Buchungen und Beispieldaten. Name, Farbe und Logo bleiben im Browser; kein Upload an TENNILO.</p>
+<label for="personal-name">Vereinsname</label><input id="personal-name" required maxlength="60" placeholder="TC Musterstadt">
+<label for="personal-color">Vereinsfarbe</label><input type="color" id="personal-color" value="#21d5db">
+<label for="personal-logo">Vereinslogo (optional · PNG, JPG, WebP · bis 5 MB)</label><input type="file" id="personal-logo" accept="image/png,image/jpeg,image/webp"><label class="personal-check"><input type="checkbox" id="personal-remove-logo"> Bisheriges Logo entfernen</label>
+<p id="personal-status" role="status"></p><div class="actions"><button type="button" id="personal-cancel">Abbrechen</button><button type="submit" class="primary" id="personal-submit">Vereinsdemo starten</button></div><p>Keine Registrierung. Keine echte Buchung. Die Vorschau wird nach Neuladen zurückgesetzt. Wetterbeispiel: Neuenhagen.</p></form></dialog>
 <noscript>Bitte JavaScript aktivieren.</noscript>
 </body></html>
