@@ -5,11 +5,15 @@ on:
       date:
         description: 'Termindatum (YYYY-MM-DD)'
         required: true
-        default: '2027-03-04'
+        default: '2027-06-01'
+      end_date:
+        description: 'Enddatum (optional; leer = derselbe Tag)'
+        required: false
+        default: '2027-06-30'
       title:
-        description: 'Suchwort im Titel'
-        required: true
-        default: 'Regelworkshop'
+        description: 'Suchwort im Titel (optional)'
+        required: false
+        default: ''
   push:
     branches: [main]
     paths:
@@ -23,12 +27,14 @@ jobs:
     steps:
       - name: WordPress-Quelle und Display-Feed vergleichen
         env:
-          EVENT_DATE: ${{ inputs.date || '2027-03-04' }}
-          EVENT_TITLE: ${{ inputs.title || 'Regelworkshop' }}
+          EVENT_DATE: ${{ inputs.date || '2027-06-01' }}
+          EVENT_END: ${{ github.event_name == 'push' && '2027-06-30' || inputs.end_date }}
+          EVENT_TITLE: ${{ inputs.title || '' }}
         run: |
           python3 - <<'PY'
           import datetime as dt, json, os, urllib.request, urllib.parse
           day=dt.date.fromisoformat(os.environ['EVENT_DATE'])
+          end=dt.date.fromisoformat(os.environ['EVENT_END']) if os.environ['EVENT_END'] else day
           title=os.environ['EVENT_TITLE'].casefold()
           def fetch(url):
               req=urllib.request.Request(url,headers={'User-Agent':'TENNILO ClubDisplay calendar diagnostic','Cache-Control':'no-cache'})
@@ -40,7 +46,7 @@ jobs:
               return ''.join(c for c in unescape(str(s)).casefold() if c.isalnum())
           from zoneinfo import ZoneInfo
           for label,url in [
-              ('WordPress','https://ntc93.com/wp-json/tribe/events/v1/events?'+urllib.parse.urlencode({'start_date':str(day)+' 00:00:00','end_date':str(day)+' 23:59:59','per_page':50})),
+              ('WordPress','https://ntc93.com/wp-json/tribe/events/v1/events?'+urllib.parse.urlencode({'start_date':str(day)+' 00:00:00','end_date':str(end)+' 23:59:59','per_page':50})),
               ('ClubDisplay','https://clubdisplay.ntc93.de/events.php')]:
               try:
                   data=fetch(url)
@@ -52,10 +58,10 @@ jobs:
                       print('Range:',data.get('from'),data.get('to'))
                   for e in events[:30]:
                       print(label, 'EVENT:',json.dumps({k:e.get(k) for k in ['title','start','start_date','end','end_date'] if k in e},ensure_ascii=False))
-                  matches=[e for e in events if normalized(title) in normalized(e.get('title','')) and str(e.get('start',e.get('start_date',''))).startswith(str(day))]
-                  print(label, 'MATCH' if matches else 'NOT FOUND')
+                  matches=[e for e in events if normalized(title) in normalized(e.get('title','')) and str(e.get('start',e.get('start_date','')))[:10]<=str(end) and str(e.get('end',e.get('end_date',e.get('start',e.get('start_date','')))))[:10]>=str(day)]
+                  print(label, 'MATCH' if matches else 'NOT FOUND', len(matches))
                   for e in matches:
-                      print(json.dumps({k:e.get(k) for k in ['title','start','start_date','end','end_date','url'] if k in e},ensure_ascii=False))
+                      print(json.dumps({k:e.get(k) for k in ['title','start','start_date','end','end_date','allDay','all_day','url'] if k in e},ensure_ascii=False))
               except Exception as e:
                   print(label, 'CHECK ERROR:', type(e).__name__,str(e)[:200])
           PY
