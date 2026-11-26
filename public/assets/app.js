@@ -142,7 +142,7 @@ function smartOpenCountdown(events,now=Date.now()){
   if(events?.status==='unavailable')return [];
   const today=smartDayNumber(now),unique=new Map();
   for(const e of events?.events||[]){
-    if(!e||typeof e.title!=='string'||!/^\s*(?:\d+\.?\s*)?NEUENHAGEN\s+(?:SENIOR\s+)?OPEN\s*$/i.test(e.title)||e.cancelled===true||e.cancelled==='true'||String(e.status||'').toLowerCase()==='cancelled')continue;
+    if(!e||typeof e.title!=='string'||!(/^\s*(?:\d+\.?\s*)?NEUENHAGEN\s+(?:SENIOR\s+)?OPEN\s*$/i.test(e.title)||(e.demo===true&&e.title==='DEMO OPEN'))||e.cancelled===true||e.cancelled==='true'||String(e.status||'').toLowerCase()==='cancelled')continue;
     const start=Date.parse(e.start),end=Date.parse(e.end),days=smartDayNumber(e.start)-today;
     if(!Number.isFinite(days)||days<0||days>100||!Number.isFinite(end)||end<=start||now>=start-1800000)continue;
     unique.set(eventGreetingKey(e),{event:e,days});
@@ -458,7 +458,7 @@ async function refreshEvents(){
   if(!pilot){
     const d=new Date();d.setHours(17,0,0,0);
     const event=(title,offset,hours)=>({title,start:new Date(d.getTime()+offset*86400000).toISOString(),end:new Date(d.getTime()+offset*86400000+hours*3600000).toISOString()});
-    eventData={status:'ok',events:[event('Clubabend (Demo)',0,3),event('Clubturnier (Demo)',2,4),event('Open-Turnier (Demo)',75,8)]};
+    eventData={status:'ok',events:[event('Clubabend (Demo)',0,3),event('Clubturnier (Demo)',2,4),{...event('DEMO OPEN',75,8),demo:true}]};
     syncMatchGreetings();if(view==='calendar'||(view==='info'&&smartScreenKey(screens[slide])==='calendar'))render();return;
   }
   if(eventFetching)return;eventFetching=true;
