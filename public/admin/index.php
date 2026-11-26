@@ -18,7 +18,11 @@ if(!is_writable($storage))cd_unavailable('STORAGE_PERMISSIONS');
 $dir=realpath($storage);$root=realpath($_SERVER['DOCUMENT_ROOT']??'');
 if(!$dir||!$root||$dir!==realpath(dirname(__DIR__)).DIRECTORY_SEPARATOR.'clubdisplay-admin'||$dir!==$root.DIRECTORY_SEPARATOR.'clubdisplay-admin')cd_unavailable('STORAGE_NOT_PRIVATE');
 if(@file_get_contents($dir.'/.htaccess')!=="Require all denied\n")cd_unavailable('STORAGE_GUARD');
-if(!preg_match('/^[a-f0-9]{64}$/D',$guardToken)||!hash_equals($guardToken,(string)@file_get_contents($dir.'/.deployment-verified')))cd_unavailable('STORAGE_GUARD');
+// Every deployment has its own verified marker. Never invalidate the active release
+// by replacing its marker before the new index.php has reached the server.
+if(!preg_match('/^[a-f0-9]{64}$/D',$guardToken))cd_unavailable('STORAGE_GUARD');
+$guardPath=$dir.'/.deployment-verified-'.hash('sha256',$guardToken);
+if(is_link($guardPath)||!hash_equals($guardToken,(string)@file_get_contents($guardPath)))cd_unavailable('STORAGE_GUARD');
 if(is_link($dir.'/clubdisplay-admin.sqlite'))cd_unavailable('STORAGE_NOT_PRIVATE');
 if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true))cd_unavailable('SQLITE_DRIVER');
 umask(0077);

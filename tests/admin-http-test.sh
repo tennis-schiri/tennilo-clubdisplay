@@ -8,7 +8,7 @@ trap cleanup EXIT
 mkdir -p "$tmp/www/admin" "$tmp/www/clubdisplay-admin" "$tmp/sessions"
 cp public/admin/* "$tmp/www/admin/"
 cp deploy/admin-storage.htaccess "$tmp/www/clubdisplay-admin/.htaccess"
-php -r '$p="test-operator-123456789";$g=bin2hex(random_bytes(32));$f=$argv[1]."/www/admin/index.php";file_put_contents($f,str_replace(["__CD_ADMIN_PASSWORD_HASH__","__CD_ADMIN_GUARD_TOKEN__"],[password_hash($p,PASSWORD_BCRYPT),$g],file_get_contents($f)));file_put_contents($argv[1]."/www/clubdisplay-admin/.deployment-verified",$g);' "$tmp"
+php -r '$p="test-operator-123456789";$g=bin2hex(random_bytes(32));$f=$argv[1]."/www/admin/index.php";file_put_contents($f,str_replace(["__CD_ADMIN_PASSWORD_HASH__","__CD_ADMIN_GUARD_TOKEN__"],[password_hash($p,PASSWORD_BCRYPT),$g],file_get_contents($f)));file_put_contents($argv[1]."/www/clubdisplay-admin/.deployment-verified-".hash("sha256",$g),$g);' "$tmp"
 cat > "$tmp/router.php" <<'PHP'
 <?php
 $_SERVER['HTTP_HOST']='clubdisplay.tennilo.de';
@@ -28,6 +28,20 @@ get(){ local jar="$1" url="$2" expected="$3"; local status; status="$(curl -sS -
 post(){ local jar="$1" url="$2" expected="$3"; shift 3; local status; status="$(curl -sS -b "$jar" -c "$jar" -o "$tmp/body" -w '%{http_code}' "$url" "$@")"; [[ "$status" == "$expected" ]] || { echo "POST status $status expected $expected"; cat "$tmp/server.log"; exit 1; }; }
 csrf(){ grep -oE 'name="csrf" value="[a-f0-9]{64}"' "$tmp/body" | sed -n '1{s/.*value="//;s/"//;p;}'; }
 login(){ local jar="$1" url="$2" pass="$3"; shift 3; get "$jar" "$url" 200; local t; t="$(csrf)"; post "$jar" "$url" 303 --data-urlencode "csrf=$t" --data-urlencode 'action=login' --data-urlencode "password=$pass" "$@"; get "$jar" "$url" 200; }
+# Staging another release must not invalidate the currently deployed entrypoint.
+marker="$(find "$tmp/www/clubdisplay-admin" -name '.deployment-verified-*' -print -quit)"
+[[ -n "$marker" ]]
+php -r '$g=bin2hex(random_bytes(32));file_put_contents($argv[1]."/.deployment-verified-".hash("sha256",$g),$g);' "$tmp/www/clubdisplay-admin"
+get "$other" "$base" 200
+# A missing or incorrect active marker must still block access, including the public QR route.
+mv "$marker" "$marker.saved"
+get "$other" "$base?partner=submit&club=ntc93" 503
+grep -Fxq 'CD_ADMIN_STORAGE_GUARD' "$tmp/body"
+printf '%064d' 0 > "$marker"
+get "$other" "$base" 503
+grep -Fxq 'CD_ADMIN_STORAGE_GUARD' "$tmp/body"
+mv "$marker.saved" "$marker"
+get "$other" "$base" 200
 get "$other" "$base?preview-data=1&club=ntc93&screen=hall" 403
 post "$other" "$base?device=1" 403 -H 'Content-Type: application/json' --data '{"action":"snapshot","token":"invalid"}'
 login "$op" "$base" test-operator-123456789

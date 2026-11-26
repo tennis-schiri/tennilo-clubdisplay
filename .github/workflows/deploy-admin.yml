@@ -75,7 +75,11 @@ jobs:
           deny "clubdisplay-admin/clubdisplay-admin.sqlite-wal"
           deny "clubdisplay-admin/clubdisplay-admin.sqlite-shm"
           deny "clubdisplay-admin/clubdisplay-admin.sqlite-journal"
-          upload "$tmp/guard" clubdisplay-admin/.deployment-verified
+          # Stage the new release marker without changing any marker used by an active index.php.
+          # The legacy fixed marker is also left untouched during migration.
+          guard_name=".deployment-verified-$(sha256sum "$tmp/guard" | cut -d' ' -f1)"
+          upload "$tmp/guard" "clubdisplay-admin/$guard_name"
+          deny "clubdisplay-admin/$guard_name"
           deny "clubdisplay-admin/.deployment-verified"
           upload deploy/backup-admin.php clubdisplay-admin/backup-admin.php
           deny "clubdisplay-admin/backup-admin.php"
@@ -89,7 +93,12 @@ jobs:
           upload public/admin/lib.php admin/lib.php
           upload public/admin/admin.css admin/admin.css
           upload "$tmp/index.php" admin/index.php
-          status="$(curl --silent --show-error --max-time 30 --write-out '%{http_code}' "https://clubdisplay.tennilo.de/admin/?run=${GITHUB_RUN_ID}" -o "$tmp/login")"
+          # PHP opcode caches can briefly retain the old entrypoint after upload.
+          for attempt in {1..12}; do
+            status="$(curl --silent --show-error --max-time 30 --write-out '%{http_code}' "https://clubdisplay.tennilo.de/admin/?run=${GITHUB_RUN_ID}&attempt=$attempt" -o "$tmp/login")"
+            if [[ "$status" == 200 ]] && grep -Fq 'Administrator-Anmeldung' "$tmp/login"; then break; fi
+            sleep 5
+          done
           if [[ "$status" != 200 ]]; then
             diagnostic="$(grep -Ex 'CD_ADMIN_(HASH|STORAGE_CONFIG|STORAGE_DIRECTORY|STORAGE_PERMISSIONS|STORAGE_NOT_PRIVATE|STORAGE_GUARD|SQLITE_DRIVER|DATABASE_INIT)' "$tmp/login" || true)"
             echo "::error::Admin HTTPS status $status; diagnostic: ${diagnostic:-UNKNOWN}"
@@ -116,4 +125,17 @@ jobs:
           status="$(curl --silent --show-error --max-time 30 --write-out '%{http_code}' -o "$tmp/preview" "https://clubdisplay.tennilo.de/admin/?preview-data=1&club=ntc93&screen=hall")"
           [[ "$status" == 403 ]]
           deny "clubdisplay-admin/clubdisplay-admin.sqlite"
+          # Verify the actual QR destination without submitting any real requests.
+          status="$(curl --silent --show-error --max-time 30 --write-out '%{http_code}' "https://clubdisplay.tennilo.de/admin/?partner=submit&club=ntc93&run=${GITHUB_RUN_ID}" -o "$tmp/partner-form")"
+          if [[ "$status" == 200 ]]; then
+            grep -Fq 'Spielpartner gesucht' "$tmp/partner-form"
+            grep -Fq 'Anfrage absenden' "$tmp/partner-form"
+            echo 'NTC QR form reachable.'
+          elif [[ "$status" == 404 ]] && grep -Fq 'Spielpartnerbörse nicht freigeschaltet.' "$tmp/partner-form"; then
+            echo 'NTC board intentionally disabled; public route reachable.'
+          else
+            echo "::error::NTC QR destination failed (HTTP $status)."
+            exit 1
+          fi
+          deny "clubdisplay-admin/$guard_name"
           echo 'Separate login pages and managed player reachable; unauthenticated device and preview denied.'
