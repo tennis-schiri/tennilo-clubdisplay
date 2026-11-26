@@ -356,3 +356,7 @@ check(count(cd_matchball_rows($db,'ntc93','ntc93'))===2);
 cd_matchball_save($db,['club'=>'ntc93','month'=>'2026-09','intent'=>'delete','delete_confirm'=>'1'],[],'ntc93');
 check(count(cd_matchball_rows($db,'ntc93','ntc93'))===1);
 echo "MATCHBALL seed, draft, review, tenant scope, withdrawal and non-reappearing deletion OK\n";
+
+check(cd_community_public($db)===[]);
+try{cd_community_save($db,['club'=>'ntc93','kind'=>'youth','intent'=>'publish','reviewed'=>'1'],[],'test-club');throw new RuntimeException('Cross-club community write accepted');}catch(InvalidArgumentException $e){}
+try{cd_community_save($db,['club'=>'ntc93','kind'=>'youth','intent'=>'publish','reviewed'=>'1'],[],'ntc93');throw new RuntimeException('Missing QR published');}catch(InvalidArgumentException $e){}

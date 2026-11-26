@@ -273,3 +273,6 @@ Eigenständiger NTC-Bereich im geschützten Vereinsadmin: PDF-Originale bis 10 M
 
 ### Spielpartnerbörse: neutrale Gesuchprüfung
 Benachrichtigungs-E-Mail enthält nur noch den Button „Gesuch ansehen“ (kein Entscheidungsschlüssel in der URL). Detailseite zeigt Spielwünsche, LK, Altersbereiche, private Kontaktdaten und E-Mail-Bestätigung sowie getrennte bestätigungspflichtige Freigabe-/Ablehnungsformulare. Alte Links öffnen ebenfalls neutral. Bestehende 48h-Einmal-Token und Jugendschutz bleiben erhalten.
+
+## 0.4.75 · Original-PDF und WhatsApp-Communitys
+MATCHBALL: Original-PDF nach separater, ausdrücklicher öffentlicher Freigabe direkt im eingebetteten Browser-PDF-Viewer anzeigen, ohne verpflichtende Lesefassung. Veröffentlichungsstatus und separate Freigabe werden bei jeder PDF-Bearbeitung zurückgesetzt. Private Originaldownloads bleiben authentifiziert. Alte Ausgaben ohne Original bleiben Lesefassungen. START zeigt die über das NTC-Backend hochgeladenen und ausdrücklich freigegebenen quadratischen QR-PNGs für Jugend und Aktive/Senioren; keine Einladungscodes im öffentlichen Git-Repo. Einladungen sind nach Freigabe über die öffentliche Anzeige abrufbar; Community-Admins müssen Beitritte kontrollieren. Keine Originaldateien automatisch aus Chat-Anhängen übernommen. Native PDF-Viewer-Funktion hängt vom eingesetzten Browser ab.

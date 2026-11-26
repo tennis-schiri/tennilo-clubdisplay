@@ -564,23 +564,35 @@ async function refreshNews(){
 }
 function newsDate(p){return new Date(p.date).toLocaleDateString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'2-digit',year:'numeric'});}
 // NTC Matchball: deliberately public-safe editorial summaries of supplied member PDFs.
-let matchballIssues=[],matchballBusy=false;
+let matchballIssues=[],communityCodes=[],matchballBusy=false;
 async function refreshMatchball(){
   if(!pilot||matchballBusy)return;matchballBusy=true;const before=JSON.stringify(matchballIssues);
   try{
     const res=await fetch('https://clubdisplay.tennilo.de/admin/?matchball=feed&club=ntc93',{cache:'no-store',signal:AbortSignal.timeout(15000)});
     if(!res.ok)throw Error('feed');const data=await res.json();if(!Array.isArray(data.issues))throw Error('format');
+    const oldCommunities=JSON.stringify(communityCodes);
+    communityCodes=Array.isArray(data.communities)?data.communities.filter(c=>['youth','adults'].includes(c?.kind)&&typeof c.png==='string'&&c.png.length<=3000000&&/^[A-Za-z0-9+/]+={0,2}$/.test(c.png)):[];
+    if(view==='home'&&oldCommunities!==JSON.stringify(communityCodes))render();
     matchballIssues=data.issues.filter(r=>r&&/^20\d{2}-(0[1-9]|1[0-2])$/.test(r.id)&&typeof r.headline==='string'&&typeof r.teaser==='string'&&Array.isArray(r.articles)&&r.articles.every(a=>Array.isArray(a)&&a.length===3&&a.every(v=>typeof v==='string')));
-  }catch{matchballIssues=[];}
+  }catch{matchballIssues=[];if(communityCodes.length){communityCodes=[];if(view==='home')render();}}
   finally{matchballBusy=false;if(before!==JSON.stringify(matchballIssues)&&view==='news'&&openedNews?.matchballId){if(!matchballIssues.some(r=>r.id===openedNews.matchballId))openedNews=null;render();}else if((view==='news'&&!openedNews)||(view==='info'&&smartScreenKey(screens[slide])==='news'))render();}
 }
 function matchballCard(){
   const issue=matchballIssues[0];if(!issue)return '';
-  return '<button type="button" class="panel news-card matchball-card" data-action="matchball-open:0"><span class="matchball-kicker">'+tr('Unser Vereinsnewsletter','Our club newsletter')+'</span><span class="matchball-brand">MATCHBALL <b>'+esc(issue.issue)+'</b></span><span class="news-date">'+esc(issue.month)+'</span><strong class="news-card-title">'+esc(issue.headline)+'</strong><span class="news-excerpt">'+esc(issue.teaser)+'</span><span class="news-read-more">'+tr('Ausgabe ansehen · Archiv','View issue · archive')+' →</span></button>';
+  return '<button type="button" class="panel news-card matchball-card" data-action="matchball-open:0"><span class="matchball-kicker">'+tr('Unser Vereinsnewsletter','Our club newsletter')+'</span><span class="matchball-brand">MATCHBALL <b>'+esc(issue.issue)+'</b></span><span class="news-date">'+esc(issue.month)+'</span><strong class="news-card-title">'+esc(issue.headline)+'</strong><span class="news-excerpt">'+esc(issue.teaser)+'</span><span class="news-read-more">'+(issue.pdf_public?tr('PDF lesen · Archiv','Read PDF · archive'):tr('Ausgabe ansehen · Archiv','View issue · archive'))+' →</span></button>';
+}
+function communityStart(){
+  if(!pilot||!communityCodes.length)return '';
+  const labels={youth:tr('NTC Jugend Community','NTC Junior Community'),adults:tr('NTC Community Aktive / Senioren','NTC Adult / Senior Community')};
+  return '<section class="community-start panel"><div class="community-start-heading"><h2>WhatsApp-Communitys</h2><p>'+tr('Für Vereinsmitglieder · QR-Code mit WhatsApp scannen','For club members · scan the QR code with WhatsApp')+'</p></div><div class="community-start-cards">'+communityCodes.map(c=>'<div class="community-start-card"><strong>'+esc(labels[c.kind])+'</strong><img src="data:image/png;base64,'+c.png+'" alt="'+esc(labels[c.kind])+' QR-Code" draggable="false"></div>').join('')+'</div></section>';
 }
 function matchballReader(index){
   const issue=matchballIssues[index];if(!issue)return null;
   const archive=matchballIssues.map((p,i)=>'<button type="button" class="matchball-edition'+(i===index?' is-current':'')+'" data-action="matchball-open:'+i+'" aria-pressed="'+(i===index)+'">'+esc(p.month)+'</button>').join('');
+  if(issue.pdf_public===true){
+    const src='https://clubdisplay.tennilo.de/admin/?matchball-display-pdf=1&club=ntc93&month='+encodeURIComponent(issue.id)+'#toolbar=1&navpanes=0&view=FitH';
+    return '<div class="news-reader-head"><div><span class="matchball-kicker">'+tr('Vereinsnewsletter · Original-PDF','Club newsletter · Original PDF')+'</span><h1>MATCHBALL '+esc(issue.issue)+' · '+esc(issue.month)+'</h1></div>'+button(tr('Zurück zu den Meldungen','Back to news'),'news-back','primary')+'</div><div class="matchball-archive" aria-label="'+tr('Ausgabenarchiv','Issue archive')+'">'+archive+'</div><div class="matchball-pdf-panel"><iframe class="matchball-pdf" src="'+esc(src)+'" title="'+esc('MATCHBALL '+issue.issue)+'" referrerpolicy="no-referrer"></iframe></div><div class="news-reader-foot"><span>'+tr('Original-PDF · Blättern und Zoomen über den PDF-Viewer','Original PDF · page and zoom controls in the PDF viewer')+'</span></div>';
+  }
   const articles=issue.articles.map(([title,body,page])=>'<section class="matchball-story"><h2>'+esc(title)+'</h2><p>'+esc(body)+'</p><small>'+tr('Originalausgabe: ','Original issue: ')+esc(page)+'</small></section>').join('');
   return '<div class="news-reader-head"><div><span class="matchball-kicker">'+tr('Vereinsnewsletter · Zusammenfassung','Club newsletter · Summary')+'</span><h1>MATCHBALL '+esc(issue.issue)+' · '+esc(issue.month)+'</h1></div>'+button(tr('Zurück zu den Meldungen','Back to news'),'news-back','primary')+'</div><div class="matchball-archive" aria-label="'+tr('Ausgabenarchiv','Issue archive')+'">'+archive+'</div><div id="news-article-scroll" class="panel news-article-scroll matchball-reader" tabindex="0"><h2>'+esc(issue.headline)+'</h2><p class="matchball-original">'+tr('Lesefassung für das ClubDisplay. Das vollständige Original (','ClubDisplay reading edition. The complete original (')+(issue.pages||tr('Seitenzahl nicht angegeben','page count not specified'))+tr(' Seiten) wurde als E-Mail-Newsletter verschickt.',' pages) was distributed by email.')+'</p><div class="matchball-stories">'+articles+'</div></div><div class="news-reader-foot"><span>'+tr('Quelle: NTC MATCHBALL · redaktionelle Zusammenfassung','Source: NTC MATCHBALL · editorial summary')+'</span><div><button data-action="news-up" aria-label="'+tr('Nach oben','Scroll up')+'">↑</button><button data-action="news-down" aria-label="'+tr('Weiterlesen','Read further')+'">↓</button></div></div>';
 }
@@ -802,7 +814,7 @@ case 'home':{
     ['news',l.announcements,tr('Vereinsmeldungen, Hinweise und Informationen aus dem Club.','Read club announcements, notices and information.')]
   ];
   if(partnerBoardData?.enabled)tiles.push(['partners',tr('Spielpartner gesucht','Find a partner'),tr('Gesuch erstellen oder Spielpartner finden.','Create a request or find a partner.')]);
-  html='<div class="home-welcome"><h1>'+esc(l.welcome)+'</h1><p>'+esc(l.intro)+'</p></div><div class="home-tiles">'+tiles.map(([key,title,description])=>'<button type="button" class="tile home-tile" data-action="'+key+'"><span class="home-tile-top"><strong>'+esc(title)+'</strong><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="home-tile-description">'+esc(description)+'</span></button>').join('')+'</div>';
+  html='<div class="home-welcome"><h1>'+esc(l.welcome)+'</h1><p>'+esc(l.intro)+'</p></div><div class="home-tiles">'+tiles.map(([key,title,description])=>'<button type="button" class="tile home-tile" data-action="'+key+'"><span class="home-tile-top"><strong>'+esc(title)+'</strong><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="home-tile-description">'+esc(description)+'</span></button>').join('')+'</div>'+communityStart();
   break;
 }
 case 'courts':if(pilot){html=ebusyView();break;}html='<h1>'+l.booking+'</h1><p>'+l.select+'</p>'+courtList();if(court!==null)html+='<div class="panel" style="margin-top:1rem"><h2>'+l.court+' '+court+'</h2><p>'+l.slot+'</p><div class="actions">'+button(l.confirm,'confirm','primary')+button(l.reset,'reset')+'</div><p role="status" class="message">'+message+'</p></div>';break;

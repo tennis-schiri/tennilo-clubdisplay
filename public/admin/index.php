@@ -35,6 +35,7 @@ if(isset($_GET['partner-maintenance'])){
     try{cd_partner_cleanup($db);$count=cd_partner_outbox($db);header('Content-Type: application/json');echo json_encode(['ok'=>true,'sent'=>$count]);}catch(Throwable $e){http_response_code(503);echo '{"ok":false}';}exit;
 }
 if(isset($_GET['partner']))cd_partner_public($db);
+if(isset($_GET['matchball-display-pdf']))cd_matchball_public_pdf($db);
 if(isset($_GET['matchball']))cd_matchball_feed($db);
 // Device traffic never uses an administrator session. The key travels in a POST body.
 if(isset($_GET['device'])){
@@ -107,7 +108,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             catch(InvalidArgumentException $e){$error=$e->getMessage();}
             catch(Throwable $e){$error='Speichern fehlgeschlagen. Ist die Vereinskennung bereits vergeben?';}
         }
-        if(in_array($action,['display-create','display-save','account','brand','content','media','dining','sources','contract','device-issue','device-revoke','backup','billing','billing-export','source-test','partner-board','matchball'],true)){
+        if(in_array($action,['display-create','display-save','account','brand','content','media','dining','sources','contract','device-issue','device-revoke','backup','billing','billing-export','source-test','partner-board','matchball','community'],true)){
             try{
                 if($action==='account'){if($scope!==null)throw new InvalidArgumentException('Keine Berechtigung.');cd_account($db,(string)($_POST['club']??''),(string)($_POST['new_password']??''),isset($_POST['enabled']));}
                 elseif($action==='brand')cd_save_brand($db,$_POST,$_FILES['logo']??[],$scope);
@@ -115,6 +116,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
                     cd_partner_admin($db,$_POST,$scope);
                 }
                 elseif($action==='matchball')cd_matchball_save($db,$_POST,$_FILES['newsletter_pdf']??[],$scope);
+                elseif($action==='community')cd_community_save($db,$_POST,$_FILES['image']??[],$scope);
                 elseif($action==='content')cd_save_content($db,$_POST,$scope);
                 elseif($action==='media')cd_media_save($db,$_POST,$_FILES['image']??[],$scope);
                 elseif($action==='dining')cd_dining_save($db,$_POST,$scope);
@@ -330,7 +332,7 @@ function contentField(PDO $db,array $c,string $kind,array $row,string $csrf,arra
     <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
     </form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=073"></head><body class="admin-page<?=$fixedClub==='ntc93'?' ntc-portal':''?>"><header><img src="<?=$fixedClub==='ntc93'?'../assets/ntc93-logo.png':'../assets/clubdisplay.png'?>" alt="<?=$fixedClub==='ntc93'?'NTC 93':'TENNILO ClubDisplay'?>"><strong><?=$fixedClub==='ntc93'?'NTC 93 · VEREINSADMINISTRATION':($clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION')?></strong></header><main>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=074"></head><body class="admin-page<?=$fixedClub==='ntc93'?' ntc-portal':''?>"><header><img src="<?=$fixedClub==='ntc93'?'../assets/ntc93-logo.png':'../assets/clubdisplay.png'?>" alt="<?=$fixedClub==='ntc93'?'NTC 93':'TENNILO ClubDisplay'?>"><strong><?=$fixedClub==='ntc93'?'NTC 93 · VEREINSADMINISTRATION':($clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION')?></strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
 <?php if($auth&&!empty($_SESSION['device_link'])):$deviceLink=$_SESSION['device_link'];unset($_SESSION['device_link']);?><section class="panel"><h2>Geräteadresse · nur einmal sichtbar</h2><p>Vertraulich behandeln und am Bildschirm öffnen. Bei Verlust einen neuen Schlüssel erzeugen.</p><input readonly value="<?=cd_h($deviceLink)?>" aria-label="Geräteadresse"><a class="admin-action" href="<?=cd_h($deviceLink)?>" target="_blank" rel="noopener noreferrer">Gerät öffnen</a></section><?php endif?>
@@ -343,7 +345,7 @@ function contentField(PDO $db,array $c,string $kind,array $row,string $csrf,arra
 <?php if($scope===null):?><details class="panel"><summary>+ Neuen Verein anlegen</summary><?php field([],true,$csrf)?></details><?php endif?>
 <?php foreach($clubs as $club):$displays=cd_displays($db,$club['slug']);?><details class="panel" <?=$scope!==null||$focusClub===$club['slug']?'open':''?>><summary><?=cd_h($club['name'])?> <small><?=cd_h(cd_plan_label($club['plan']))?> · <?=count($displays)?> Bildschirme</small></summary>
 <?php if($scope===null):?><details class="subpanel"><summary>Vereinsprofil & Lizenz</summary><?php field($club,false,$csrf)?></details><details class="subpanel"><summary>Vereinszugang</summary><?php accountField($club,cd_account_row($db,$club['slug']),$csrf)?></details><details class="subpanel"><summary>Vertrag & Bildschirmkontingent</summary><?php contractField($club,cd_contract($db,$club['slug']),$csrf)?></details><details class="subpanel" <?=$focusAction==='billing'&&$focusClub===$club['slug']?'open':''?>><summary>Abrechnungsdaten</summary><?php billingField($club,cd_billing($db,$club['slug']),$csrf)?></details><?php endif?>
-<details class="subpanel" <?=in_array($focusAction,['sources','source-test'],true)&&$focusClub===$club['slug']?'open':''?>><summary>Datenquellen & Schnittstellen</summary><?php sourceField($club,cd_sources($db,$club['slug'],$scope),$csrf,$scope)?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="club" value="<?=cd_h($club['slug'])?>"><button name="action" value="source-test">Freigegebene Datenfeeds prüfen</button></form></details><details class="subpanel" <?=$focusAction==='partner-board'&&$focusClub===$club['slug']?'open':''?>><summary>Spielpartnerbörse</summary><?php cd_partner_field($db,$club,$csrf,$scope)?></details><?php if($club['slug']==='ntc93'):?><details class="subpanel" <?=$focusAction==='matchball'&&$focusClub===$club['slug']?'open':''?>><summary>MATCHBALL – Newsletter</summary><?php cd_matchball_field($db,$club,$csrf,$scope)?></details><?php endif?><h2>Gemeinsame Vereinsinhalte</h2><p>Einmal pflegen und gezielt auf allen oder ausgewählten Bildschirmen veröffentlichen. Für gekoppelte Geräte wirksam.</p>
+<details class="subpanel" <?=in_array($focusAction,['sources','source-test'],true)&&$focusClub===$club['slug']?'open':''?>><summary>Datenquellen & Schnittstellen</summary><?php sourceField($club,cd_sources($db,$club['slug'],$scope),$csrf,$scope)?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="club" value="<?=cd_h($club['slug'])?>"><button name="action" value="source-test">Freigegebene Datenfeeds prüfen</button></form></details><details class="subpanel" <?=$focusAction==='partner-board'&&$focusClub===$club['slug']?'open':''?>><summary>Spielpartnerbörse</summary><?php cd_partner_field($db,$club,$csrf,$scope)?></details><?php if($club['slug']==='ntc93'):?><details class="subpanel" <?=$focusAction==='matchball'&&$focusClub===$club['slug']?'open':''?>><summary>MATCHBALL – Newsletter</summary><?php cd_matchball_field($db,$club,$csrf,$scope)?></details><details class="subpanel" <?=$focusAction==='community'&&$focusClub===$club['slug']?'open':''?>><summary>WhatsApp-Communitys</summary><?php cd_community_field($db,$club,$csrf,$scope)?></details><?php endif?><h2>Gemeinsame Vereinsinhalte</h2><p>Einmal pflegen und gezielt auf allen oder ausgewählten Bildschirmen veröffentlichen. Für gekoppelte Geräte wirksam.</p>
 <details class="subpanel" <?=$focusAction==='brand'&&$focusClub===$club['slug']?'open':''?>><summary>Logo, Farben & Begrüßung</summary><?php brandField($club,cd_brand($db,$club['slug']),$csrf)?></details>
 <?php foreach(CD_CONTENT as $kind=>$label):if(!in_array($kind,json_decode($club['modules'],true)?:[],true))continue;$rows=cd_content_rows($db,$club['slug'],$kind);?><details class="subpanel"><summary><?=cd_h($label)?> <small><?=count($rows)?> Einträge</small></summary>
 <details class="entry"><summary>+ Eintrag anlegen</summary><?php contentField($db,$club,$kind,[],$csrf,$displays)?></details>

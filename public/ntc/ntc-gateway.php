@@ -64,7 +64,7 @@ if(!$partner&&is_string($_COOKIE['CD_CLUB']??null)&&preg_match('/^[a-zA-Z0-9,-]{
 if($method==='POST'){
     $post=$_POST;
     if(!$partner&&isset($post['club']))$post['club']='ntc93';
-    if(!$partner&&isset($post['action'])&&!in_array($post['action'],['login','logout','brand','content','media','dining','sources','source-test','partner-board','matchball','display-create','display-save','device-issue','device-revoke'],true))ntc_fail(403);
+    if(!$partner&&isset($post['action'])&&!in_array($post['action'],['login','logout','brand','content','media','dining','sources','source-test','partner-board','matchball','community','display-create','display-save','device-issue','device-revoke'],true))ntc_fail(403);
     if($partner&&$_FILES)ntc_fail(400);
     curl_setopt($ch,CURLOPT_POST,true);
     if($_FILES){
