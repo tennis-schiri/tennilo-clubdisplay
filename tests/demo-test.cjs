@@ -50,9 +50,15 @@ const multiHtml=vm.runInContext('eventView()',dateCtx);
 const rangeBlocks=[...multiHtml.matchAll(/<time class="fixture-date-block fixture-date-range"[^>]*>(.*?)<\/time>/g)].map(m=>m[1]);
 assert.equal(rangeBlocks.length,2);
 assert.match(rangeBlocks[0],/31\.12\.2026.*bis.*01\.01\.2027/);
-assert.match(rangeBlocks[1],/15\.06\.2027.*bis.*20\.06\.2027.*Ganztägig/);
+assert.match(rangeBlocks[1],/15\.06\.2027.*bis.*20\.06\.2027/);
+assert.doesNotMatch(rangeBlocks[1],/Ganztägig|All day/);
+assert.match(multiHtml,/<strong>Ganztägig<\/strong>/);
 assert.doesNotMatch(multiHtml,/class="fixture-details event-details"/);
 console.log('Multi-day dates fully inside leading date tiles OK');
 
 for(const block of rangeBlocks)assert.doesNotMatch(block,/Mehrtägig|Multi-day/);
 dateCtx.lang='en';assert.doesNotMatch(vm.runInContext('eventView()',dateCtx),/Multi-day/);
+
+const enCalendar=vm.runInContext('eventView()',dateCtx);
+for(const block of enCalendar.matchAll(/<time class="fixture-date-block[^>]*>(.*?)<\/time>/g))assert.doesNotMatch(block[1],/All day/);
+assert.match(enCalendar,/<strong>All day<\/strong>/);

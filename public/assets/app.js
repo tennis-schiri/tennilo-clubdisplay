@@ -222,7 +222,7 @@ function eventView(){
     const period=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+endTime+(lang==='de'?' Uhr':'');
     const periodLabel=tr('Zeitraum','Time');
     const cell=(label,value)=>'<div class="event-meta-cell"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>';
-    return '<article class="fixture-card event-card'+(link?' event-card-linked':'')+'"><time class="fixture-date-block'+(multi?' fixture-date-range':'')+'" datetime="'+esc(e.start)+'">'+dateBlock+'<span class="fixture-time">'+esc(time)+'</span></time><div class="fixture-content event-content"><strong class="event-title">'+esc(e.title)+'</strong></div><div class="event-meta">'+cell(periodLabel,period)+cell(tr('Ort','Venue'),e.venue||'–')+'</div>'+link+'</article>';
+    return '<article class="fixture-card event-card'+(link?' event-card-linked':'')+'"><time class="fixture-date-block'+(multi?' fixture-date-range':'')+'" datetime="'+esc(e.start)+'">'+dateBlock+(e.allDay?'':'<span class="fixture-time">'+esc(time)+'</span>')+'</time><div class="fixture-content event-content"><strong class="event-title">'+esc(e.title)+'</strong></div><div class="event-meta">'+cell(periodLabel,period)+cell(tr('Ort','Venue'),e.venue||'–')+'</div>'+link+'</article>';
   }).join('');
   const paging='<div class="actions match-pages"><button data-action="event-prev" aria-label="'+tr('Vorherige Seite','Previous page')+'">‹</button><span class="match-page-number"></span><button data-action="event-next" aria-label="'+tr('Nächste Seite','Next page')+'">›</button></div>';
   return title+warning+'<div class="fixture-list">'+cards+'</div>'+paging+source;
