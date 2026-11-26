@@ -16,7 +16,9 @@ function cd_partner_mail_schema(PDO $db):void{
     CREATE TABLE IF NOT EXISTS partner_mail_tokens (ref TEXT PRIMARY KEY REFERENCES partner_posts(ref) ON DELETE CASCADE, hash TEXT UNIQUE NOT NULL, expires INTEGER NOT NULL, status TEXT NOT NULL)");
 }
 function cd_partner_mail_address(PDO $db,string $club):string{
-    $q=$db->prepare('SELECT email FROM partner_mail_settings WHERE club=?');$q->execute([$club]);return (string)$q->fetchColumn();
+    $q=$db->prepare('SELECT email FROM partner_mail_settings WHERE club=?');$q->execute([$club]);$saved=$q->fetchColumn();
+    // NTC's designated role mailbox; an explicitly saved address (including empty) overrides it.
+    return $saved!==false?(string)$saved:($club==='ntc93'?'gesucht@ntc93.de':'');
 }
 function cd_partner_mail_issue(PDO $db,string $club,string $ref,int $now):?array{
     $email=cd_partner_mail_address($db,$club);if($email==='')return null;

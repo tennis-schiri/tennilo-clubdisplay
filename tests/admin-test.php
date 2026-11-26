@@ -188,6 +188,12 @@ check(cd_event_timestamp('2027-02-30 12:00:00')===null);
 echo "Managed event times and missing-end validation passed\n";
 
 $partnerNow=1800000000;
+cd_partner_mail_schema($db);
+check(cd_partner_mail_address($db,'ntc93')==='gesucht@ntc93.de');
+check(cd_partner_mail_address($db,'tennilo-demo')==='');
+// Never send real notifications during automated tests.
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'mail-settings','moderator_email'=>''],'ntc93',$partnerNow);
+check(cd_partner_mail_address($db,'ntc93')==='');
 check(!cd_partner_enabled($db,'ntc93'));
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
 $invite=cd_partner_admin($db,['club'=>'ntc93','intent'=>'invite','verified_member'=>'1'],'ntc93',$partnerNow);

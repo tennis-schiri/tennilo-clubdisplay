@@ -270,8 +270,8 @@ body.fixed-screen>main{min-height:0;min-width:0;padding:.5rem 3vw .35rem;gap:.3r
 body.fixed-screen>main>.eyebrow{min-width:0;height:26px;white-space:nowrap;overflow:hidden}
 body.fixed-screen>main>.eyebrow .tag{min-width:0;overflow:hidden;text-overflow:ellipsis}
 body.fixed-screen #screen{min-width:0;min-height:0;overflow:hidden}
-body.fixed-screen>nav{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.4rem;padding:.45rem 3vw;align-items:stretch;min-width:0}
-body.fixed-screen>nav button{min-width:0;width:100%;height:48px;min-height:48px;padding:.35rem .3rem;white-space:normal;overflow-wrap:anywhere;font-size:clamp(.8rem,1.1vw,1.1rem);line-height:1.12;font-weight:700}
+body.fixed-screen>nav{display:grid;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-rows:48px;gap:clamp(.2rem,.35vw,.4rem);padding:.45rem 3vw;align-items:stretch;min-width:0}
+body.fixed-screen>nav button{min-width:0;width:100%;height:48px;min-height:48px;padding:.35rem .3rem;white-space:normal;overflow-wrap:anywhere;font-size:clamp(.7rem,1.05vw,1.1rem);line-height:1.12;font-weight:700}
 body.fixed-screen>footer{height:30px;min-height:30px;padding:.25rem 3vw;display:flex;flex-wrap:nowrap;gap:.6rem;white-space:nowrap}
 body.fixed-screen>footer #notice{min-width:0;overflow:hidden;text-overflow:ellipsis}
 body.fixed-screen>footer .version{flex:none}
@@ -290,7 +290,7 @@ body.fixed-screen .court-screen .fit-content{flex:0 0 auto}
   body.fixed-screen>header .tools button{min-height:36px;padding:.25rem .5rem}
   body.fixed-screen>main{padding:.3rem .6rem;gap:.25rem;grid-template-rows:23px minmax(0,1fr) 3px}
   body.fixed-screen>main>.eyebrow{height:23px;font-size:.65rem}
-  body.fixed-screen>nav{grid-template-columns:repeat(4,minmax(0,1fr));padding:.3rem .6rem;gap:.25rem}
+  body.fixed-screen>nav{grid-auto-columns:minmax(62px,1fr);grid-template-rows:36px;overflow-x:auto;overflow-y:hidden;padding:.3rem .6rem;gap:.2rem;scrollbar-width:thin}
   body.fixed-screen>nav button{height:36px;min-height:36px;font-size:.75rem;padding:.2rem}
   body.fixed-screen>footer{height:24px;min-height:24px;padding:.2rem .6rem;font-size:.6rem}
 }
