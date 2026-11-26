@@ -732,7 +732,18 @@ function sponsorView(){
 }
 // Court overview: only confirmed eBuSy data may mark a court free or occupied.
 const occupancyCourts={outdoor:[1,2,3,4,5,6,7],indoor:[1,2]};
-let occupancyData=null,occupancyHourKey='';
+let occupancyData=null,occupancyHourKey='',occupancyBusy=false,occupancyRestricted=false;
+async function refreshOccupancy(){
+  if(!pilot||occupancyBusy)return;
+  occupancyBusy=true;
+  try{
+    const r=await fetch('ebusy-occupancy.php',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(55000)});
+    occupancyRestricted=r.status===403;
+    const d=r.ok?await r.json():null;
+    occupancyData=d?.status==='ok'&&Array.isArray(d.slots)?d:null;
+  }catch{occupancyData=null;}
+  finally{occupancyBusy=false;if(view==='info'&&smartScreenKey(screens[slide])==='welcome')render();}
+}
 function occupancyHours(now=Date.now()){
   // Align to the local Berlin hour and advance along the actual time axis (also at DST changes).
   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',minute:'2-digit',second:'2-digit'}).formatToParts(new Date(now));
@@ -758,7 +769,7 @@ function occupancyCourtGraphic(court){
 function occupancyBookingText(area,court,hour){
   const record=occupancyRecord(area,court,hour);
   const status=occupancySlot(area,court,hour);
-  const fallback={unknown:tr('Noch keine Daten','No data yet'),free:tr('Frei','Free'),occupied:tr('Belegt · Name nicht verfügbar','Occupied · name unavailable'),partial:tr('Teilbelegt','Partly occupied'),blocked:tr('Gesperrt','Closed')};
+  const fallback={unknown:tr('Noch keine Daten','No data yet'),free:pilot?tr('Nicht gebucht','Not booked'):tr('Frei','Free'),occupied:tr('Belegt','Occupied'),partial:tr('Teilbelegt','Partly occupied'),blocked:tr('Gesperrt','Closed')};
   // Each approved label may describe a player pair, team, training group or closure.
   const entries=(status==='occupied'||status==='partial'||status==='blocked')&&Array.isArray(record?.bookings)?record.bookings.filter(r=>typeof r?.displayLabel==='string'&&r.displayLabel.trim()):[];
   const body=entries.length?entries.map(r=>{
@@ -775,7 +786,7 @@ function occupancyView(){
   const ready=hours.some(hour=>Object.keys(occupancyCourts).some(area=>occupancyCourts[area].some(court=>occupancySlot(area,court,hour)!=='unknown')));
   const header='<div class="occupancy-timeline-head"><span>'+tr('Platz','Court')+'</span>'+hours.map((hour,i)=>'<div class="occupancy-hour-head'+(i===0?' occupancy-hour-current':'')+'"><strong>'+occupancyTime(hour.start)+' – '+occupancyTime(hour.end)+'</strong><small>'+(i===0?tr('Aktuelle Stunde','Current hour'):tr('Danach','Upcoming'))+'</small></div>').join('')+'</div>';
   const group=(area,title)=>'<section class="occupancy-roster-group occupancy-roster-'+area+'"><div class="occupancy-roster-caption">'+title+'</div>'+occupancyCourts[area].map(court=>'<article class="occupancy-roster-row occupancy-court-'+area+'" aria-label="'+title+' · '+tr('Platz ','Court ')+court+'"><div class="occupancy-court-ident">'+occupancyCourtGraphic(court)+'<strong>'+tr('Platz ','Court ')+court+'</strong></div>'+hours.map(hour=>occupancyBookingText(area,court,hour)).join('')+'</article>').join('')+'</section>';
-  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(!pilot?tr('Fiktive Buchungen · TENNILO-Demo','Fictional bookings · TENNILO demo'):ready?tr('Buchungsübersicht · eBuSy','Booking overview · eBuSy'):tr('eBuSy-Anbindung noch ausstehend','Awaiting eBuSy integration'))+'</span></div><div class="occupancy-roster">' +header+(smartSeason()==='winter'?group('indoor',tr('Hallenplätze','Indoor courts'))+group('outdoor',tr('Außenplätze','Outdoor courts')):group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts')))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.')+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
+  return '<div class="match-heading occupancy-heading"><h1>'+tr('Wer spielt wo?','Who is playing where?')+'</h1><span class="occupancy-status">'+(!pilot?tr('Fiktive Buchungen · TENNILO-Demo','Fictional bookings · TENNILO demo'):ready?tr('Buchungsübersicht · eBuSy','Booking overview · eBuSy'):occupancyRestricted?tr('Live-Belegung nur auf der Vereinsanlage','Live occupancy only at the club'):tr('Belegungsdaten derzeit nicht verfügbar','Occupancy data currently unavailable'))+'</span></div><div class="occupancy-roster">' +header+(smartSeason()==='winter'?group('indoor',tr('Hallenplätze','Indoor courts'))+group('outdoor',tr('Außenplätze','Outdoor courts')):group('outdoor',tr('Außenplätze','Outdoor courts'))+group('indoor',tr('Hallenplätze','Indoor courts')))+'</div><div class="occupancy-footer"><span class="occupancy-status">'+(pilot?tr('Ohne Spielernamen · nicht gebucht bedeutet nicht automatisch bespielbar.','No player names · not booked does not guarantee availability.'):tr('Anzeige der gebuchten Spieler, Mannschaften und Trainingsgruppen.','Shows booked players, teams and training groups.'))+'</span>'+button(tr('Buchungsplan öffnen','Open booking plan'),'courts','primary')+'</div>';
 }
 function refreshOccupancyHour(now){
   if(view==='info'&&smartScreenKey(screens[slide])==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();
@@ -1044,4 +1055,4 @@ setInterval(()=>{const now=Date.now();clock();const second=Math.floor(now/1000);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
-if(!pilot)leagueData=demoLeague();syncMatchGreetings();render();refreshLeague();refreshEvents();refreshWeather();refreshNews();refreshMatchball();refreshPartnerBoard();setInterval(refreshMatchball,60000);setInterval(refreshPartnerBoard,60000);setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);
+if(!pilot)leagueData=demoLeague();syncMatchGreetings();render();refreshLeague();refreshEvents();refreshWeather();refreshNews();refreshMatchball();refreshPartnerBoard();if(pilot){refreshOccupancy();setInterval(refreshOccupancy,60000);}setInterval(refreshMatchball,60000);setInterval(refreshPartnerBoard,60000);setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);

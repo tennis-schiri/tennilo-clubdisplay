@@ -14,6 +14,8 @@ php tests/nuliga-test.php
 php -l public/events.php
 php -l public/admin-pin.php
 php -l public/terminal.php
+php -l public/ntc/ebusy-occupancy.php
+php tests/ebusy-occupancy-test.php
 php tests/events-test.php
 php -l public/news.php
 php tests/news-test.php
@@ -94,6 +96,25 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
 fi
 
 if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
+
+  # NTC only: protect configuration before transferring any secret.
+  printf 'Require all denied\n' > "$tmp/ebusy-deny"
+  printf 'protected\n' > "$tmp/ebusy-probe"
+  upload "$tmp/ebusy-deny" ebusy-private/.htaccess
+  upload "$tmp/ebusy-probe" ebusy-private/probe.txt
+  code="$(curl --silent --show-error --max-time 25 -o /dev/null -w '%{http_code}' "https://$DOMAIN/ebusy-private/probe.txt")"
+  [[ "$code" == 403 ]] || { echo "::error::Private eBuSy directory is not protected (HTTP $code). No credentials uploaded."; exit 1; }
+  php -r '$u=getenv("EBUSY_API_USER")?: ""; $p=getenv("EBUSY_API_PASSWORD")?: ""; $ip=getenv("EBUSY_DISPLAY_IP")?: ""; if($ip!==""&&!filter_var($ip,FILTER_VALIDATE_IP))exit(1); $check=bin2hex(random_bytes(32)); file_put_contents($argv[1],"<?php\nreturn ".var_export(["user"=>$u,"password"=>$p,"ip"=>$ip,"check"=>$check],true).";\n"); file_put_contents($argv[2],$check);' "$tmp/ebusy-config.php" "$tmp/ebusy-check"
+  php -l "$tmp/ebusy-config.php"
+  upload "$tmp/ebusy-config.php" ebusy-private/config.php
+  php -l public/ntc/ebusy-occupancy.php
+  upload public/ntc/ebusy-occupancy.php ebusy-occupancy.php
+  # The diagnostic returns only status/count, not bookings. No secret in URL.
+  printf 'X-ClubDisplay-Check: %s\n' "$(cat "$tmp/ebusy-check")" > "$tmp/ebusy-header"
+  curl --silent --show-error --max-time 55 --header @"$tmp/ebusy-header" -o "$tmp/ebusy-status" "https://$DOMAIN/ebusy-occupancy.php"
+  php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!isset($v["status"]))exit(1); echo "eBuSy diagnostic: ".json_encode(array_intersect_key($v,array_flip(["status","reason","slotCount","onsiteConfigured"])))."\n";' "$tmp/ebusy-status"
+  if ! php -r '$v=json_decode(file_get_contents($argv[1]),true); exit(($v["status"]??null)==="ok"?0:1);' "$tmp/ebusy-status"; then echo "::warning::eBuSy connection or mapping not confirmed. No live occupancy is shown."; fi
+
   php -l public/ntc/ntc-gateway.php
   php -l public/ntc/admin/index.php
   php -l public/ntc/spielpartner/index.php
