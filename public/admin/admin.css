@@ -59,3 +59,16 @@
 }
 
 .partner-mode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}.partner-mode a{display:flex;align-items:center;justify-content:center;text-align:center;min-height:48px;padding:8px;border:1px solid #456075;border-radius:8px;color:#f3f9fa;text-decoration:none;font-weight:700}.partner-mode a.active{background:#21d5db;color:#071a2c;border-color:#21d5db}
+
+/* NTC portal branding only */
+.ntc-portal{background:#06383c;color:#f6faf9}
+.ntc-portal header{border-color:#267578}
+.ntc-portal header img{width:64px;height:64px;object-position:center}
+.ntc-portal header strong,.ntc-portal .member-brand,.ntc-portal .admin-action{color:#f7dc14}
+.ntc-portal :is(.panel,.login,.note){background:#074b4f;border-color:#36787b}
+.ntc-portal .subpanel{background:#063c40;border-color:#36787b}
+.ntc-portal :is(input,select,textarea){background:#052d30;border-color:#54878a}
+.ntc-portal button:not(.danger),.ntc-portal .partner-mode a.active{background:#f7dc14;color:#173b3d;border-color:#f7dc14}
+.ntc-portal :is(.check input,.screen-audience input){accent-color:#f7dc14}
+.portal-logo{display:block;width:76px;height:76px;object-fit:contain;margin:0 auto 12px}
+.portal-credit{text-align:center;font-size:.78rem;color:#a4becd;padding:18px 0}

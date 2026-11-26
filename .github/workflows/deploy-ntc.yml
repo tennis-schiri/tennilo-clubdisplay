@@ -7,6 +7,11 @@ on:
       - 'public/index.html'
       - 'public/assets/**'
       - 'public/*.php'
+      - 'public/ntc/**'
+      - 'public/admin/admin.css'
+      - 'public/admin/player.css'
+      - 'public/admin/player.js'
+      - '.github/workflows/deploy-ntc.yml'
       - 'scripts/deploy.sh'
 permissions:
   contents: read

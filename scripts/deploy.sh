@@ -84,6 +84,34 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
     echo "::warning::Allianz original image unavailable; using light-grey fallback."
   fi
 fi
+
+if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
+  php -l public/ntc/ntc-gateway.php
+  php -l public/ntc/admin/index.php
+  php -l public/ntc/spielpartner/index.php
+  upload public/ntc/ntc-gateway.php ntc-gateway.php
+  for page in admin spielpartner; do
+    upload public/admin/admin.css "$page/admin.css"
+    verify public/admin/admin.css "$page/admin.css"
+    upload "public/ntc/$page/index.php" "$page/index.php"
+  done
+  for asset in player.js player.css; do
+    upload "public/admin/$asset" "admin/$asset"
+    verify "public/admin/$asset" "admin/$asset"
+  done
+  # Do not publish the new QR until both public entrypoints are verified.
+  curl --fail --silent --show-error --max-time 55 "https://$DOMAIN/admin/?release=$RELEASE_ID" -o "$tmp/ntc-admin"
+  grep -Fq 'Vereinsadmin-Anmeldung' "$tmp/ntc-admin"
+  ! grep -Fq 'TENNILO · Kundenverwaltung' "$tmp/ntc-admin"
+  code="$(curl --silent --show-error --max-time 55 -w '%{http_code}' "https://$DOMAIN/spielpartner/?release=$RELEASE_ID" -o "$tmp/ntc-partner")"
+  if [[ "$code" == 200 ]]; then
+    grep -Fq 'Spielpartner gesucht' "$tmp/ntc-partner"
+  elif [[ "$code" == 404 ]]; then
+    grep -Fq 'Spielpartnerbörse nicht freigeschaltet.' "$tmp/ntc-partner"
+  else
+    echo "::error::NTC partner gateway failed (HTTP $code)"; exit 1
+  fi
+fi
 for f in "${files[@]}"; do
   echo "Deploy: $f"
   upload "public/$f" "$f"

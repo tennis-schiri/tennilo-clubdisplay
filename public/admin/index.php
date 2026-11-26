@@ -317,7 +317,7 @@ function contentField(PDO $db,array $c,string $kind,array $row,string $csrf,arra
     <?php if($existing):?><button class="danger" name="intent" value="delete" formnovalidate>Eintrag löschen</button><?php endif?>
     </form><?php
 }
-?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=067"></head><body class="admin-page"><header><img src="../assets/clubdisplay.png" alt="TENNILO ClubDisplay"><strong><?=$clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION'?></strong></header><main>
+?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClubDisplay Administration</title><link rel="stylesheet" href="admin.css?v=068"></head><body class="admin-page<?=$fixedClub==='ntc93'?' ntc-portal':''?>"><header><img src="<?=$fixedClub==='ntc93'?'../assets/ntc93-logo.png':'../assets/clubdisplay.png'?>" alt="<?=$fixedClub==='ntc93'?'NTC 93':'TENNILO ClubDisplay'?>"><strong><?=$fixedClub==='ntc93'?'NTC 93 · VEREINSADMINISTRATION':($clubPortal?'VEREINSADMINISTRATION':'TENNILO ADMINISTRATION')?></strong></header><main>
 <?php if($error):?><p class="error" role="alert"><?=cd_h($error)?></p><?php endif?>
 <?php if($ok):?><p class="ok" role="status"><?=cd_h($ok)?></p><?php endif?>
 <?php if($auth&&!empty($_SESSION['device_link'])):$deviceLink=$_SESSION['device_link'];unset($_SESSION['device_link']);?><section class="panel"><h2>Geräteadresse · nur einmal sichtbar</h2><p>Vertraulich behandeln und am Bildschirm öffnen. Bei Verlust einen neuen Schlüssel erzeugen.</p><input readonly value="<?=cd_h($deviceLink)?>" aria-label="Geräteadresse"><a class="admin-action" href="<?=cd_h($deviceLink)?>" target="_blank" rel="noopener noreferrer">Gerät öffnen</a></section><?php endif?>
@@ -340,4 +340,4 @@ function contentField(PDO $db,array $c,string $kind,array $row,string $csrf,arra
 <details class="subpanel"><summary>+ Bildschirm anlegen</summary><?php displayField($db,$club,[],true,$csrf)?></details>
 <?php foreach($displays as $d):?><details class="subpanel"><summary><?=cd_h($d['name'])?> <small><?=cd_h(cd_plan_label($d['mode']))?> · <?=$d['enabled']?'Aktiv':'Deaktiviert'?></small></summary><?php displayField($db,$club,$d,false,$csrf);deviceField($db,$club,$d,$csrf,$portalUrl)?></details><?php endforeach?>
 </details><?php endforeach?>
-<?php endif?></main></body></html>
+<?php endif?><?php if($fixedClub==='ntc93'):?><footer class="portal-credit">Powered by TENNILO ClubDisplay</footer><?php endif?></main></body></html>
