@@ -240,3 +240,6 @@ The demo has fictional examples. The NTC board is initially disabled; activate i
 
 ## Spielpartnerbörse 0.4.58
 QR-Code und Smartphone-Eingabe ohne Einladungscode. Nur anonyme Kategorien und Referenzen werden veröffentlicht. Auch bei leerer aktivierter Börse erscheint die QR-Folie. Kontaktanfragen werden separat an die Vereinsadministration gemeldet; Freigabe und Weiterleitung nur nach unabhängiger Prüfung beider Identitäten und der Empfängeradresse. eBuSy-Mitgliederabgleich ist perspektivisch vorgesehen, nicht aktiviert.
+
+### Altersgruppen (0.4.60)
+18+: reguläre manuelle Freigabe. 16–17: zusätzliche Jugendschutzprüfung. Unter 16: Einreichung ausschließlich durch Erziehungsberechtigte mit eigenen Kontaktdaten. Altersgruppen bleiben privat. Bei Beteiligung Minderjähriger ist die automatische Weiterleitung von Kontaktdaten serverseitig gesperrt; der Verein vermittelt geschützt und bestätigt den Abschluss. Bestehende Gesuche vor dieser Version wurden unter der bisherigen 18+-Bestätigung angenommen.

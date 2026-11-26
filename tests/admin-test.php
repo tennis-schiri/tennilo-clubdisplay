@@ -196,7 +196,7 @@ cd_partner_admin($db,['club'=>'ntc93','intent'=>'mail-settings','moderator_email
 check(cd_partner_mail_address($db,'ntc93')==='');
 check(!cd_partner_enabled($db,'ntc93'));
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
-$submission=['mode'=>'post','adult'=>'1','consent'=>'1','contact'=>'PRIVATE-CONTACT@example.com','category'=>'doubles','skill'=>'recreational','availability'=>'weekend','period'=>'morning'];
+$submission=['mode'=>'post','age_group'=>'adult','member'=>'1','consent'=>'1','contact'=>'PRIVATE-CONTACT@example.com','category'=>'doubles','skill'=>'recreational','availability'=>'weekend','period'=>'morning'];
 cd_partner_submit($db,'ntc93',$submission,$partnerNow);
 check(cd_partner_rows($db,'ntc93',$partnerNow)===[]);
 $private=cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow);check(count($private)===1);$ref=$private[0]['ref'];
@@ -206,7 +206,7 @@ try{cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$ref,'revie
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$ref,'reviewed'=>'1'],'ntc93',$partnerNow);
 $pub=cd_partner_rows($db,'ntc93',$partnerNow);check(count($pub)===1&&!isset($pub[0]['contact'])&&$pub[0]['category']==='doubles');
 check(cd_partner_rows($db,'ntc93',$partnerNow+1209600)===[]);
-cd_partner_submit($db,'ntc93',['mode'=>'interest','adult'=>'1','consent'=>'1','share'=>'1','contact'=>'OTHER-PRIVATE','ref'=>$ref],$partnerNow);
+cd_partner_submit($db,'ntc93',['mode'=>'interest','age_group'=>'adult','member'=>'1','consent'=>'1','share'=>'1','contact'=>'OTHER-PRIVATE','ref'=>$ref],$partnerNow);
 $request=cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)[0]['interest'][0];check((int)$request['share']===1);
 $sent=[];$fakeSend=function($to,$subject,$body,$headers)use(&$sent){$sent=[$to,$body];return true;};
 try{cd_partner_interest_forward($db,'ntc93',$ref,(int)$request['id'],'verified@example.invalid',false,$partnerNow,$fakeSend);throw new RuntimeException('Unverified forwarding accepted');}catch(InvalidArgumentException $e){}
@@ -256,3 +256,25 @@ check(cd_partner_rows($db,'ntc93',$partnerNow)===[]);
 try{cd_partner_submit($db,'ntc93',array_replace($submission,['website'=>'spam']),$partnerNow);throw new RuntimeException('Honeypot bypass');}catch(InvalidArgumentException $e){}
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 echo "Direct requests, duplicate prevention and rate limit OK\n";
+
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
+try{cd_partner_submit($db,'ntc93',array_replace($submission,['age_group'=>'child','contact'=>'CHILD-GUARDIAN']),$partnerNow);throw new RuntimeException('Under 16 without guardian accepted');}catch(InvalidArgumentException $e){}
+cd_partner_submit($db,'ntc93',array_replace($submission,['age_group'=>'child','guardian'=>'1','contact'=>'CHILD-GUARDIAN']),$partnerNow);
+cd_partner_submit($db,'ntc93',array_replace($submission,['age_group'=>'teen','contact'=>'TEEN-PRIVATE']),$partnerNow);
+$youthRefs=array_column(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow),'ref','contact');
+foreach($youthRefs as $youthRef){
+  try{cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$youthRef,'reviewed'=>'1'],'ntc93',$partnerNow);throw new RuntimeException('Minor published without extra review');}catch(InvalidArgumentException $e){}
+  cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$youthRef,'reviewed'=>'1','youth_reviewed'=>'1'],'ntc93',$partnerNow);
+}
+$youthPublic=cd_partner_rows($db,'ntc93',$partnerNow);
+check(count($youthPublic)===2&&!str_contains(json_encode($youthPublic),'age_group')&&!str_contains(json_encode($youthPublic),'PRIVATE')&&!str_contains(json_encode($youthPublic),'GUARDIAN'));
+$youthRef=$youthRefs['TEEN-PRIVATE'];
+cd_partner_submit($db,'ntc93',['mode'=>'interest','age_group'=>'adult','member'=>'1','consent'=>'1','share'=>'1','contact'=>'ADULT-PRIVATE','ref'=>$youthRef],$partnerNow);
+$youthRow=array_values(array_filter(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow),fn($r)=>$r['ref']===$youthRef))[0];
+$id=(int)$youthRow['interest'][0]['id'];
+$sent=[];try{cd_partner_interest_forward($db,'ntc93',$youthRef,$id,'verified@example.invalid',true,$partnerNow,$fakeSend);throw new RuntimeException('Minor contact forwarded');}catch(InvalidArgumentException $e){}
+check($sent===[]);
+try{cd_partner_admin($db,['club'=>'ntc93','intent'=>'interest-youth-complete','ref'=>$youthRef,'interest_id'=>$id],'ntc93',$partnerNow);throw new RuntimeException('Youth mediation without review');}catch(InvalidArgumentException $e){}
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'interest-youth-complete','ref'=>$youthRef,'interest_id'=>$id,'verified_youth'=>'1'],'ntc93',$partnerNow);
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
+echo "Youth age bands, guardian requirement, private age metadata and no direct forwarding OK\n";

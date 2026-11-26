@@ -79,6 +79,9 @@ const {chromium}=require('playwright');
   await mobile.goto(base+'?partner=submit&club=ntc93');
   await mobile.getByRole('heading',{name:'Spielpartner gesucht'}).waitFor();
   assert.equal(await mobile.locator('input[name=code]').count(),0);
+  assert.equal(await mobile.locator('select[name=age_group] option').count(),4);
+  await mobile.locator('select[name=age_group]').selectOption('child');
+  assert.equal(await mobile.locator('input[name=guardian]').count(),1);
   for(const width of [360,390]){
     await mobile.setViewportSize({width,height:844});
     await noOverflow();
