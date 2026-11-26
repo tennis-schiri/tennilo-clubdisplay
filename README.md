@@ -258,3 +258,6 @@ Referrer-Policy strict-origin statt no-referrer, damit der Browser bei HTML-Form
 
 ## 0.4.66
 NTC-ClubDisplay: jeder freigegebene Eintrag erhält einen lokal berechneten QR-Code (QR Model 2, Version 4-L) mit eigener öffentlicher Referenz und Direktlink zum passenden Interessenformular. Kein Klickziel, keine personenbezogenen Angaben im Code, keine Drittanbieter-Abfragen. Allgemeiner QR-Code zur anonymen Übersicht bleibt. Bei nicht mehr verfügbaren Referenzen erscheint die aktuelle Übersicht mit Hinweis. Fiktive Demo-Gesuche haben bewusst keine realen Kontaktlinks.
+
+## 0.4.68
+Mehrfachauswahl Wochentage und Tageszeiten als kanonische, kommaseparierte Auswahlschlüssel (bisherige Einzelauswahl bleibt kompatibel). Eigene Altersgruppe einmalig für Einzel/Training; weitere Altersgruppen für Doppel/Mixed. Gesuchte Altersgruppen mehrfach. Bei Beteiligung Minderjähriger greift die strengste Schutzstufe; konkrete Jugend-Altersangaben und Suchwünsche mit Jugendgruppen werden öffentlich durch 'Geschützte Vermittlung' ersetzt. Nur grobe Erwachsenen-Altersbereiche erscheinen nach Freigabe. Altgesuche ohne Alterswünsche bleiben funktionsfähig.

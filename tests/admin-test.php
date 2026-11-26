@@ -311,3 +311,19 @@ cd_partner_cleanup($db,$partnerNow+1209601);
 check(cd_partner_rows($db,'ntc93',$partnerNow+1209601)===[]);
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 echo "Verified email, optional phone, LK whitelist, no publication before approval and expiry OK\n";
+
+$prefsInput=array_replace($submission,['preferences_version'=>'1','category'=>'doubles','availability'=>['mon','wed','fri'],'period'=>['morning','evening'],'age_primary'=>'30-39','age_additional'=>['40-49'],'age_wanted'=>['30-39','40-49']]);
+$parsed=cd_partner_validate_submission($prefsInput,false);
+check($parsed[2][2]==='mon,wed,fri'&&$parsed[2][3]==='morning,evening'&&$parsed[6]===['30-39','40-49']&&$parsed[7]===['30-39','40-49']);
+$single=cd_partner_validate_submission(array_replace($prefsInput,['category'=>'singles']),false);check($single[6]===['30-39']);
+try{cd_partner_validate_submission(array_replace($prefsInput,['age_additional'=>['u16']]),false);throw new RuntimeException('Unprotected minor group accepted');}catch(InvalidArgumentException $e){}
+check(cd_partner_validate_submission(array_replace($prefsInput,['age_additional'=>['16-17']]),false)[0]==='teen');
+check(cd_partner_validate_submission(array_replace($prefsInput,['age_additional'=>['u16'],'guardian'=>'1']),false)[0]==='child');
+try{cd_partner_validate_submission(array_replace($prefsInput,['availability'=>[]]),false);throw new RuntimeException('Empty days accepted');}catch(InvalidArgumentException $e){}
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
+cd_partner_submit($db,'ntc93',array_replace($prefsInput,['age_wanted'=>['16-17','30-39']]),$partnerNow);
+$entry=cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)[0];check($entry['wanted_age_label']==='16–17, 30–39');
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'publish','ref'=>$entry['ref'],'reviewed'=>'1'],'ntc93',$partnerNow);
+$entryPublic=cd_partner_rows($db,'ntc93',$partnerNow)[0];check($entryPublic['availability']==='mon,wed,fri'&&$entryPublic['wanted_age_label']==='Geschützte Vermittlung'&&!str_contains(json_encode($entryPublic),'16-17'));
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
+echo "Multi-choice preferences, single/group ages and protected minor age display OK\n";

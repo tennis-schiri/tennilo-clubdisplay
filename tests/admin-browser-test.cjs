@@ -92,6 +92,13 @@ const {chromium}=require('playwright');
   assert.equal(await mobile.locator('input[name=email][required][type=email]').count(),1);
   assert.equal(await mobile.locator('input[name=phone]:not([required])').count(),1);
   assert.equal(await mobile.locator('select[name=lk] option').count(),6);
+  assert.equal(await mobile.locator('input[name="availability[]"]').count(),10);
+  assert.equal(await mobile.locator('input[name="period[]"]').count(),4);
+  await mobile.locator('select[name=category]').selectOption('singles');
+  assert.equal(await mobile.locator('.partner-extra-ages').isVisible(),false);
+  await mobile.locator('select[name=category]').selectOption('doubles');
+  assert.equal(await mobile.locator('.partner-extra-ages').isVisible(),true);
+  assert.equal(await mobile.locator('input[name="age_wanted[]"]').count(),8);
   for(const width of [360,390]){
     await mobile.setViewportSize({width,height:844});
     await noOverflow();

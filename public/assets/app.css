@@ -743,3 +743,5 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 .partner-board .partner-board-layout{width:100%;min-width:0;box-sizing:border-box}
 .partner-board .partner-board-help{justify-self:stretch;box-sizing:border-box;width:100%}
 .partner-board .partner-board-grid>.panel:only-child{grid-column:1/-1}
+
+.partner-board-card .partner-age-copy{font-size:clamp(.72rem,1.05vw,1.1rem);line-height:1.25;margin:.18rem 0}
