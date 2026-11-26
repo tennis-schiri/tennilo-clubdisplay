@@ -59,6 +59,35 @@ const {chromium}=require('playwright');
   await club.locator('main h1').filter({hasText:'NTC 93'}).waitFor();
   assert.equal(await club.locator('#position').innerText(),'1 / 1');
   assert.equal(await club.getByText('Willkommen im Clubhaus',{exact:true}).count(),0);
+  // Responsive admin and member pages, independent of the large-screen display.
+  const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  mobile.on('pageerror',e=>errors.push(e.message));
+  const noOverflow=async()=>assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'page exceeds mobile viewport');
+  await mobile.goto(clubUrl);
+  await noOverflow();
+  await mobile.locator('input[name=password]').fill('test-club-password-123456');
+  await mobile.getByRole('button',{name:'Anmelden',exact:true}).click();
+  await mobile.getByRole('heading',{name:'Vereinsbackend'}).waitFor();
+  await noOverflow();
+  const board=mobile.locator('details.subpanel').filter({has:mobile.locator('input[name="action"][value="partner-board"]')});
+  await board.locator(':scope > summary').click();
+  await board.locator('input[name=enabled]').check();
+  await board.getByRole('button',{name:'Speichern',exact:true}).click();
+  await mobile.getByText('Änderungen gespeichert.',{exact:true}).waitFor();
+  await noOverflow();
+  await mobile.screenshot({path:'artifacts/club-admin-mobile.png'});
+  await mobile.goto(base+'?partner=submit&club=ntc93');
+  await mobile.getByRole('heading',{name:'Spielpartner gesucht'}).waitFor();
+  for(const width of [360,390]){
+    await mobile.setViewportSize({width,height:844});
+    await noOverflow();
+    const b=await mobile.locator('button.partner-submit').boundingBox();assert.ok(b&&b.height>=48&&b.x>=0&&b.x+b.width<=width+1);
+  }
+  await mobile.screenshot({path:'artifacts/partner-form-mobile.png',fullPage:true});
+  await mobile.goto(base+'?partner=moderate&club=ntc93&decision=publish&token=invalid');
+  await mobile.getByRole('heading',{name:'Spielpartnergesuch prüfen'}).waitFor();
+  await noOverflow();
+  await mobile.close();
   assert.deepEqual(errors,[]);
   console.log('Chromium: actual player, images, mobile, preview, safe text rendering, individual slide sequence, timing and audience isolation passed.');
  }finally{await browser.close();}

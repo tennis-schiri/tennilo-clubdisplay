@@ -81,7 +81,7 @@ function cd_partner_mail_page(PDO $db,string $club):never{
         }
     }elseif(in_array($decision,['publish','delete'],true)){$row=cd_partner_mail_lookup($db,$club,$token,$now);}
     if(!$row&&$message===''){http_response_code(410);$message='Dieser Freigabelink ist ungültig, abgelaufen oder wurde bereits verwendet. Bitte im Vereinsbackend prüfen.';}
-    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnergesuch prüfen</title><link rel="stylesheet" href="admin.css?v=065"></head><body><main><section class="panel"><h1>Spielpartnergesuch prüfen</h1>
+    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnergesuch prüfen</title><link rel="stylesheet" href="admin.css?v=066"></head><body class="partner-page"><main><section class="panel"><span class="member-brand">TENNILO ClubDisplay</span><h1>Spielpartnergesuch prüfen</h1>
     <?php if($row):$choices=cd_partner_choices();?><p><?=cd_h(cd_club($db,$club)['name'].' · '.$row['ref'])?></p><p><?=cd_h(implode(' · ',array_map(fn($key)=>$choices[$key][$row[$key]],array_keys($choices))))?></p><p>Privater Kontakt: <?=cd_h($row['contact'])?></p>
     <form method="post" action="?partner=moderate&amp;club=<?=rawurlencode($club)?>" class="profile"><input type="hidden" name="token" value="<?=cd_h($token)?>"><input type="hidden" name="decision" value="<?=cd_h($decision)?>"><label class="check full"><input type="checkbox" name="confirmed" value="1" required> <?= $decision==='publish'?'Gesuch und Einwilligung geprüft':'Ich möchte dieses Gesuch ablehnen und löschen' ?></label><button class="<?=$decision==='delete'?'danger':''?>"><?=$decision==='publish'?'Jetzt freigeben':'Jetzt ablehnen'?></button></form>
     <?php else:?><p><?=cd_h($message)?></p><?php endif?></section></main></body></html><?php
@@ -198,18 +198,18 @@ function cd_partner_public(PDO $db):never{
         try{cd_partner_submit($db,$club,$_POST);$success=true;}catch(InvalidArgumentException $e){$error=$e->getMessage();}catch(Throwable $e){http_response_code(503);$error='Anfrage derzeit nicht möglich.';}
     }
     $c=cd_club($db,$club);
-    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnerbörse</title><link rel="stylesheet" href="admin.css?v=065"></head><body><main><section class="panel"><h1>Spielpartnerbörse · <?=cd_h($c['name'])?></h1>
+    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnerbörse</title><link rel="stylesheet" href="admin.css?v=066"></head><body class="partner-page"><main><section class="panel"><span class="member-brand">TENNILO ClubDisplay · <?=cd_h($c['name'])?></span><h1>Spielpartner gesucht</h1>
     <?php if($success):?><p class="ok">Anfrage eingegangen. Dein Verein prüft sie und vermittelt den Kontakt. Es werden keine privaten Kontaktdaten veröffentlicht.</p>
     <?php else:?><?php if($error):?><p class="error"><?=cd_h($error)?></p><?php endif?>
     <p>Nur für bestätigte volljährige Vereinsmitglieder mit einmaligem Einladungscode vom Verein. Gesuche werden vor Veröffentlichung geprüft. Anfragen werden durch die Vereinsadministration vermittelt.</p>
-    <form method="post" class="profile"><label class="full">Einladungscode<input name="code" required autocomplete="off" pattern="[a-f0-9]{32}" maxlength="32"></label>
+    <form method="post" class="profile"><h2 class="form-section">1. Einladung &amp; Anfrage</h2><label class="full">Einladungscode<input name="code" required autocomplete="off" autocapitalize="none" spellcheck="false" pattern="[a-f0-9]{32}" maxlength="32"></label>
     <label>Was möchtest du tun?<select name="mode"><option value="post">Gesuch erstellen</option><option value="interest">Auf Gesuch reagieren</option></select></label>
-    <label>Referenz für eine Antwort (bei Gesuch leer lassen)<input name="ref" maxlength="10" pattern="[A-Fa-f0-9]{10}"></label>
+    <label>Referenz für eine Antwort (bei Gesuch leer lassen)<input name="ref" maxlength="10" autocapitalize="characters" spellcheck="false" pattern="[A-Fa-f0-9]{10}"></label><h2 class="form-section">2. Spielwünsche</h2><p class="form-hint full">Bei einer Kontaktanfrage können die Spielwünsche unverändert bleiben.</p>
     <?php foreach(cd_partner_choices() as $key=>$choices):?><label><?=cd_h(['category'=>'Spielart','skill'=>'Spielstärke','availability'=>'Wochentag','period'=>'Tageszeit'][$key])?><select name="<?=cd_h($key)?>"><?php foreach($choices as $v=>$label):?><option value="<?=cd_h($v)?>"><?=cd_h($label)?></option><?php endforeach?></select></label><?php endforeach?>
-    <label class="full">Name und private Kontaktmöglichkeit für den Verein<textarea name="contact" required maxlength="200" rows="2" autocomplete="off"></textarea></label>
+    <h2 class="form-section">3. Kontakt &amp; Einwilligung</h2><label class="full">Name und private Kontaktmöglichkeit für den Verein<textarea name="contact" required maxlength="200" rows="2" autocomplete="off"></textarea></label>
     <label class="check full"><input type="checkbox" name="adult" value="1" required> Ich bin mindestens 18 Jahre alt und Mitglied dieses Vereins.</label>
     <label class="check full"><input type="checkbox" name="consent" value="1" required> Ich willige in die Verarbeitung durch den Verein zur Spielpartnervermittlung ein. Nur die gewählten Kategorien und die anonyme Referenz werden nach Prüfung veröffentlicht. Gesuche laufen nach höchstens 14 Tagen ab; ich kann sie jederzeit über den Verein zurückziehen. Kontaktdaten werden nicht veröffentlicht.</label>
-    <button>Absenden</button></form><?php endif?></section></main></body></html><?php
+    <button class="partner-submit">Anfrage absenden</button></form><?php endif?></section></main></body></html><?php
     exit;
 }
 function cd_partner_field(PDO $db,array $club,string $csrf,?string $scope):void{
