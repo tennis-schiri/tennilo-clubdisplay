@@ -129,7 +129,7 @@ jobs:
           status="$(curl --silent --show-error --max-time 30 --write-out '%{http_code}' "https://clubdisplay.tennilo.de/admin/?partner=submit&club=ntc93&run=${GITHUB_RUN_ID}" -o "$tmp/partner-form")"
           if [[ "$status" == 200 ]]; then
             grep -Fq 'Spielpartner gesucht' "$tmp/partner-form"
-            grep -Fq 'Anfrage absenden' "$tmp/partner-form"
+            grep -Fq 'Eigenes Gesuch erstellen' "$tmp/partner-form"
             echo 'NTC QR form reachable.'
           elif [[ "$status" == 404 ]] && grep -Fq 'Spielpartnerbörse nicht freigeschaltet.' "$tmp/partner-form"; then
             echo 'NTC board intentionally disabled; public route reachable.'
