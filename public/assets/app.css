@@ -766,3 +766,14 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 
 /* Preserve the original QR pixels, centre slight rectangular crops and add a white scan margin. */
 .community-start-card img{height:clamp(94px,11dvh,142px);box-sizing:border-box;padding:8%;object-fit:contain;padding:clamp(7px,1.05dvh,14px);background:#fff}
+
+/* START: six equal tiles in two rows, with a full-width QR strip below. */
+@media(min-width:701px){
+  .home-tiles.home-tiles-six{grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(.5rem,.8vw,.85rem)}
+  .home-tiles.home-tiles-six>.home-tile{grid-column:span 1;min-height:clamp(88px,14dvh,160px);padding:clamp(.65rem,1.1vw,1.15rem);gap:.4rem}
+  .home-tiles+.community-start{width:100%;box-sizing:border-box;margin-top:clamp(.5rem,.8vw,.85rem);padding:clamp(.65rem,1vw,1rem);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);align-items:center}
+  .community-start-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;gap:clamp(12px,2vw,28px)}
+  .community-start-card{justify-content:center;text-align:left;gap:clamp(8px,1vw,16px)}
+  .community-start-card img{width:clamp(104px,15dvh,156px);height:clamp(104px,15dvh,156px);padding:clamp(8px,1.1dvh,14px)}
+}
+@media(max-width:700px){.home-tiles.home-tiles-six>.home-tile:last-child{grid-column:span 1}}
