@@ -25,11 +25,12 @@ function shortClub(name){return String(name??'').replace(/^Neuenhagener\s+(?:Ten
 // Fictional TENNILO demo data; never query private NTC booking data.
 const demoStart=Math.ceil(Date.now()/900000)*900000;
 function demoLeague(){
+  const club=typeof personalBrand!=='undefined'&&personalBrand?personalBrand.name:'TC Demo';
   return {status:'ok',fetchedAt:Math.floor(Date.now()/1000),matches:[
-    {date:new Date(demoStart).toISOString(),home:'TC Demo I',away:'TC Beispielpark I',league:'H30 VL',isHome:true,score:null,courts:[1,2,3]},
-    {date:new Date(demoStart+86400000).toISOString(),home:'TC Demo I',away:'TC Musterstadt I',league:'D30 BL',isHome:true,score:null,courts:[4,5,6]},
-    {date:new Date(demoStart+172800000).toISOString(),home:'TC Beispielpark II',away:'TC Demo II',league:'H40 BL',isHome:false,score:null},
-    {date:new Date(demoStart-86400000).toISOString(),home:'TC Demo II',away:'TC Musterstadt II',league:'H BL',isHome:true,score:'6:3'}
+    {date:new Date(demoStart).toISOString(),home:club+' I',away:'TC Beispielpark I',league:'H30 VL',isHome:true,score:null,courts:[1,2,3]},
+    {date:new Date(demoStart+86400000).toISOString(),home:club+' I',away:'TC Musterstadt I',league:'D30 BL',isHome:true,score:null,courts:[4,5,6]},
+    {date:new Date(demoStart+172800000).toISOString(),home:'TC Beispielpark II',away:club+' II',league:'H40 BL',isHome:false,score:null},
+    {date:new Date(demoStart-86400000).toISOString(),home:club+' II',away:'TC Musterstadt II',league:'H BL',isHome:true,score:'6:3'}
   ]};
 }
 function demoOccupancy(hours,now=Date.now()){
@@ -1247,7 +1248,7 @@ adminForm.addEventListener('submit',async e=>{
 });
 syncFullscreen();
 let lastSmartSecond=-1;
-setInterval(()=>{const now=Date.now();clock();const second=Math.floor(now/1000);if(second!==lastSmartSecond){lastSmartSecond=second;syncMatchGreetings(now);if(second%60===0)syncHeaderDecor(now);}if(adminDialog.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+setInterval(()=>{const now=Date.now();clock();const second=Math.floor(now/1000);if(second!==lastSmartSecond){lastSmartSecond=second;syncMatchGreetings(now);if(second%60===0)syncHeaderDecor(now);}if(adminDialog.open||$('personal-demo-dialog')?.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
@@ -1262,14 +1263,13 @@ function applyPersonalBrand(brand){
   const logo=$('brand-logo');logo.src=brand.logo||'assets/clubdisplay.png';logo.alt=brand.logo?brand.name:'TENNILO ClubDisplay';
   document.title=brand.name+' · ClubDisplay Demo';
   leagueData=demoLeague();
-  for(const row of leagueData.matches)for(const key of ['home','away'])row[key]=row[key].replace('TC Demo',brand.name);
   syncMatchGreetings();go('home');
 }
 function initPersonalDemo(){
   if(!personalDemo)return;
   const dialog=$('personal-demo-dialog'),form=$('personal-demo-form'),edit=$('personal-demo-edit');
   edit.hidden=false;
-  const open=()=>{if(personalBrand){$('personal-name').value=personalBrand.name;$('personal-color').value=personalBrand.color;}if(!dialog.open)dialog.showModal();};
+  const open=()=>{last=Date.now();if(personalBrand){$('personal-name').value=personalBrand.name;$('personal-color').value=personalBrand.color;}if(!dialog.open)dialog.showModal();};
   edit.addEventListener('click',open);
   $('personal-cancel').addEventListener('click',()=>dialog.close());
   form.addEventListener('submit',async e=>{

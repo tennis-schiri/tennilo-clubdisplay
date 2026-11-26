@@ -41,7 +41,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const safe = () => navigator.onLine !== false &&
       document.visibilityState === 'visible' && !document.fullscreenElement &&
       typeof view !== 'undefined' && view === 'info' && !infoPaused &&
-      !adminDialog.open && Date.now() - last >= idle;
+      !adminDialog.open && !document.getElementById('personal-demo-dialog')?.open && !(typeof personalDemo!=='undefined'&&personalDemo) && Date.now() - last >= idle;
     const updater = cdCreateAutoUpdater({
       build, safe, request: (...args) => fetch(...args),
       pageUrl: () => location.href,
