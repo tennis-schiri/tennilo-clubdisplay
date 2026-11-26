@@ -209,3 +209,33 @@ check(!str_contains(json_encode(cd_partner_rows($db,'ntc93',$partnerNow)),'PRIVA
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 check(cd_partner_rows($db,'ntc93',$partnerNow)===[]&&cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow)===[]);
 echo "Partner board: single-use invitations, consent, moderation, privacy, isolation and expiry OK\n";
+
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle','enabled'=>1],'ntc93',$partnerNow);
+foreach(['MAIL-APPROVE','MAIL-REJECT'] as $contact){
+    $invite=cd_partner_admin($db,['club'=>'ntc93','intent'=>'invite','verified_member'=>'1'],'ntc93',$partnerNow);
+    cd_partner_submit($db,'ntc93',array_replace($submission,['code'=>$invite,'contact'=>$contact]),$partnerNow);
+}
+$refs=array_column(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow),'ref','contact');
+check(count($refs)===2&&cd_partner_rows($db,'ntc93',$partnerNow)===[]);
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'mail-settings','moderator_email'=>'moderator@example.invalid'],'ntc93',$partnerNow);
+$notice=cd_partner_mail_issue($db,'ntc93',$refs['MAIL-APPROVE'],$partnerNow);
+check($notice!==null&&$notice['email']==='moderator@example.invalid');
+$token=$notice['token'];
+check(cd_partner_mail_lookup($db,'ntc93',$token,$partnerNow)!==null);
+check(cd_partner_mail_lookup($db,'ntc93',$token,$partnerNow+172800)===null);
+check(!cd_partner_mail_decide($db,'tennilo-demo',$token,'publish',$partnerNow));
+check(cd_partner_rows($db,'ntc93',$partnerNow)===[]);
+$second=cd_partner_mail_issue($db,'ntc93',$refs['MAIL-APPROVE'],$partnerNow);
+check(!cd_partner_mail_decide($db,'ntc93',$token,'publish',$partnerNow));
+check(cd_partner_mail_decide($db,'ntc93',$second['token'],'publish',$partnerNow));
+check(!cd_partner_mail_decide($db,'ntc93',$second['token'],'delete',$partnerNow));
+check(count(cd_partner_rows($db,'ntc93',$partnerNow))===1);
+$reject=cd_partner_mail_issue($db,'ntc93',$refs['MAIL-REJECT'],$partnerNow);
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'mail-settings','moderator_email'=>'other@example.invalid'],'ntc93',$partnerNow);
+check(!cd_partner_mail_decide($db,'ntc93',$reject['token'],'delete',$partnerNow));
+$reject=cd_partner_mail_issue($db,'ntc93',$refs['MAIL-REJECT'],$partnerNow);
+check(cd_partner_mail_decide($db,'ntc93',$reject['token'],'delete',$partnerNow));
+check(count(cd_partner_admin_rows($db,'ntc93','ntc93',$partnerNow))===1);
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'mail-settings','moderator_email'=>''],'ntc93',$partnerNow);
+cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
+echo "Partner mail: scoped, expiring, single-use links; resend and address change invalidate prior links; approve and reject OK\n";
