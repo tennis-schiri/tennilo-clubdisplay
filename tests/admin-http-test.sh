@@ -113,6 +113,28 @@ backup="$(find "$tmp/private-backups" -name 'clubdisplay-*.sqlite' -print -quit)
 [[ -n "$backup" ]]
 php -r '$d=new PDO("sqlite:".$argv[1]);if($d->query("PRAGMA integrity_check")->fetchColumn()!=="ok"||$d->query("SELECT COUNT(*) FROM club_content")->fetchColumn()!=1)exit(1);' "$backup"
 if php "$tmp/www/clubdisplay-admin/backup-admin.php" "$tmp/www" 2>/dev/null; then echo 'Backup allowed in webroot'; exit 1; fi
+# MATCHBALL: real multipart upload, authenticated original and public metadata only.
+get "$club" "$url" 200; t="$(csrf)"
+grep -Fq 'MATCHBALL – Newsletter' "$tmp/body"
+# Minimal valid one-page PDF with offsets generated at runtime.
+php -r '$pdf="%PDF-1.4\n";$objs=["<< /Type /Catalog /Pages 2 0 R >>","<< /Type /Pages /Kids [3 0 R] /Count 1 >>","<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>"];$offsets=[0];foreach($objs as $i=>$obj){$offsets[]=strlen($pdf);$pdf.=($i+1)." 0 obj\n".$obj."\nendobj\n";}$x=strlen($pdf);$pdf.="xref\n0 4\n0000000000 65535 f \n";foreach(array_slice($offsets,1) as $off)$pdf.=sprintf("%010d 00000 n \n",$off);$pdf.="trailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n".$x."\n%%EOF\n";file_put_contents($argv[1],$pdf);' "$tmp/newsletter.pdf"
+post "$club" "$url" 303 -F "csrf=$t" -F action=matchball -F club=ntc93 -F intent=save -F month=2026-11 -F pages=1 -F headline=Testausgabe -F teaser=Kurztext -F 'story_title[]=Testthema' -F 'story_body[]=Testtext' -F 'story_ref[]=Seite 1' -F "newsletter_pdf=@$tmp/newsletter.pdf;type=application/pdf"
+get "$club" "$url&matchball_pdf=2026-11&club=ntc93" 200
+cmp "$tmp/body" "$tmp/newsletter.pdf"
+get "$other" "$base?matchball_pdf=2026-11&club=ntc93" 404
+get "$club" "$url&matchball_pdf=2026-11&club=tennilo-demo" 404
+get "$other" "$base?matchball=feed&club=ntc93" 200
+php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if(count($v["issues"])!==2||isset($v["issues"][0]["pdf"]))exit(1);' "$tmp/body"
+get "$club" "$url" 200; t="$(csrf)"
+post "$club" "$url" 303 --data-urlencode "csrf=$t" -d 'action=matchball&club=ntc93&month=2026-11&intent=publish&public_reviewed=1'
+get "$other" "$base?matchball=feed&club=ntc93" 200
+php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if($v["issues"][0]["id"]!=="2026-11"||count($v["issues"])!==3||isset($v["issues"][0]["pdf"])||isset($v["issues"][0]["has_pdf"]))exit(1);' "$tmp/body"
+get "$club" "$url" 200; t="$(csrf)"
+post "$club" "$url" 303 --data-urlencode "csrf=$t" -d 'action=matchball&club=ntc93&month=2026-11&intent=delete&delete_confirm=1'
+get "$other" "$base?matchball=feed&club=ntc93" 200
+php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if(count($v["issues"])!==2)exit(1);' "$tmp/body"
+echo "MATCHBALL upload, private original and public release HTTP tests passed."
+
 get "$other" "$base?player=1" 200
 grep -Fq 'player.js' "$tmp/body"
 echo "HTTP login, CSRF, tenant isolation, real image upload, preview, pairing, revocation, backup passed."

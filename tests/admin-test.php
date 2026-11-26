@@ -340,3 +340,17 @@ cd_partner_admin($db,['club'=>'ntc93','intent'=>'renew-admin','ref'=>$renewRef],
 check(cd_partner_rows($db,'ntc93',$partnerNow)===[]);
 cd_partner_admin($db,['club'=>'ntc93','intent'=>'toggle'],'ntc93',$partnerNow);
 echo "Single age input, administrative renewal requires fresh review OK\n";
+
+check(count(cd_matchball_rows($db,'ntc93','ntc93',true))===2);
+$mb=['club'=>'ntc93','month'=>'2026-11','intent'=>'save','headline'=>'Testausgabe','teaser'=>'Kurztext','pages'=>'2','story_title'=>['Thema'],'story_body'=>['Testtext'],'story_ref'=>['Seite 1']];
+try{cd_matchball_save($db,$mb,[],'test-club');throw new RuntimeException('Cross-club newsletter save accepted');}catch(InvalidArgumentException $e){}
+cd_matchball_save($db,$mb,[],'ntc93');check(count(cd_matchball_rows($db,'ntc93','ntc93',true))===2);
+try{cd_matchball_save($db,array_replace($mb,['intent'=>'publish']),[],'ntc93');throw new RuntimeException('Unreviewed publication accepted');}catch(InvalidArgumentException $e){}
+cd_matchball_save($db,array_replace($mb,['intent'=>'publish','public_reviewed'=>'1']),[],'ntc93');
+check(cd_matchball_rows($db,'ntc93','ntc93',true)[0]['month']==='2026-11');
+cd_matchball_save($db,array_replace($mb,['intent'=>'unpublish']),[],'ntc93');check(count(cd_matchball_rows($db,'ntc93','ntc93',true))===2);
+cd_matchball_save($db,array_replace($mb,['intent'=>'delete','delete_confirm'=>'1']),[],'ntc93');
+check(count(cd_matchball_rows($db,'ntc93','ntc93'))===2);
+cd_matchball_save($db,['club'=>'ntc93','month'=>'2026-09','intent'=>'delete','delete_confirm'=>'1'],[],'ntc93');
+check(count(cd_matchball_rows($db,'ntc93','ntc93'))===1);
+echo "MATCHBALL seed, draft, review, tenant scope, withdrawal and non-reappearing deletion OK\n";

@@ -566,13 +566,13 @@ function newsDate(p){return new Date(p.date).toLocaleDateString(lang==='de'?'de-
 // NTC Matchball: deliberately public-safe editorial summaries of supplied member PDFs.
 let matchballIssues=[],matchballBusy=false;
 async function refreshMatchball(){
-  if(!pilot||matchballBusy)return;matchballBusy=true;
+  if(!pilot||matchballBusy)return;matchballBusy=true;const before=JSON.stringify(matchballIssues);
   try{
     const res=await fetch('https://clubdisplay.tennilo.de/admin/?matchball=feed&club=ntc93',{cache:'no-store',signal:AbortSignal.timeout(15000)});
     if(!res.ok)throw Error('feed');const data=await res.json();if(!Array.isArray(data.issues))throw Error('format');
     matchballIssues=data.issues.filter(r=>r&&/^20\d{2}-(0[1-9]|1[0-2])$/.test(r.id)&&typeof r.headline==='string'&&typeof r.teaser==='string'&&Array.isArray(r.articles)&&r.articles.every(a=>Array.isArray(a)&&a.length===3&&a.every(v=>typeof v==='string')));
   }catch{matchballIssues=[];}
-  finally{matchballBusy=false;if(view==='news'&&openedNews?.matchballId){if(!matchballIssues.some(r=>r.id===openedNews.matchballId))openedNews=null;render();}else if((view==='news'&&!openedNews)||(view==='info'&&smartScreenKey(screens[slide])==='news'))render();}
+  finally{matchballBusy=false;if(before!==JSON.stringify(matchballIssues)&&view==='news'&&openedNews?.matchballId){if(!matchballIssues.some(r=>r.id===openedNews.matchballId))openedNews=null;render();}else if((view==='news'&&!openedNews)||(view==='info'&&smartScreenKey(screens[slide])==='news'))render();}
 }
 function matchballCard(){
   const issue=matchballIssues[0];if(!issue)return '';
@@ -582,7 +582,7 @@ function matchballReader(index){
   const issue=matchballIssues[index];if(!issue)return null;
   const archive=matchballIssues.map((p,i)=>'<button type="button" class="matchball-edition'+(i===index?' is-current':'')+'" data-action="matchball-open:'+i+'" aria-pressed="'+(i===index)+'">'+esc(p.month)+'</button>').join('');
   const articles=issue.articles.map(([title,body,page])=>'<section class="matchball-story"><h2>'+esc(title)+'</h2><p>'+esc(body)+'</p><small>'+tr('Originalausgabe: ','Original issue: ')+esc(page)+'</small></section>').join('');
-  return '<div class="news-reader-head"><div><span class="matchball-kicker">'+tr('Vereinsnewsletter · Zusammenfassung','Club newsletter · Summary')+'</span><h1>MATCHBALL '+esc(issue.issue)+' · '+esc(issue.month)+'</h1></div>'+button(tr('Zurück zu den Meldungen','Back to news'),'news-back','primary')+'</div><div class="matchball-archive" aria-label="'+tr('Ausgabenarchiv','Issue archive')+'">'+archive+'</div><div id="news-article-scroll" class="panel news-article-scroll matchball-reader" tabindex="0"><h2>'+esc(issue.headline)+'</h2><p class="matchball-original">'+tr('Lesefassung für das ClubDisplay. Das vollständige Original (','ClubDisplay reading edition. The complete original (')+issue.pages+tr(' Seiten) wurde als E-Mail-Newsletter verschickt.',' pages) was distributed by email.')+'</p><div class="matchball-stories">'+articles+'</div></div><div class="news-reader-foot"><span>'+tr('Quelle: NTC MATCHBALL · redaktionelle Zusammenfassung','Source: NTC MATCHBALL · editorial summary')+'</span><div><button data-action="news-up" aria-label="'+tr('Nach oben','Scroll up')+'">↑</button><button data-action="news-down" aria-label="'+tr('Weiterlesen','Read further')+'">↓</button></div></div>';
+  return '<div class="news-reader-head"><div><span class="matchball-kicker">'+tr('Vereinsnewsletter · Zusammenfassung','Club newsletter · Summary')+'</span><h1>MATCHBALL '+esc(issue.issue)+' · '+esc(issue.month)+'</h1></div>'+button(tr('Zurück zu den Meldungen','Back to news'),'news-back','primary')+'</div><div class="matchball-archive" aria-label="'+tr('Ausgabenarchiv','Issue archive')+'">'+archive+'</div><div id="news-article-scroll" class="panel news-article-scroll matchball-reader" tabindex="0"><h2>'+esc(issue.headline)+'</h2><p class="matchball-original">'+tr('Lesefassung für das ClubDisplay. Das vollständige Original (','ClubDisplay reading edition. The complete original (')+(issue.pages||tr('Seitenzahl nicht angegeben','page count not specified'))+tr(' Seiten) wurde als E-Mail-Newsletter verschickt.',' pages) was distributed by email.')+'</p><div class="matchball-stories">'+articles+'</div></div><div class="news-reader-foot"><span>'+tr('Quelle: NTC MATCHBALL · redaktionelle Zusammenfassung','Source: NTC MATCHBALL · editorial summary')+'</span><div><button data-action="news-up" aria-label="'+tr('Nach oben','Scroll up')+'">↑</button><button data-action="news-down" aria-label="'+tr('Weiterlesen','Read further')+'">↓</button></div></div>';
 }
 function newsArticleView(p){
   if(p.matchballId){const i=matchballIssues.findIndex(r=>r.id===p.matchballId);if(i>=0)return matchballReader(i);return '<p>'+tr('Ausgabe nicht verfügbar.','Issue unavailable.')+'</p>';}

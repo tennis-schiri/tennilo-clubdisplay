@@ -27,7 +27,7 @@ function cd_matchball_rows(PDO $db,string $club,?string $scope,bool $public=fals
     foreach($rows as &$r)$r['articles']=json_decode($r['articles'],true,512,JSON_THROW_ON_ERROR);unset($r);return $rows;
 }
 function cd_matchball_save(PDO $db,array $in,array $file,?string $scope):void{
-    $club=cd_text($in['club']??'',50,true);cd_scope($scope,$club);cd_club($db,$club);cd_matchball_seed($db,$club);
+    $club=cd_text($in['club']??'',50,true);cd_scope($scope,$club);if($club!=='ntc93')throw new InvalidArgumentException('MATCHBALL ist nur für den NTC verfügbar.');cd_club($db,$club);cd_matchball_seed($db,$club);
     $month=cd_matchball_month($in['month']??null);$intent=$in['intent']??'';
     $q=$db->prepare('SELECT headline,teaser,articles,published FROM matchball_issues WHERE club=? AND month=?');$q->execute([$club,$month]);$old=$q->fetch();
     if($intent==='publish'){
