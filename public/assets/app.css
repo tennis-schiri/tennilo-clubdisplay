@@ -847,7 +847,7 @@ body>header>.brand,body>header>.clock,body>header>#weather-head,body>header>.too
 .header-weather-effect .star{top:var(--y);background:#faf1ce;border-radius:50%;animation-name:cd-header-stars;animation-timing-function:ease-in-out}
 .header-weather-effect .gust{top:var(--y);width:38px;height:1px;background:linear-gradient(90deg,transparent,#d8ecf4,transparent);animation-name:cd-header-wind}
 header[data-weather-effect="sun"] .header-weather-effect{background:radial-gradient(ellipse at 92% 0%,#ffe39b44,transparent 55%)}
-header[data-weather-effect="cloud"] .header-weather-effect,header[data-weather-effect="fog"] .header-weather-effect{background:radial-gradient(ellipse at 0% 50%,#c7e0f033,transparent 55%),radial-gradient(ellipse at 85% 50%,#dceaf044,transparent 70%);animation:cd-header-cloud 18s ease-in-out infinite alternate}
+header[data-weather-effect="cloud"] .header-weather-effect,header[data-weather-effect="fog"] .header-weather-effect{background:radial-gradient(ellipse at 0% 50%,#c7e0f033,transparent 55%),radial-gradient(ellipse at 85% 50%,#dceaf044,transparent 70%)}
 header[data-weather-effect="fog"] .header-weather-effect{opacity:.55}
 header[data-weather-effect="storm"] .header-weather-effect{background:linear-gradient(100deg,#5f83b31f,transparent,#4e689f22)}
 .header-season-effect{z-index:2;inset:0 0 auto;height:5px;opacity:.8}
@@ -908,20 +908,23 @@ body>header #language .language-flag{display:block;width:24px;height:auto;aspect
 @media(max-width:700px){body>header #language .language-flag{width:20px}}
 
 /* Richer atmospheric decoration only. Existing header layout and controls are untouched. */
-body>header .header-weather-effect{opacity:.83;background:none;animation:none}
+body>header>.header-weather-effect{opacity:.72;background:none;animation:none;transform:none;clip-path:inset(0);overflow:hidden}
+/* The full-width sky is stationary. Only the inset, softly masked particle layer moves internally. */
+body>header[data-weather-effect]>.header-weather-effect{animation:none;transform:none}
+.header-weather-particles{position:absolute;inset:5px 8px 7px;overflow:hidden;clip-path:inset(0);pointer-events:none;mask-image:linear-gradient(to right,transparent,#000 18px,#000 calc(100% - 18px),transparent),linear-gradient(to bottom,transparent,#000 6px,#000 calc(100% - 6px),transparent);mask-composite:intersect}
 header[data-sky="day"] .header-weather-effect{background:linear-gradient(100deg,#67c4cf14,#83d4ee27 48%,#ffdc7e20)}
 header[data-sky="night"] .header-weather-effect{background:linear-gradient(105deg,#071426a6,#071a33c9 55%,#111f3d9c)}
 header[data-sky="dawn"] .header-weather-effect{background:linear-gradient(100deg,#bd8d6a35,#f5c27d58 50%,#8bc5c42b)}
 header[data-sky="dusk"] .header-weather-effect{background:linear-gradient(100deg,#293a664d,#e7a66e46 50%,#29254775)}
-.header-weather-effect .sky-celestial{position:absolute;left:45%;top:50%;width:clamp(48px,5.4vw,86px);height:auto;transform:translate(-50%,-50%);pointer-events:none;opacity:.72}
+.header-weather-effect .sky-celestial{position:absolute;left:45%;top:50%;width:clamp(42px,4.6vw,64px);height:auto;max-height:100%;transform:translate(-50%,-50%);pointer-events:none;opacity:.72}
 .sky-celestial svg{display:block;width:100%;height:auto}
 .sky-sun{filter:drop-shadow(0 0 12px #ffd176a0)}
 .sky-moon{filter:drop-shadow(0 0 10px #dceaff70)}
-.sky-veiled{opacity:.35}
-header[data-weather-effect="cloud"] .header-weather-effect:after,header[data-weather-effect="fog"] .header-weather-effect:after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 32% 35%,#e0f0f043,transparent 55%),radial-gradient(ellipse at 80% 75%,#b4d2df50,transparent 65%);animation:cd-header-cloud 18s ease-in-out infinite alternate}
-header[data-weather-effect="fog"] .header-weather-effect:after{background:linear-gradient(3deg,#d7e4ea66,transparent 55%,#bbd2df39)}
+.header-weather-effect .sky-celestial.sky-veiled{opacity:.35}
+header[data-weather-effect="cloud"] .header-weather-particles:after,header[data-weather-effect="fog"] .header-weather-particles:after{content:"";position:absolute;inset:0 -6%;background:radial-gradient(ellipse at 32% 35%,#e0f0f043,transparent 55%),radial-gradient(ellipse at 80% 75%,#b4d2df50,transparent 65%);animation:cd-header-cloud 18s ease-in-out infinite alternate}
+header[data-weather-effect="fog"] .header-weather-particles:after{background:linear-gradient(3deg,#d7e4ea66,transparent 55%,#bbd2df39)}
 .header-weather-effect .drop{width:2px;height:24px;background:linear-gradient(transparent,#c2e8ff)}
 .header-weather-effect .flake{box-shadow:0 0 4px #effaffbf}
 .header-weather-effect .star{width:calc(var(--size)*.65);height:calc(var(--size)*.65);box-shadow:0 0 5px #f4edcf70}
 @media(max-width:700px){.header-weather-effect .sky-celestial{left:52%;width:48px;opacity:.5}}
-@media(prefers-reduced-motion:reduce){.header-weather-effect:after{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.header-weather-particles:after{animation:none!important}}

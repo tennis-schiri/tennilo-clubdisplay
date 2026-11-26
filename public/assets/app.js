@@ -683,11 +683,11 @@ function syncHeaderDecor(now=Date.now()){
     header.dataset.skyKey=skyKey;
     header.dataset.weatherEffect=effect;
     const count=({rain:38,sleet:32,snow:32,hail:25,storm:42,stars:36,wind:12})[effect]||0;
-    layer.innerHTML=headerSkyMarkup(sky,effect,phase)+Array.from({length:count},(_,i)=>{
+    layer.innerHTML='<div class="header-weather-particles">'+headerSkyMarkup(sky,effect,phase)+Array.from({length:count},(_,i)=>{
       const snow=effect==='snow'||(effect==='sleet'&&i%2===0);
       const kind=snow?'flake':effect==='hail'?'pellet':effect==='stars'?'star':effect==='wind'?'gust':'drop';
       return '<i class="'+kind+'" style="--x:'+((i*37+7)%100)+'%;--y:'+((i*19+5)%95)+'%;--delay:-'+((i*17)%90/10)+'s;--duration:'+(snow?4+i%5:effect==='stars'?5+i%4:1.6+i%4*.45)+'s;--size:'+(3+i%5)+'px"></i>';
-    }).join('');
+    }).join('')+'</div>';
   }
   if(header.dataset.seasonEffect!==festive){
     header.dataset.seasonEffect=festive;

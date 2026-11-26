@@ -58,6 +58,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Anmeldung, Player und mobile Darstellung
         run: CD_BROWSER_TEST=1 bash tests/admin-http-test.sh
+      - name: Wetter-Header an Desktop und Mobilgeräten prüfen
+        run: node tests/header-weather-browser.cjs
       - name: Browser-Screenshots
         if: always()
         uses: actions/upload-artifact@v4
