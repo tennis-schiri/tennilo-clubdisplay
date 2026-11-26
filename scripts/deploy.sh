@@ -8,6 +8,7 @@ node --check public/assets/app.js
 node --check public/assets/auto-update.js
 node tests/auto-update-test.cjs
 node tests/info-countdown-test.cjs
+node tests/night-mode-test.cjs
 node tests/occupancy-test.cjs
 node tests/match-greeting-test.cjs
 node tests/demo-test.cjs

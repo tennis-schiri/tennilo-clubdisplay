@@ -13,7 +13,7 @@ const $=id=>{
   if(!nodes.has(id))nodes.set(id,{hidden:false,dataset:{},textContent:'',style:{setProperty(k,v){this[k]=v;}},setAttribute(k,v){this[k]=v;}});
   return nodes.get(id);
 };
-const ctx=vm.createContext({$,Date:{now:()=>now},tr:(de,en)=>de,t:()=>({info:'Informationsmodus'}),view:'info',slide:0,screens:['one','two','three'],dwell:12000,infoPauseLimit:25000,infoPaused:false,infoElapsed:0,infoPauseUntil:0,started:now,last:now,render(){vm.runInContext('infoControls()',ctx);}});
+const ctx=vm.createContext({$,Date:{now:()=>now},tr:(de,en)=>de,t:()=>({info:'Informationsmodus'}),pilot:true,nightActive:false,nightLastInput:0,view:'info',slide:0,screens:['one','two','three'],dwell:12000,infoPauseLimit:25000,infoPaused:false,infoElapsed:0,infoPauseUntil:0,started:now,last:now,render(){vm.runInContext('infoControls()',ctx);}});
 vm.runInContext(source.slice(begin,end),ctx);
 const call=s=>vm.runInContext(s,ctx);
 call('infoControls()');
@@ -28,6 +28,7 @@ now+=10000;call('tickInfo()');
 assert.equal($('info-countdown').textContent,'Pause: 15 s');
 assert.equal(ctx.slide,0);
 call('infoInput()');
+assert.equal(ctx.nightLastInput,now);
 assert.equal($('info-countdown').textContent,'Pause: 25 s');
 now+=24000;call('tickInfo()');
 assert.equal($('info-countdown').textContent,'Pause: 1 s');
