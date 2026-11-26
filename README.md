@@ -264,3 +264,6 @@ Mehrfachauswahl Wochentage und Tageszeiten als kanonische, kommaseparierte Auswa
 
 ## 0.4.71
 Geschützte Vereinsverwaltung in Übersicht, Einstellungen, Freigaben, aktive Gesuche, Kontaktvermittlung und E-Mail-Warteschlange gegliedert. Wiederholung ausstehender Statusmails auf Vereinskennung beschränkt. Verlängerung durch erneute Freigabe, keine Veröffentlichung ohne Prüfung. Öffentliche Smartphone-Ansicht: Altersgruppe bei eigenem Gesuch nur einmal erfassen, Altersprüfung daraus serverseitig ableiten; Tages-/Zeitfilter, Formularwerte bei Fehlern erhalten, sichtbare Versionsnummer. Upload prüft die tatsächlichen Eingabefelder auf TENNILO und NTC. Versandstatus bedeutet Annahme, keine Zustellbestätigung.
+
+## 0.4.73 · MATCHBALL Newsletter
+NTC-Neuigkeiten enthalten zusätzlich eine eigene Matchball-Kachel, aktuelle Ausgabe und Archiv (10/26, 09/26). Lesefassungen aus den vom Verein gelieferten PDFs, mit Quellseiten und eindeutigem Zusammenfassungshinweis. Keine öffentlichen Original-PDFs, Jugendfotos oder vereinsinternen Kontaktdaten; kein externer Browserwechsel. Die Kachel bleibt verfügbar, wenn der WordPress-Feed ausfällt. Neue Ausgaben werden zunächst redaktionell in matchballIssues (public/assets/app.js) ergänzt; ein automatischer PDF-Import ist noch nicht enthalten. In der TENNILO-Demo erscheinen keine echten NTC-Newsletter.
