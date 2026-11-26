@@ -218,7 +218,7 @@ function smartHolidayView(key){
   if(key==='holiday:ntc-birthday'){
     const age=ntcBirthdayAge();
     if(!pilot||age===null)return '';
-    return '<div class="greeting-hero event-greeting-hero holiday-hero holiday-birthday"><div class="birthday-sparkles" aria-hidden="true">'+Array.from({length:24},(_,i)=>'<i style="--x:'+((i*37+7)%100)+'%;--y:'+((i*19+5)%100)+'%;--turn:'+(i*29%180)+'deg"></i>').join('')+'</div><img class="birthday-logo" src="assets/ntc93-logo.png" alt="NTC 93"><div class="birthday-kicker">'+tr('HEUTE FEIERN WIR','TODAY WE CELEBRATE')+'</div><h1 class="birthday-age">'+age+' '+tr(age===1?'Jahr':'Jahre',age===1?'year':'years')+' NTC 93</h1><h2 class="birthday-title">'+tr('Herzlichen Glückwunsch, NTC 93!','Happy birthday, NTC 93!')+'</h2><p class="birthday-founded">'+tr('Gegründet am 6. Dezember 1993','Founded on 6 December 1993')+'</p><p class="greeting-farewell">'+tr('Seit 1993 ein Zuhause für Tennis in Neuenhagen.','A home for tennis in Neuenhagen since 1993.')+'</p></div>';
+    return '<div class="greeting-hero event-greeting-hero holiday-hero holiday-birthday"><div class="birthday-sparkles" aria-hidden="true">'+Array.from({length:24},(_,i)=>'<i style="--x:'+((i*37+7)%100)+'%;--y:'+((i*19+5)%100)+'%;--turn:'+(i*29%180)+'deg"></i>').join('')+'</div><img class="birthday-logo" src="assets/ntc93-logo.png" alt="NTC 93"><div class="birthday-kicker">'+tr('HEUTE FEIERN WIR','TODAY WE CELEBRATE')+'</div><h1 class="birthday-age">'+age+' '+tr(age===1?'Jahr':'Jahre',age===1?'year':'years')+' NTC 93</h1><h2 class="birthday-title">'+tr('Herzlichen Glückwunsch, NTC 93!','Happy birthday, NTC 93!')+'</h2><p class="birthday-founded">'+tr('Gegründet am 6. Dezember 1993','Founded on 6 December 1993')+'</p><p class="birthday-story">'+tr('Unser NTC ist mehr als ein Tennisverein. Hier werden aus Mitspielern Freunde, aus Begegnungen Erinnerungen und aus vielen einzelnen Menschen eine Gemeinschaft. Ob auf dem Platz, im Clubhaus oder hinter den Kulissen – ihr alle macht unseren Verein zu dem, was er ist.','Our NTC is more than a tennis club. Here, playing partners become friends, encounters become memories, and individuals become a community. On court, in the clubhouse or behind the scenes – each of you makes our club what it is.')+'</p><p class="birthday-thanks">'+tr('Danke an alle, die den NTC seit 1993 mit Leben füllen. Auf viele weitere gemeinsame Jahre!','Thank you to everyone who has brought NTC to life since 1993. Here’s to many more years together!')+'</p></div>';
   }
   if(/^holiday:advent:[1-4]$/.test(key)){
     const n=Number(key.split(':')[2]);
@@ -614,6 +614,10 @@ function headerSeasonEffect(now=Date.now()){
   const key=smartHoliday(now);
   return key==='holiday:christmas'?'christmas':key.startsWith('holiday:advent:')?'advent-'+key.slice(-1):'';
 }
+function headerBirthdayLabel(now=Date.now()){
+  const age=ntcBirthdayAge(now);
+  return pilot&&age!==null?age+' '+tr(age===1?'Jahr':'Jahre',age===1?'year':'years')+' NTC 93':'';
+}
 function syncHeaderDecor(now=Date.now()){
   const header=document.querySelector('body > header'),layer=$('header-weather-effect'),season=$('header-season-effect');
   if(!header||!layer||!season)return;
@@ -625,7 +629,17 @@ function syncHeaderDecor(now=Date.now()){
     candles.innerHTML=advent?adventCandles(advent):'';
     header.classList.toggle('has-advent-candles',!!advent);
   }
-  header.dataset.birthday=pilot&&ntcBirthdayAge(now)!==null?'true':'false';
+  const birthday=$('header-birthday'),birthdayLabel=headerBirthdayLabel(now);
+  header.dataset.birthday=birthdayLabel?'true':'false';
+  if(birthday){
+    birthday.hidden=!birthdayLabel;
+    const birthdayGreeting=tr('Alles Gute!','Happy birthday!');
+    const birthdayCopy=birthdayLabel+'|'+birthdayGreeting;
+    if(birthday.dataset.copy!==birthdayCopy){
+      birthday.dataset.copy=birthdayCopy;
+      birthday.innerHTML=birthdayLabel?'<strong>'+esc(birthdayLabel)+'</strong><small>'+esc(birthdayGreeting)+'</small>':'';
+    }
+  }
   if(header.dataset.weatherEffect!==effect){
     header.dataset.weatherEffect=effect;
     const count=({rain:22,sleet:20,snow:19,hail:17,storm:24,stars:14,wind:8})[effect]||0;

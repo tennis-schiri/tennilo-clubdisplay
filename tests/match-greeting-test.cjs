@@ -144,3 +144,20 @@ assert.match(run('smartHolidayView("holiday:ntc-birthday")'),/33 Jahre NTC 93/);
 assert.match(run('smartHolidayView("holiday:ntc-birthday")'),/6\. Dezember 1993/);
 ctx.Date=realDate;
 console.log('NTC birthday, yearly age, demo isolation and Advent coexistence OK');
+
+// Visible header badge is NTC-only, localized, and independent of the Advent label.
+vm.runInContext(source.slice(source.indexOf('function headerBirthdayLabel('),source.indexOf('function syncHeaderDecor(')),ctx);
+run('pilot=true');
+assert.equal(run('headerBirthdayLabel(birthdayTime)'),'33 Jahre NTC 93');
+assert.equal(run('headerBirthdayLabel(Date.parse("2026-12-07T00:00:00+01:00"))'),'');
+assert.equal(run('headerSeasonEffect(birthdayTime)'),'advent-2');
+run('pilot=false');
+assert.equal(run('headerBirthdayLabel(birthdayTime)'),'');
+run('pilot=true');
+ctx.Date=class extends Date{static now(){return ctx.birthdayTime;}};
+const birthdayCopy=run('smartHolidayView("holiday:ntc-birthday")');
+assert.match(birthdayCopy,/aus Mitspielern Freunde/);
+assert.match(birthdayCopy,/Danke an alle/);
+ctx.Date=realDate;
+assert.match(fs.readFileSync('public/index.html','utf8'),/id="header-birthday"[^>]*hidden/);
+console.log('Visible anniversary header and community birthday copy OK');

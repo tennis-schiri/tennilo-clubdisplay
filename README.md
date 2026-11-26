@@ -308,3 +308,7 @@ Dezente, auf den Header begrenzte Wettereffekte verwenden den aktuellen Wetterzu
 
 ## 0.4.96 – Adventskerzen im Header und NTC-Geburtstag
 Adventswochenenden zeigen vier Kerzen mit passender Anzahl leuchtender Flammen in einer eigenen Header-Spalte. NTC erhält am 6. Dezember eine separate jährliche Geburtstagseite mit Gründungsdatum 06.12.1993 und berechnetem Vereinsalter; die Adventsseite und Headerkerzen bleiben am selben Tag erhalten. Keine Geburtstagseite in der TENNILO-Demo. Wettereffekte bleiben unverändert.
+
+
+## 0.4.97 – NTC-Geburtstagsgruß
+Am 6. Dezember erscheint zusätzlich ein eigener Header-Badge mit dynamischem Vereinsalter und Geburtstagsgruß. Die Adventskerzen behalten ihren Platz. Die Geburtstagsseite im Infomodus enthält einen ausführlicheren, zweisprachigen Dank an die Vereinsgemeinschaft. Keine NTC-Geburtstagsanzeige in der TENNILO-Demo.
