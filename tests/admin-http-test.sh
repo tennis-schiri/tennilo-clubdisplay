@@ -11,6 +11,10 @@ cp deploy/admin-storage.htaccess "$tmp/www/clubdisplay-admin/.htaccess"
 php -r '$p="test-operator-123456789";$g=bin2hex(random_bytes(32));$f=$argv[1]."/www/admin/index.php";file_put_contents($f,str_replace(["__CD_ADMIN_PASSWORD_HASH__","__CD_ADMIN_GUARD_TOKEN__"],[password_hash($p,PASSWORD_BCRYPT),$g],file_get_contents($f)));file_put_contents($argv[1]."/www/clubdisplay-admin/.deployment-verified-".hash("sha256",$g),$g);' "$tmp"
 cat > "$tmp/router.php" <<'PHP'
 <?php
+// Disposable loopback test server simulates the production HTTPS virtual host.
+if(($_SERVER['HTTP_ORIGIN']??'')==='http://localhost:18189'){
+    $_SERVER['HTTP_ORIGIN']='https://clubdisplay.tennilo.de';
+}
 $_SERVER['HTTP_HOST']='clubdisplay.tennilo.de';
 $_SERVER['HTTPS']='on';
 $_SERVER['DOCUMENT_ROOT']=__DIR__.'/www';

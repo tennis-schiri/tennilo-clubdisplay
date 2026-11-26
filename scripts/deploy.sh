@@ -107,16 +107,33 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   if [[ "$code" == 200 ]]; then
     grep -Fq 'Spielpartner gesucht' "$tmp/ntc-partner"
     # Verify the actual smartphone form through the NTC gateway.
-    curl --fail --silent --show-error --max-time 55 "https://$DOMAIN/spielpartner/?mode=post" -o "$tmp/ntc-partner-create"
-    for marker in 'name="availability[]"' 'name="period[]"' 'name="age_primary"' 'name="age_wanted[]"' 'name="email"'; do grep -Fq "$marker" "$tmp/ntc-partner-create"; done
+    # Backend and public-display workflows run independently. Give the checked
+    # central deployment time to finish; never silently accept an obsolete form.
+    ready=0
+    for attempt in {1..24}; do
+      if curl --fail --silent --show-error --max-time 12 "https://$DOMAIN/spielpartner/?mode=post&release=$RELEASE_ID" -o "$tmp/ntc-partner-create"; then
+        missing=()
+        for marker in 'name="availability[]"' 'name="period[]"' 'name="age_primary"' 'name="age_wanted[]"' 'name="email"'; do
+          grep -Fq "$marker" "$tmp/ntc-partner-create" || missing+=("$marker")
+        done
+        if [[ ${#missing[@]} == 0 ]]; then ready=1; break; fi
+        echo "Waiting for updated central partner form ($attempt/24); missing fields: ${missing[*]}"
+      else
+        echo "Waiting for central partner form ($attempt/24); HTTP check failed."
+      fi
+      if [[ "$attempt" != 24 ]]; then sleep 10; fi
+    done
+    [[ "$ready" == 1 ]] || { echo "::error::Central admin backend has not published the required smartphone fields. Check deploy-admin.yml."; exit 1; }
+    echo "NTC smartphone form fields verified."
     # Exercise POST routing with intentionally incomplete data: no real request or email.
     for origin in "https://$DOMAIN" null; do
       code="$(curl --silent --show-error --max-time 55 -w '%{http_code}' -H "Origin: $origin" -H 'Sec-Fetch-Site: same-origin' --data 'mode=post' "https://$DOMAIN/spielpartner/?partner=submit&club=ntc93&mode=post" -o "$tmp/ntc-partner-post")"
-      [[ "$code" == 200 ]]
-      grep -Fq 'Bitte Altersgruppe, Mitgliedschaft und Einwilligung bestätigen.' "$tmp/ntc-partner-post"
+      [[ "$code" == 200 ]] || { echo "::error::NTC form POST rejected (HTTP $code, origin $origin)"; exit 1; }
+      grep -Fq 'Bitte Altersgruppe, Mitgliedschaft und Einwilligung bestätigen.' "$tmp/ntc-partner-post" || { echo "::error::NTC form POST did not reach expected server validation"; exit 1; }
+      echo "NTC form POST validation verified (origin $origin)."
     done
     code="$(curl --silent --show-error --max-time 55 -w '%{http_code}' -H 'Origin: null' -H 'Sec-Fetch-Site: cross-site' --data 'mode=post' "https://$DOMAIN/spielpartner/" -o "$tmp/ntc-partner-cross")"
-    [[ "$code" == 403 ]]
+    [[ "$code" == 403 ]] || { echo "::error::NTC cross-site POST did not return HTTP 403 (got $code)"; exit 1; }
   elif [[ "$code" == 404 ]]; then
     grep -Fq 'Spielpartnerbörse nicht freigeschaltet.' "$tmp/ntc-partner"
   else
