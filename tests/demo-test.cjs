@@ -149,3 +149,19 @@ assert.ok(!expandClasses.has('booking-expanded'));assert.equal(expandRun('bookin
 expandRun("view='courts';courtMode='indoor';toggleBookingExpansion()");
 assert.ok(!expandClasses.has('booking-expanded'));assert.doesNotMatch(expandRun('ebusyView()'),/data-action="booking-expand"/);
 console.log('Booking terminal expansion toggle, in-place resize and reset OK');
+
+ 
+// Weekend rotation uses exactly the same fixture and event cards as their own views.
+dateCtx.lang='de';dateCtx.view='info';
+dateCtx.weekendMatch={date:'2027-01-02T10:00:00+01:00',home:'NTC',away:'TC',isHome:true,score:null,courts:[1,2]};
+dateCtx.weekendEvent={title:'Vereinstermin',start:'2027-01-02T12:00:00+01:00',end:'2027-01-03T14:00:00+01:00',venue:'Clubhaus'};
+dateCtx.smartWeekend=()=>({saturday:20820,sunday:20821,rows:[{kind:'match',match:dateCtx.weekendMatch},{kind:'event',event:dateCtx.weekendEvent}]});
+vm.runInContext(source.slice(source.indexOf('function smartWeekendView('),source.indexOf('function smartCountdownView(')),dateCtx);
+const weekendHtml=vm.runInContext('smartWeekendView("weekend:0")',dateCtx);
+assert.ok(weekendHtml.includes(vm.runInContext('fixtureMatchCard(weekendMatch)',dateCtx)));
+assert.ok(weekendHtml.includes(vm.runInContext('fixtureEventCard(weekendEvent,true)',dateCtx)));
+assert.match(weekendHtml,/fixture-date-range/);
+assert.match(weekendHtml,/Clubhaus/);
+assert.doesNotMatch(weekendHtml,/smart-weekend-row/);
+dateCtx.lang='en';assert.match(vm.runInContext('smartWeekendView("weekend:0")',dateCtx),/This weekend/);
+console.log('Weekend shares match and calendar card rendering in DE/EN');

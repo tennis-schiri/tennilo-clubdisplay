@@ -154,17 +154,10 @@ function smartWeekendView(key){
   if(!data)return '';
   const locale=lang==='de'?'de-DE':'en-GB';
   const day=n=>new Date(n*86400000).toLocaleDateString(locale,{timeZone:'UTC',day:'2-digit',month:'2-digit',year:'numeric'});
-  const date=s=>new Date(s).toLocaleDateString(locale,{timeZone:'Europe/Berlin',weekday:'short',day:'2-digit',month:'2-digit'});
-  const time=s=>new Date(s).toLocaleTimeString(locale,{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
   const page=Number(key.split(':')[1])||0;
-  const rows=data.rows.slice(page*5,page*5+5).map(r=>{
-    const m=r.match,e=r.event;
-    const title=m?teamAndLeague(m).team+' · '+shortClub(m.home)+' – '+shortClub(m.away):e.title;
-    const span=m?date(m.date)+' · '+time(m.date):date(e.start)+(smartDate(e.start)!==smartDate(e.end)?' – '+date(e.end):'')+(e.allDay?' · '+tr('Ganztägig','All day'):' · '+time(e.start));
-    return '<article class="smart-weekend-row"><span>'+esc(span)+'</span><strong>'+esc(title)+'</strong><small>'+esc(m?(m.score?tr('Ergebnis','Result')+' '+m.score:tr('Heimspiel','Home match')):tr('Veranstaltung','Event'))+'</small></article>';
-  }).join('');
+  const rows=data.rows.slice(page*5,page*5+5).map(r=>r.kind==='match'?fixtureMatchCard(r.match):fixtureEventCard(r.event,true)).join('');
   const incomplete=[leagueData,eventData].some(d=>!d||d.status!=='ok');
-  return '<div class="smart-feature"><div class="match-heading"><h1>'+tr('Das Wochenende','This weekend')+'</h1><span>'+esc(day(data.saturday)+' – '+day(data.sunday))+'</span></div><div class="smart-weekend-list">'+rows+'</div><p class="match-source">'+tr('Quelle: nuLiga und Veranstaltungskalender','Source: nuLiga and events calendar')+(incomplete?' · '+tr('Daten teilweise nicht aktuell oder verfügbar','Some data may be outdated or unavailable'):'')+(data.rows.length>5?' · '+(page+1)+' / '+Math.ceil(data.rows.length/5):'')+'</p></div>';
+  return '<div class="smart-feature"><div class="match-heading"><h1>'+tr('Das Wochenende','This weekend')+'</h1><span>'+esc(day(data.saturday)+' – '+day(data.sunday))+'</span></div><div class="fixture-list smart-weekend-list">'+rows+'</div><p class="match-source">'+tr('Quelle: nuLiga und Veranstaltungskalender','Source: nuLiga and events calendar')+(incomplete?' · '+tr('Daten teilweise nicht aktuell oder verfügbar','Some data may be outdated or unavailable'):'')+(data.rows.length>5?' · '+(page+1)+' / '+Math.ceil(data.rows.length/5):'')+'</p></div>';
 }
 function smartCountdownView(){
   const rows=smartOpenCountdown(eventData);
@@ -398,21 +391,22 @@ function matchView(){
   let rows=d.matches.filter(m=>filter==='results'?!!m.score:future(m)&&!m.score&&(filter==='all'||(filter==='home'?m.isHome:!m.isHome)));
   if(filter==='results')rows=rows.slice().reverse();
   if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine passenden Begegnungen im von nuLiga gelieferten Zeitraum.','No matching fixtures in the period supplied by nuLiga.')+'</p>'+(d.range?'<p>'+esc(d.range.from)+' – '+esc(d.range.to)+'</p>':'')+'</div>'+source;
-  const cards=rows.map(m=>{
-    const when=new Date(m.date),locale=lang==='de'?'de-DE':'en-GB',zone='Europe/Berlin';
-    const weekday=when.toLocaleDateString(locale,{timeZone:zone,weekday:'long'});
-    const dayLabel=when.toLocaleDateString(locale,{timeZone:zone,day:'2-digit',month:'2-digit',year:'numeric'});
-    const timeLabel=when.toLocaleTimeString(locale,{timeZone:zone,hour:'2-digit',minute:'2-digit'});
-    const identity=teamAndLeague(m);
-    const venueLabel=typeof m.venue==='string'?m.venue.trim():'';
-    const courtNumbers=fixtureAssignedCourts(m);
-    const courtStrip='<div class="fixture-court-strip'+(!m.isHome?' fixture-away-strip':'')+'" aria-label="'+(m.isHome?tr('Plätze','Courts'):tr('Auswärtsspiel','Away match'))+'">'+(!m.isHome?'<span class="fixture-away-label">'+tr('Auswärts','Away')+'</span>':courtNumbers.length?courtNumbers.map(n=>'<span class="fixture-court-icon" aria-label="'+esc(fixtureCourtLabel(n))+'"><svg viewBox="0 0 36 22" aria-hidden="true"><rect x="1" y="1" width="34" height="20" rx="3" fill="currentColor"/><path d="M5 4H31V18H5Z M18 4V18 M5 7H31 M5 15H31 M11 7V15 M25 7V15" fill="none" stroke="var(--court-icon-ink)" stroke-width=".8"/><rect x="10" y="3" width="16" height="16" rx="2" fill="currentColor"/><text x="18" y="15" text-anchor="middle" font-size="'+(n.length>2?'8':'13')+'" font-weight="800" fill="var(--court-icon-ink)">'+esc(n)+'</text></svg></span>').join(''):'<span class="fixture-court-unknown">'+tr('Plätze','Courts')+'<strong>–</strong></span>')+'</div>';
-    const showVenue=venueLabel&&(!m.isHome||venueLabel.toLocaleLowerCase('de-DE')!=='neuenhagen');
-    const meta=showVenue?'<div class="fixture-venue"><span>'+tr('Halle','Indoor venue')+'</span><strong>'+esc(venueLabel)+'</strong></div>':'';
-    return '<article class="fixture-card"><time class="fixture-date-block" datetime="'+esc(m.date)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(dayLabel)+'</strong><span class="fixture-time">'+esc(timeLabel)+(lang==='de'?' Uhr':'')+'</span></time>'+courtStrip+'<div class="fixture-content fixture-match-content"><div class="fixture-match-main"><span class="fixture-identity">'+esc(identity.team)+'</span><div class="fixture-pair"><strong class="fixture-team '+(m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.home))+'</strong><span class="fixture-versus">–</span><strong class="fixture-team '+(!m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.away))+'</strong></div></div><div class="fixture-match-meta">'+(identity.league?'<span class="fixture-league">'+esc(identity.league)+'</span>':'')+meta+'</div></div>'+fixtureStatusMarkup(m)+'</article>';
-  }).join('');
+  const cards=rows.map(m=>fixtureMatchCard(m)).join('');
   const pagination='<div class="actions match-pages"><button data-action="match-prev" aria-label="'+tr('Vorherige Seite','Previous page')+'">‹</button><span class="match-page-number"></span><button data-action="match-next" aria-label="'+tr('Nächste Seite','Next page')+'">›</button></div>';
   return title+warning+'<div class="fixture-list">'+cards+'</div>'+pagination+source;
+}
+function fixtureMatchCard(m){
+  const when=new Date(m.date),locale=lang==='de'?'de-DE':'en-GB',zone='Europe/Berlin';
+  const weekday=when.toLocaleDateString(locale,{timeZone:zone,weekday:'long'});
+  const dayLabel=when.toLocaleDateString(locale,{timeZone:zone,day:'2-digit',month:'2-digit',year:'numeric'});
+  const timeLabel=when.toLocaleTimeString(locale,{timeZone:zone,hour:'2-digit',minute:'2-digit'});
+  const identity=teamAndLeague(m);
+  const venueLabel=typeof m.venue==='string'?m.venue.trim():'';
+  const courtNumbers=fixtureAssignedCourts(m);
+  const courtStrip='<div class="fixture-court-strip'+(!m.isHome?' fixture-away-strip':'')+'" aria-label="'+(m.isHome?tr('Plätze','Courts'):tr('Auswärtsspiel','Away match'))+'">'+(!m.isHome?'<span class="fixture-away-label">'+tr('Auswärts','Away')+'</span>':courtNumbers.length?courtNumbers.map(n=>'<span class="fixture-court-icon" aria-label="'+esc(fixtureCourtLabel(n))+'"><svg viewBox="0 0 36 22" aria-hidden="true"><rect x="1" y="1" width="34" height="20" rx="3" fill="currentColor"/><path d="M5 4H31V18H5Z M18 4V18 M5 7H31 M5 15H31 M11 7V15 M25 7V15" fill="none" stroke="var(--court-icon-ink)" stroke-width=".8"/><rect x="10" y="3" width="16" height="16" rx="2" fill="currentColor"/><text x="18" y="15" text-anchor="middle" font-size="'+(n.length>2?'8':'13')+'" font-weight="800" fill="var(--court-icon-ink)">'+esc(n)+'</text></svg></span>').join(''):'<span class="fixture-court-unknown">'+tr('Plätze','Courts')+'<strong>–</strong></span>')+'</div>';
+  const showVenue=venueLabel&&(!m.isHome||venueLabel.toLocaleLowerCase('de-DE')!=='neuenhagen');
+  const meta=showVenue?'<div class="fixture-venue"><span>'+tr('Halle','Indoor venue')+'</span><strong>'+esc(venueLabel)+'</strong></div>':'';
+  return '<article class="fixture-card"><time class="fixture-date-block" datetime="'+esc(m.date)+'"><span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(dayLabel)+'</strong><span class="fixture-time">'+esc(timeLabel)+(lang==='de'?' Uhr':'')+'</span></time>'+courtStrip+'<div class="fixture-content fixture-match-content"><div class="fixture-match-main"><span class="fixture-identity">'+esc(identity.team)+'</span><div class="fixture-pair"><strong class="fixture-team '+(m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.home))+'</strong><span class="fixture-versus">–</span><strong class="fixture-team '+(!m.isHome?'fixture-own':'')+'">'+esc(shortClub(m.away))+'</strong></div></div><div class="fixture-match-meta">'+(identity.league?'<span class="fixture-league">'+esc(identity.league)+'</span>':'')+meta+'</div></div>'+fixtureStatusMarkup(m)+'</article>';
 }
 function fixtureCalendarDay(value){
   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
@@ -440,7 +434,7 @@ function fixtureStatusMarkup(m){
   return '<div class="fixture-result fixture-status fixture-status-'+status.kind+'" data-match-start="'+esc(m.date)+'"><span>'+esc(status.label)+'</span><strong>'+esc(status.value)+'</strong></div>';
 }
 function refreshFixtureStatuses(now=Date.now()){
-  if(view!=='teams'&&!(view==='info'&&smartScreenKey(screens[slide])==='teams'))return;
+  if(view!=='teams'&&!(view==='info'&&(smartScreenKey(screens[slide])==='teams'||smartScreenKey(screens[slide]).startsWith('weekend:'))))return;
   for(const el of document.querySelectorAll('[data-match-start]')){
     const status=fixtureStatus(el.dataset.matchStart,now);
     const label=el.querySelector('span'),value=el.querySelector('strong');
@@ -452,7 +446,7 @@ function refreshFixtureStatuses(now=Date.now()){
   }
 }
 async function refreshLeague(){
-  if(!pilot){leagueData=demoLeague();syncMatchGreetings();if(view==='teams'||(view==='info'&&smartScreenKey(screens[slide])==='teams'))render();return;}
+  if(!pilot){leagueData=demoLeague();syncMatchGreetings();if(view==='teams'||(view==='info'&&(smartScreenKey(screens[slide])==='teams'||smartScreenKey(screens[slide]).startsWith('weekend:'))))render();return;}
   if(fetching)return;fetching=true;
   try{
     const response=await fetch('nuliga.php',{cache:'no-store',signal:AbortSignal.timeout(25000)});
@@ -461,7 +455,7 @@ async function refreshLeague(){
     if(!Array.isArray(data.matches)||!['ok','stale','unavailable'].includes(data.status))throw Error('invalid feed');
     leagueData=data;
   }catch{leagueData=leagueData&&leagueData.status!=='unavailable'?{...leagueData,status:'stale'}:{status:'unavailable',matches:[]};}
-  finally{fetching=false;syncMatchGreetings();if(view==='teams'||(view==='info'&&smartScreenKey(screens[slide])==='teams'))render();}
+  finally{fetching=false;syncMatchGreetings();if(view==='teams'||(view==='info'&&(smartScreenKey(screens[slide])==='teams'||smartScreenKey(screens[slide]).startsWith('weekend:'))))render();}
 }
 setInterval(refreshLeague,300000);
 setInterval(refreshFixtureStatuses,10000);
@@ -476,35 +470,37 @@ function eventView(){
   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const val=k=>parts.find(p=>p.type===k)?.value;const today=val('year')+'-'+val('month')+'-'+val('day');
   const rows=d.events.filter(e=>e.end.slice(0,10)>=today);
   if(!rows.length)return title+warning+'<div class="panel"><p>'+tr('Keine kommenden Veranstaltungen im abgerufenen Zeitraum.','No upcoming events in the retrieved period.')+'</p>'+(d.to?'<p>'+tr('Zeitraum bis ','Period until ')+esc(d.to)+'</p>':'')+'</div>'+source;
-  const cards=rows.map(e=>{
-    const dayKey=s=>fmt(s,{year:'numeric',month:'2-digit',day:'2-digit'});
-    const multi=dayKey(e.start)!==dayKey(e.end);
-    const weekday=fmt(e.start,{weekday:'long'});
-    const date=fmt(e.start,{day:'2-digit',month:'2-digit',year:'numeric'});
-    const time=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+(lang==='de'?' Uhr':'');
-    const endTime=fmt(e.end,{hour:'2-digit',minute:'2-digit'});
-    const endDate=fmt(e.end,{day:'2-digit',month:'2-digit',year:'numeric'});
-    const dateBlock=multi?'<strong class="fixture-day">'+esc(date)+'</strong><span class="fixture-range-separator">'+tr('bis','to')+'</span><strong class="fixture-day">'+esc(endDate)+'</strong>':'<span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(date)+'</strong>';
-    const link=!info&&!pilot&&typeof e.url==='string'&&/^https:\/\/(?:www\.)?ntc93\.com\//i.test(e.url)?'<a class="event-link" href="'+esc(e.url)+'" target="_blank" rel="noopener noreferrer">'+tr('Details','Details')+'</a>':'';
-    const period=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+endTime+(lang==='de'?' Uhr':'');
-    const periodLabel=tr('Zeitraum','Time');
-    const cell=(label,value)=>'<div class="event-meta-cell"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>';
-    return '<article class="fixture-card event-card'+(link?' event-card-linked':'')+'"><time class="fixture-date-block'+(multi?' fixture-date-range':'')+'" datetime="'+esc(e.start)+'">'+dateBlock+(e.allDay?'':'<span class="fixture-time">'+esc(time)+'</span>')+'</time><div class="fixture-content event-content"><strong class="event-title">'+esc(e.title)+'</strong></div><div class="event-meta">'+cell(periodLabel,period)+cell(tr('Ort','Venue'),e.venue||'–')+'</div>'+link+'</article>';
-  }).join('');
+  const cards=rows.map(e=>fixtureEventCard(e,info)).join('');
   const paging='<div class="actions match-pages"><button data-action="event-prev" aria-label="'+tr('Vorherige Seite','Previous page')+'">‹</button><span class="match-page-number"></span><button data-action="event-next" aria-label="'+tr('Nächste Seite','Next page')+'">›</button></div>';
   return title+warning+'<div class="fixture-list">'+cards+'</div>'+paging+source;
+}
+function fixtureEventCard(e,info){
+  const locale=lang==='de'?'de-DE':'en-GB', fmt=(s,options)=>new Date(s).toLocaleString(locale,{timeZone:'Europe/Berlin',...options});
+  const dayKey=s=>fmt(s,{year:'numeric',month:'2-digit',day:'2-digit'});
+  const multi=dayKey(e.start)!==dayKey(e.end);
+  const weekday=fmt(e.start,{weekday:'long'});
+  const date=fmt(e.start,{day:'2-digit',month:'2-digit',year:'numeric'});
+  const time=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+(lang==='de'?' Uhr':'');
+  const endTime=fmt(e.end,{hour:'2-digit',minute:'2-digit'});
+  const endDate=fmt(e.end,{day:'2-digit',month:'2-digit',year:'numeric'});
+  const dateBlock=multi?'<strong class="fixture-day">'+esc(date)+'</strong><span class="fixture-range-separator">'+tr('bis','to')+'</span><strong class="fixture-day">'+esc(endDate)+'</strong>':'<span class="fixture-weekday">'+esc(weekday)+'</span><strong class="fixture-day">'+esc(date)+'</strong>';
+  const link=!info&&!pilot&&typeof e.url==='string'&&/^https:\/\/(?:www\.)?ntc93\.com\//i.test(e.url)?'<a class="event-link" href="'+esc(e.url)+'" target="_blank" rel="noopener noreferrer">'+tr('Details','Details')+'</a>':'';
+  const period=e.allDay?tr('Ganztägig','All day'):fmt(e.start,{hour:'2-digit',minute:'2-digit'})+' – '+endTime+(lang==='de'?' Uhr':'');
+  const periodLabel=tr('Zeitraum','Time');
+  const cell=(label,value)=>'<div class="event-meta-cell"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>';
+  return '<article class="fixture-card event-card'+(link?' event-card-linked':'')+'"><time class="fixture-date-block'+(multi?' fixture-date-range':'')+'" datetime="'+esc(e.start)+'">'+dateBlock+(e.allDay?'':'<span class="fixture-time">'+esc(time)+'</span>')+'</time><div class="fixture-content event-content"><strong class="event-title">'+esc(e.title)+'</strong></div><div class="event-meta">'+cell(periodLabel,period)+cell(tr('Ort','Venue'),e.venue||'–')+'</div>'+link+'</article>';
 }
 async function refreshEvents(){
   if(!pilot){
     const d=new Date();d.setHours(17,0,0,0);
     const event=(title,offset,hours)=>({title,start:new Date(d.getTime()+offset*86400000).toISOString(),end:new Date(d.getTime()+offset*86400000+hours*3600000).toISOString()});
     eventData={status:'ok',events:[event('Clubabend (Demo)',0,3),event('Clubturnier (Demo)',2,4),{...event('DEMO OPEN',75,8),demo:true}]};
-    syncMatchGreetings();if(view==='calendar'||(view==='info'&&smartScreenKey(screens[slide])==='calendar'))render();return;
+    syncMatchGreetings();if(view==='calendar'||(view==='info'&&(smartScreenKey(screens[slide])==='calendar'||smartScreenKey(screens[slide]).startsWith('weekend:'))))render();return;
   }
   if(eventFetching)return;eventFetching=true;
   try{const response=await fetch('events.php',{cache:'no-store',signal:AbortSignal.timeout(45000)});if(!response.ok)throw Error('HTTP');const data=await response.json();if(!Array.isArray(data.events)||!['ok','stale','unavailable'].includes(data.status))throw Error('feed');eventData=data;}
   catch{eventData=eventData&&eventData.status!=='unavailable'?{...eventData,status:'stale'}:{status:'unavailable',events:[]};}
-  finally{eventFetching=false;syncMatchGreetings();if(view==='calendar'||(view==='info'&&smartScreenKey(screens[slide])==='calendar'))render();}
+  finally{eventFetching=false;syncMatchGreetings();if(view==='calendar'||(view==='info'&&(smartScreenKey(screens[slide])==='calendar'||smartScreenKey(screens[slide]).startsWith('weekend:'))))render();}
 }
 setInterval(refreshEvents,300000);
 
@@ -923,7 +919,7 @@ function toggleInfoPause(){
 }
 function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=l.club;$('mode').textContent=view==='info'?l.info:'';$('mode').hidden=view!=='info';$('mode-dot').hidden=view!=='info';$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}$('language').textContent=lang==='de'?'EN':'DE';syncFullscreen();renderWeatherHeader();infoControls();
 renderNav();
-const active=view==='info'?smartScreenKey(screens[slide]):view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active)||greetingEvents.has(active)||active.startsWith('holiday:'));document.body.classList.toggle('restaurant-screen',active==='restaurant');let html='';
+const active=view==='info'?smartScreenKey(screens[slide]):view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('weekend-screen',active.startsWith('weekend:'));document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active)||greetingEvents.has(active)||active.startsWith('holiday:'));document.body.classList.toggle('restaurant-screen',active==='restaurant');let html='';
 if(greetingMatches.has(active))html=matchGreetingView(active);else if(greetingEvents.has(active))html=eventGreetingView(active);else if(active.startsWith('holiday:'))html=smartHolidayView(active);else if(active.startsWith('weekend:'))html=smartWeekendView(active);else if(active==='open-countdown')html=smartCountdownView();else if(active==='partners'||active.startsWith('partners:'))html=partnerBoardView(active);else switch(active){
 case 'welcome':html=occupancyView();break;
 case 'home':{
