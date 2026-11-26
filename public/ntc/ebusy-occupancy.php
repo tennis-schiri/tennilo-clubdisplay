@@ -116,6 +116,26 @@ function eb_slots(array $courts,array $rows,string $area,int $start,DateTimeZone
     }
     return $slots;
 }
+// Count field availability, never include any raw names, labels, IDs or booking codes in CI logs.
+function eb_booking_stats(array $rows,int $start,DateTimeZone $tz):array{
+    $s=['rows'=>count($rows),'active'=>0,'inDisplayWindow'=>0,'displayTextPresent'=>0,'displayTextUsable'=>0,'bookerNamePresent'=>0,'partnerNamePresent'=>0,'windowLabels'=>0,'windowBookerNames'=>0,'matchType'=>0,'matchTeamRecognized'=>0,'categories'=>[]];
+    foreach($rows as $b){
+        if(!is_array($b)||($b['cancelled']??false)===true)continue;
+        $s['active']++;
+        $category=eb_category($b);$s['categories'][$category]=($s['categories'][$category]??0)+1;
+        if(is_string($b['displayText']??null)&&trim($b['displayText'])!=='')$s['displayTextPresent']++;
+        if(eb_display($b['displayText']??null)!=='')$s['displayTextUsable']++;
+        $name=eb_name($b['person']??null);if($name!=='')$s['bookerNamePresent']++;
+        foreach(is_array($b['additionalPlayerInfos']??null)?$b['additionalPlayerInfos']:[] as $partner){
+            if(is_array($partner)&&(eb_name($partner['player']??null)!==''||eb_display($partner['displayName']??null)!=='')){$s['partnerNamePresent']++;break;}
+        }
+        if($category==='match')$s['matchType']++;
+        if(eb_match_team($b)!=='')$s['matchTeamRecognized']++;
+        try{$a=eb_time($b['date']??'',$b['fromTime']??'',$tz);$z=eb_time($b['date']??'',$b['toTime']??'',$tz);}catch(Throwable $e){continue;}
+        if($a<$start+10800&&$z>$start){$s['inDisplayWindow']++;if($name!=='')$s['windowBookerNames']++;if(eb_label($b)!=='')$s['windowLabels']++;}
+    }
+    return $s;
+}
 function eb_snapshot(array $cfg,int $now,array &$diagnostics=[]): array {
     $tz=new DateTimeZone('Europe/Berlin');$local=(new DateTimeImmutable('@'.$now))->setTimezone($tz);
     $start=$now-(int)$local->format('i')*60-(int)$local->format('s');
@@ -127,8 +147,9 @@ function eb_snapshot(array $cfg,int $now,array &$diagnostics=[]): array {
         foreach(['courts','reservations'] as $kind){
             $endpoint=$path.'/'.$kind;
             try{
-                $results[$area][$kind]=eb_get($cfg,$endpoint,$kind==='reservations'?['fromDate'=>$from,'toDate'=>$to,'includeCancelled'=>'false']:[]);
+                $results[$area][$kind]=eb_get($cfg,$endpoint,$kind==='reservations'?['fromDate'=>$from,'toDate'=>$to]:[]);
                 $diagnostics[$endpoint]='ok';
+                if($kind==='reservations')$diagnostics[$area.'_booking_fields']=eb_booking_stats($results[$area][$kind],$start,$tz);
             }catch(Throwable $e){
                 $reason=$e instanceof RuntimeException?$e->getMessage():'unexpected_response';
                 $diagnostics[$endpoint]=preg_match('/^(http_\d{3}|api_error|unexpected_response)$/D',$reason)?$reason:'unexpected_response';
@@ -173,7 +194,7 @@ if(!$check&&!$local){
     if(!$registered)eb_reply(403,['status'=>'restricted']);
 }
 if(empty($cfg['user'])||empty($cfg['password'])||!function_exists('curl_init'))eb_reply(503,['status'=>'unconfigured']);
-$lock=@fopen(__DIR__.'/ebusy-private/cache-v3.lock','c+');
+$lock=@fopen(__DIR__.'/ebusy-private/cache-v4.lock','c+');
 if(!$lock||!flock($lock,LOCK_EX)){eb_reply(503,['status'=>'unavailable']);}
 $now=time();$cache=json_decode((string)stream_get_contents($lock),true);
 if(!is_array($cache)||($cache['retryAt']??0)<=$now){
@@ -184,5 +205,5 @@ if(!is_array($cache)||($cache['retryAt']??0)<=$now){
     rewind($lock);if(!ftruncate($lock,0)||fwrite($lock,json_encode($cache))===false||!fflush($lock)){fclose($lock);eb_reply(503,['status'=>'unavailable']);}
 }
 fclose($lock);$data=$cache['data']??['status'=>'unavailable'];
-if($check)eb_reply(200,['status'=>$data['status'],'reason'=>$data['reason']??null,'slotCount'=>count($data['slots']??[]),'endpoints'=>$cache['diagnostics']??[],'onsiteConfigured'=>filter_var($ip,FILTER_VALIDATE_IP)!==false]);
+if($check)eb_reply(200,['status'=>$data['status'],'reason'=>$data['reason']??null,'slotCount'=>count($data['slots']??[]),'endpoints'=>$cache['diagnostics']??[],'labeledSlots'=>count(array_filter($data['slots']??[],fn($s)=>count(array_filter($s['bookings']??[],fn($b)=>($b['displayLabel']??'')!==''))>0)),'matchBookingCount'=>count($data['matchBookings']??[]),'onsiteConfigured'=>filter_var($ip,FILTER_VALIDATE_IP)!==false]);
 eb_reply(200,$data['status']==='ok'?$data:['status'=>'unavailable']);

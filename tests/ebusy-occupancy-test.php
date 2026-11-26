@@ -12,6 +12,8 @@ eb_slots([['id'=>11,'name'=>'Halle 1']],$future,'indoor',$start,$tz,$matches);
 if(count($matches)!==1||$matches[0]['team']!=='H30:2'||$matches[0]['court']!==1)throw new RuntimeException('fixture mapping');
 if(eb_category(['bookingTypeName'=>'Punktspiel','displayText'=>'Herren 30 II','type'=>'BLOCKING'])!=='match'||eb_label(['bookingTypeName'=>'Punktspiel','displayText'=>'Herren 30 II','type'=>'BOOKING','person'=>['firstname'=>'Admin']])!=='Herren 30 II')throw new RuntimeException('match category/label');
 if(eb_category(['bookingTypeName'=>'Jugendtraining','type'=>'BLOCKING'])!=='junior'||eb_category(['bookingTypeName'=>'Einzelbuchung','type'=>'BOOKING'])!=='regular'||eb_category(['type'=>'BLOCKING'])!=='blocked')throw new RuntimeException('booking categories');
+$stats=eb_booking_stats($rows,$start,$tz);
+if($stats['windowBookerNames']!==1||$stats['windowLabels']!==1||str_contains(json_encode($stats),'Muster')||str_contains(json_encode($stats),'SECRET'))throw new RuntimeException('safe booking diagnostics');
 $db=cdtest_db(':memory:');$now=time();
 $code=cdtest_issue($db,'Büro',$now);$token=cdtest_register($db,$code,$now);
 if(!$token||!eb_registered_device($db,$token,$now)||eb_registered_device($db,str_repeat('a',64),$now)||eb_registered_device($db,'',$now)||eb_registered_device(null,$token,$now)||eb_registered_device($db,$token,$now+31536001))throw new RuntimeException('live browser authorization');
