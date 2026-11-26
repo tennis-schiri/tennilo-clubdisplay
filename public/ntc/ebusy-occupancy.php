@@ -57,9 +57,23 @@ function eb_match_team(array $b):string{
     if(!preg_match('/\b(?:Punktspiel|Heimspiel|Verbandsspiel|Mannschaftsspiel)\b/iu',$label.' '.$type))return '';
     return eb_team($label);
 }
+// eBuSy exposes bookingTypeName, but no color field. Use only a fixed category palette.
+function eb_category(array $b):string{
+    $type=is_string($b['bookingTypeName']??null)?$b['bookingTypeName']:'';
+    $label=is_string($b['displayText']??null)?$b['displayText']:'';
+    $text=$type.' '.$label;
+    if(preg_match('/\b(?:Punktspiel|Heimspiel|Verbandsspiel|Mannschaftsspiel)(?:e|en)?\b/iu',$text))return 'match';
+    if(preg_match('/\b(?:Turnier|Clubmeisterschaft|Vereinsmeisterschaft)(?:e|en)?\b/iu',$text))return 'tournament';
+    if(preg_match('/Jugendtraining|Kindertraining|Jugendkurs|Kinderkurs/iu',$text))return 'junior';
+    if(preg_match('/Training|Trainerstunde|Tenniskurs/iu',$text))return 'training';
+    if(($b['type']??'')==='BLOCKING'||preg_match('/Platzpflege|Sperrung|Wartung/iu',$type))return 'blocked';
+    if(($b['guestBooking']??false)===true||preg_match('/Gastbuchung|Gastspieler/iu',$type))return 'guest';
+    if(preg_match('/Doppel/iu',$type))return 'doubles';
+    return 'regular';
+}
 function eb_label(array $b):string{
     $display=eb_display($b['displayText']??null);
-    if($b['type']==='BLOCKING'||eb_match_team($b)!==''||preg_match('/^(?:Training|Jugendtraining|Punktspiel|Heimspiel|Verbandsspiel|Mannschaftsspiel)\b/iu',$display))return $display;
+    if(in_array(eb_category($b),['match','training','junior','tournament','blocked'],true))return $display!==''?$display:eb_display($b['bookingTypeName']??null);
     $names=[];$main=eb_name($b['person']??null);if($main!=='')$names[]=$main;
     foreach(is_array($b['additionalPlayerInfos']??null)?$b['additionalPlayerInfos']:[] as $p){
         if(!is_array($p))continue;
@@ -89,12 +103,12 @@ function eb_slots(array $courts,array $rows,string $area,int $start,DateTimeZone
         $court=$map[$b['courtId']];
         $team=eb_match_team($b);
         if($team!==''&&$z>$start)$matchBookings[]=['team'=>$team,'area'=>$area,'court'=>$court,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$a),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$z)];
-        if($a<$start+10800&&$z>$start)$intervals[$court][]=[$a,$z,$b['type']==='BLOCKING',eb_label($b)];
+        if($a<$start+10800&&$z>$start)$intervals[$court][]=[$a,$z,$b['type']==='BLOCKING',eb_label($b),eb_category($b)];
     }
     $slots=[];
     foreach($map as $court)for($i=0;$i<3;$i++){
         $a=$start+$i*3600;$z=$a+3600;$pieces=[];$booked=false;$bookings=[];
-        foreach($intervals[$court]??[] as [$x,$y,$blocked,$label])if($x<$z&&$y>$a){$pieces[]=[max($a,$x),min($z,$y)];if(!$blocked)$booked=true;if($label!=='')$bookings[]=['displayLabel'=>$label,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$x),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$y)];}
+        foreach($intervals[$court]??[] as [$x,$y,$blocked,$label,$category])if($x<$z&&$y>$a){$pieces[]=[max($a,$x),min($z,$y)];if(!$blocked)$booked=true;$bookings[]=['displayLabel'=>$label,'category'=>$category,'start'=>gmdate('Y-m-d\TH:i:s.000\Z',$x),'end'=>gmdate('Y-m-d\TH:i:s.000\Z',$y)];}
         sort($pieces);$covered=0;$end=$a;
         foreach($pieces as [$x,$y]){if($y>$end){$covered+=$y-max($x,$end);$end=$y;}}
         $status=$covered===0?'free':($covered<3600?'partial':($booked?'occupied':'blocked'));
@@ -159,7 +173,7 @@ if(!$check&&!$local){
     if(!$registered)eb_reply(403,['status'=>'restricted']);
 }
 if(empty($cfg['user'])||empty($cfg['password'])||!function_exists('curl_init'))eb_reply(503,['status'=>'unconfigured']);
-$lock=@fopen(__DIR__.'/ebusy-private/cache-v2.lock','c+');
+$lock=@fopen(__DIR__.'/ebusy-private/cache-v3.lock','c+');
 if(!$lock||!flock($lock,LOCK_EX)){eb_reply(503,['status'=>'unavailable']);}
 $now=time();$cache=json_decode((string)stream_get_contents($lock),true);
 if(!is_array($cache)||($cache['retryAt']??0)<=$now){

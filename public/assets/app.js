@@ -34,12 +34,12 @@ function demoOccupancy(hours,now=Date.now()){
   const labels={outdoor:[[tr('Demo-Spieler A / B','Demo players A / B'),null,null],[tr('Jugend U14','Juniors U14'),null,null],[null,null,null],[tr('Damen 30','Women 30'),null,tr('Demo-Spieler C / D','Demo players C / D')],[null,tr('Jugendtraining','Junior training'),tr('Jugendtraining','Junior training')],[tr('Platzpflege','Court maintenance'),null,null],[tr('Mixed-Training','Mixed training'),null,tr('Vereinstraining','Club training')]],indoor:[[tr('Damen 50','Women 50'),tr('Damen 50','Women 50'),null],[tr('Demo-Spieler E / F','Demo players E / F'),null,tr('Herren 40','Men 40')]]};
   const slots=[];
   for(const area of Object.keys(labels))labels[area].forEach((row,ci)=>hours.forEach((hour,i)=>{
-    let label=row[i],status=label?'occupied':'free',from=Date.parse(hour.start),to=Date.parse(hour.end);
+    let label=row[i],category=ci===4?'junior':ci===5?'blocked':ci===6||ci===1&&area==='outdoor'?'training':'regular',status=label?'occupied':'free',from=Date.parse(hour.start),to=Date.parse(hour.end);
     if(area==='outdoor'&&ci<3&&from<demoStart+7200000&&to>demoStart){
-      label=tr('Herren 30 · Heimspiel (Demo)','Men 30 · home match (demo)');from=Math.max(from,demoStart);to=Math.min(to,demoStart+7200000);status=from===Date.parse(hour.start)&&to===Date.parse(hour.end)?'occupied':'partial';
+      label=tr('Herren 30 · Heimspiel (Demo)','Men 30 · home match (demo)');category='match';from=Math.max(from,demoStart);to=Math.min(to,demoStart+7200000);status=from===Date.parse(hour.start)&&to===Date.parse(hour.end)?'occupied':'partial';
     }
     if(area==='outdoor'&&ci===5&&i===0)status='blocked';
-    slots.push({area,court:ci+1,...hour,status,bookings:label?[{displayLabel:label,start:new Date(from).toISOString(),end:new Date(to).toISOString()}]:[]});
+    slots.push({area,court:ci+1,...hour,status,bookings:label?[{displayLabel:label,category,start:new Date(from).toISOString(),end:new Date(to).toISOString()}]:[]});
   }));
   return {status:'ok',fetchedAt:Math.floor(now/1000),slots};
 }
@@ -792,19 +792,28 @@ function occupancySlot(area,court,hour,data=occupancyData){
 function occupancyCourtGraphic(court){
   return '<svg class="occupancy-court-art" viewBox="0 0 120 56" aria-hidden="true"><rect class="court-surface" x="1" y="1" width="118" height="54" rx="5"/><g fill="none" stroke="currentColor" stroke-width="1.1"><rect x="7" y="6" width="106" height="44"/><path d="M7 12h106M7 44h106M31 12v32M89 12v32M31 28h58M60 3v50"/></g><circle class="court-number-disc" cx="60" cy="28" r="13"/><text class="court-number" x="60" y="29" dominant-baseline="middle" text-anchor="middle">'+court+'</text></svg>';
 }
+function occupancyCategory(value){
+  return ['match','tournament','junior','training','blocked','guest','doubles','regular'].includes(value)?value:'regular';
+}
+function occupancyCategoryLabel(value){
+  const labels={match:tr('Punktspiel','League match'),tournament:tr('Turnier','Tournament'),junior:tr('Jugendtraining','Junior training'),training:tr('Training','Training'),blocked:tr('Gesperrt','Closed'),guest:tr('Gastbuchung','Guest booking'),doubles:tr('Doppel','Doubles'),regular:tr('Buchung','Booking')};
+  return labels[occupancyCategory(value)];
+}
 function occupancyBookingText(area,court,hour){
   const record=occupancyRecord(area,court,hour);
   const status=occupancySlot(area,court,hour);
   const fallback={unknown:tr('Noch keine Daten','No data yet'),free:pilot?tr('Nicht gebucht','Not booked'):tr('Frei','Free'),occupied:tr('Belegt','Occupied'),partial:tr('Teilbelegt','Partly occupied'),blocked:tr('Gesperrt','Closed')};
   // Each approved label may describe a player pair, team, training group or closure.
-  const entries=(status==='occupied'||status==='partial'||status==='blocked')&&Array.isArray(record?.bookings)?record.bookings.filter(r=>typeof r?.displayLabel==='string'&&r.displayLabel.trim()):[];
+  const entries=(status==='occupied'||status==='partial'||status==='blocked')&&Array.isArray(record?.bookings)?record.bookings.filter(r=>typeof r?.displayLabel==='string'&&(r.displayLabel.trim()||r.category)):[];
   const body=entries.length?entries.map(r=>{
-    const label=r.displayLabel.trim();
+    const category=occupancyCategory(r.category||(status==='blocked'?'blocked':'regular'));
+    const label=r.displayLabel.trim()||occupancyCategoryLabel(category);
     const timed=typeof r.start==='string'&&typeof r.end==='string'&&Number.isFinite(Date.parse(r.start))&&Number.isFinite(Date.parse(r.end))&&Date.parse(r.start)<Date.parse(r.end);
     const extra=timed&&(entries.length>1||status==='partial')?'<span class="occupancy-booking-time">'+esc(occupancyTime(r.start)+'–'+occupancyTime(r.end))+'</span>':'';
-    return '<div class="occupancy-booking-entry">'+extra+'<span class="occupancy-booking-name">'+esc(label)+'</span></div>';
+    return '<div class="occupancy-booking-entry booking-kind-'+category+'" title="'+esc(occupancyCategoryLabel(category))+'">'+extra+'<span class="occupancy-booking-name">'+esc(label)+'</span></div>';
   }).join(''):'<span class="occupancy-booking-placeholder">'+fallback[status]+'</span>';
-  return '<div class="occupancy-cell occupancy-'+status+'">'+body+'</div>';
+  const kinds=[...new Set(entries.map(r=>occupancyCategory(r.category||(status==='blocked'?'blocked':'regular'))))];
+  return '<div class="occupancy-cell occupancy-'+status+(kinds.length===1?' booking-kind-'+kinds[0]:kinds.length>1?' booking-kind-multiple':'')+'">'+body+'</div>';
 }
 function occupancyView(){
   const hours=occupancyHours();occupancyHourKey=hours[0].start;

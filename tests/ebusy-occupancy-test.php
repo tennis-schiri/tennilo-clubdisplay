@@ -7,9 +7,11 @@ $rows=[['courtId'=>11,'date'=>'26.11.2026','fromTime'=>'14:15','toTime'=>'14:45'
 $s=eb_slots([['id'=>11,'name'=>'Halle 1']],$rows,'indoor',$start,$tz);
 if(array_column($s,'status')!==['partial','blocked','free']||($s[0]['bookings'][0]['displayLabel']??'')!=='Max Muster / Eva Beispiel'||str_contains(json_encode($s),'SECRET')||$s[0]['start']!=='2026-11-26T13:00:00.000Z')throw new RuntimeException('slot test failed');
 try{eb_slots([['id'=>11,'name'=>'Unknown']],[],'indoor',$start,$tz);throw new LogicException('mapping accepted');}catch(RuntimeException $e){if($e->getMessage()!=='court_mapping')throw $e;}
-$matches=[];$future=[['courtId'=>11,'date'=>'27.11.2026','fromTime'=>'10:00','toTime'=>'14:00','type'=>'BLOCKING','displayText'=>'Punktspiel Herren 30 II'],['courtId'=>11,'date'=>'27.11.2026','fromTime'=>'15:00','toTime'=>'16:00','type'=>'BOOKING','displayText'=>'Training Herren 30 II']];
+$matches=[];$future=[['courtId'=>11,'date'=>'27.11.2026','fromTime'=>'10:00','toTime'=>'14:00','type'=>'BLOCKING','bookingTypeName'=>'Punktspiel','displayText'=>'Herren 30 II'],['courtId'=>11,'date'=>'27.11.2026','fromTime'=>'15:00','toTime'=>'16:00','type'=>'BOOKING','displayText'=>'Training Herren 30 II']];
 eb_slots([['id'=>11,'name'=>'Halle 1']],$future,'indoor',$start,$tz,$matches);
 if(count($matches)!==1||$matches[0]['team']!=='H30:2'||$matches[0]['court']!==1)throw new RuntimeException('fixture mapping');
+if(eb_category(['bookingTypeName'=>'Punktspiel','displayText'=>'Herren 30 II','type'=>'BLOCKING'])!=='match'||eb_label(['bookingTypeName'=>'Punktspiel','displayText'=>'Herren 30 II','type'=>'BOOKING','person'=>['firstname'=>'Admin']])!=='Herren 30 II')throw new RuntimeException('match category/label');
+if(eb_category(['bookingTypeName'=>'Jugendtraining','type'=>'BLOCKING'])!=='junior'||eb_category(['bookingTypeName'=>'Einzelbuchung','type'=>'BOOKING'])!=='regular'||eb_category(['type'=>'BLOCKING'])!=='blocked')throw new RuntimeException('booking categories');
 $db=cdtest_db(':memory:');$now=time();
 $code=cdtest_issue($db,'Büro',$now);$token=cdtest_register($db,$code,$now);
 if(!$token||!eb_registered_device($db,$token,$now)||eb_registered_device($db,str_repeat('a',64),$now)||eb_registered_device($db,'',$now)||eb_registered_device(null,$token,$now)||eb_registered_device($db,$token,$now+31536001))throw new RuntimeException('live browser authorization');

@@ -797,3 +797,16 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 .community-start-heading p{color:#d2ede2}
 @media(max-width:700px){.home-tiles .home-tile-top strong{font-size:1rem}.home-tile-label .section-icon{width:18px;height:18px}.home-tile-top .home-tile-arrow{width:14px;height:14px}#nav button{gap:3px}#nav .section-icon{width:14px;height:14px}#nav .nav-label{overflow-wrap:anywhere}}
 @media(max-width:480px){#nav button{flex-direction:column;gap:1px;font-size:.62rem}#nav .section-icon{width:13px;height:13px}}
+
+/* Booking categories approximating the eBuSy schedule; the API does not expose colors. */
+.occupancy-roster-row .booking-kind-regular{--booking-fill:#c0dff2;--booking-ink:#123b55}
+.occupancy-roster-row .booking-kind-doubles{--booking-fill:#a9d8e6;--booking-ink:#123e4e}
+.occupancy-roster-row .booking-kind-match{--booking-fill:#efbd76;--booking-ink:#50300c}
+.occupancy-roster-row .booking-kind-training{--booking-fill:#d3bee9;--booking-ink:#3b2558}
+.occupancy-roster-row .booking-kind-junior{--booking-fill:#e9d889;--booking-ink:#4e3b0d}
+.occupancy-roster-row .booking-kind-tournament{--booking-fill:#e9a5ae;--booking-ink:#601d28}
+.occupancy-roster-row .booking-kind-guest{--booking-fill:#a9ded5;--booking-ink:#16463e}
+.occupancy-roster-row .booking-kind-blocked{--booking-fill:#626e78;--booking-ink:#fff}
+html .occupancy-roster-row .occupancy-cell[class*="booking-kind-"]{background:var(--booking-fill,#364952);color:var(--booking-ink,#fff);border-left:4px solid #ffffff45}
+html .occupancy-roster-row .occupancy-cell.occupancy-partial[class*="booking-kind-"]{border-left-color:#f6cb63;box-shadow:inset 0 0 0 1px #b18b3b}
+.occupancy-roster-row .booking-kind-multiple .occupancy-booking-entry{background:var(--booking-fill,#364952);color:var(--booking-ink,#fff);padding:.12rem .25rem;border-radius:4px}

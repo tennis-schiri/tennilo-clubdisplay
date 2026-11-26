@@ -34,3 +34,8 @@ console.log('Court occupancy tests OK');
 
 const winterHtml=check('occupancyView()');assert.ok(winterHtml.indexOf('occupancy-roster-indoor')<winterHtml.indexOf('occupancy-roster-outdoor'));
 console.log('Winter court area ordering OK');
+
+check("occupancyData={status:'ok',fetchedAt:Date.now()/1000,slots:[{area:'outdoor',court:1,...occupancyHours()[0],status:'occupied',bookings:[{displayLabel:'Herren 30 II',category:'match'}]}]}");
+assert.ok(check("occupancyView().includes('occupancy-occupied booking-kind-match')"));
+assert.equal(check("occupancyCategory('unexpected')"),'regular');
+console.log('Booking category colors OK');
