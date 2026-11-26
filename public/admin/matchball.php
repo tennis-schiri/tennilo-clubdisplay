@@ -26,6 +26,31 @@ function cd_matchball_rows(PDO $db,string $club,?string $scope,bool $public=fals
     $q=$db->prepare('SELECT month,headline,teaser,pages,articles,published,updated,pdf IS NOT NULL AS has_pdf, EXISTS(SELECT 1 FROM matchball_pdf_release r WHERE r.club=matchball_issues.club AND r.month=matchball_issues.month) AS pdf_public FROM matchball_issues WHERE club=?'.($public?' AND published=1':'').' ORDER BY month DESC LIMIT 60');$q->execute([$club]);$rows=$q->fetchAll();
     foreach($rows as &$r)$r['articles']=json_decode($r['articles'],true,512,JSON_THROW_ON_ERROR);unset($r);return $rows;
 }
+function cd_matchball_read_pdf(array $file):?string{
+    $pdf=null;$error=$file['error']??UPLOAD_ERR_NO_FILE;
+    if($error!==UPLOAD_ERR_NO_FILE){
+        if($error!==UPLOAD_ERR_OK||!is_string($file['tmp_name']??null)||!is_uploaded_file($file['tmp_name']))throw new InvalidArgumentException('PDF-Upload fehlgeschlagen. Hosting-Uploadlimit prüfen.');
+        $size=filesize($file['tmp_name']);if(!$size||$size>10000000)throw new InvalidArgumentException('PDF darf maximal 10 MB groß sein.');
+        $pdf=file_get_contents($file['tmp_name']);if(!is_string($pdf)||!str_starts_with($pdf,'%PDF-')||!str_contains(substr($pdf,-4096),'%%EOF'))throw new InvalidArgumentException('Keine gültige PDF-Datei.');
+    }
+    return $pdf;
+}
+function cd_matchball_upload_pdf(PDO $db,string $club,string $month,array $file,bool $replace):void{
+    $pdf=cd_matchball_read_pdf($file);
+    if($pdf===null)throw new InvalidArgumentException('Bitte Original-PDF auswählen.');
+    $db->exec('BEGIN IMMEDIATE');
+    try{
+        $q=$db->prepare('SELECT pdf IS NOT NULL AS has_pdf FROM matchball_issues WHERE club=? AND month=?');$q->execute([$club,$month]);$row=$q->fetch();
+        if($row&&$row['has_pdf']&&!$replace)throw new InvalidArgumentException('Für diese Ausgabe ist bereits ein PDF gespeichert. Bitte Ersetzen ausdrücklich bestätigen.');
+        $q=$db->prepare('SELECT COUNT(*) FROM matchball_issues WHERE club=?');$q->execute([$club]);if(!$row&&(int)$q->fetchColumn()>=60)throw new InvalidArgumentException('Archivlimit von 60 Ausgaben erreicht.');
+        $q=$db->prepare('SELECT COALESCE(SUM(length(pdf)),0) FROM matchball_issues WHERE club=? AND month<>?');$q->execute([$club,$month]);if((int)$q->fetchColumn()+strlen($pdf)>150000000)throw new InvalidArgumentException('PDF-Archivlimit von 150 MB erreicht.');
+        // Existing editorial fields are left intact; the new PDF always needs a fresh public review.
+        $q=$db->prepare("INSERT INTO matchball_issues(club,month,pdf,updated) VALUES (?,?,?,?) ON CONFLICT(club,month) DO UPDATE SET pdf=excluded.pdf,published=0,updated=excluded.updated");
+        $q->bindValue(1,$club);$q->bindValue(2,$month);$q->bindValue(3,$pdf,PDO::PARAM_LOB);$q->bindValue(4,time(),PDO::PARAM_INT);$q->execute();
+        $q=$db->prepare('DELETE FROM matchball_pdf_release WHERE club=? AND month=?');$q->execute([$club,$month]);
+        $db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+}
 function cd_matchball_save(PDO $db,array $in,array $file,?string $scope):void{
     $club=cd_text($in['club']??'',50,true);cd_scope($scope,$club);if($club!=='ntc93')throw new InvalidArgumentException('MATCHBALL ist nur für den NTC verfügbar.');cd_club($db,$club);cd_matchball_seed($db,$club);
     $month=cd_matchball_month($in['month']??null);$intent=$in['intent']??'';
@@ -49,6 +74,9 @@ function cd_matchball_save(PDO $db,array $in,array $file,?string $scope):void{
             $q=$db->prepare('DELETE FROM matchball_issues WHERE club=? AND month=?');$q->execute([$club,$month]);
         }else{$q=$db->prepare('UPDATE matchball_issues SET published=0,updated=? WHERE club=? AND month=?');$q->execute([time(),$club,$month]);}return;
     }
+    if($intent==='upload-pdf'||($intent==='save'&&$old&&($in['existing']??'')!=='1'&&($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE)){
+        cd_matchball_upload_pdf($db,$club,$month,$file,($in['replace_pdf']??'')==='1');return;
+    }
     if($intent!=='save')throw new InvalidArgumentException('Unbekannte Newsletter-Aktion.');
     if(!$old&&($in['existing']??'')==='1')throw new InvalidArgumentException('Ausgabe nicht gefunden.');
     if($old&&($in['existing']??'')!=='1')throw new InvalidArgumentException('Dieser Ausgabemonat ist bereits vorhanden. Bitte die vorhandene Ausgabe bearbeiten.');
@@ -62,12 +90,7 @@ function cd_matchball_save(PDO $db,array $in,array $file,?string $scope):void{
         if($title===''||$body==='')throw new InvalidArgumentException('Jedes Thema braucht Überschrift und Text.');
         $articles[]=[$title,$body,$ref];
     }
-    $pdf=null;$error=$file['error']??UPLOAD_ERR_NO_FILE;
-    if($error!==UPLOAD_ERR_NO_FILE){
-        if($error!==UPLOAD_ERR_OK||!is_string($file['tmp_name']??null)||!is_uploaded_file($file['tmp_name']))throw new InvalidArgumentException('PDF-Upload fehlgeschlagen. Hosting-Uploadlimit prüfen.');
-        $size=filesize($file['tmp_name']);if(!$size||$size>10000000)throw new InvalidArgumentException('PDF darf maximal 10 MB groß sein.');
-        $pdf=file_get_contents($file['tmp_name']);if(!is_string($pdf)||!str_starts_with($pdf,'%PDF-')||!str_contains(substr($pdf,-4096),'%%EOF'))throw new InvalidArgumentException('Keine gültige PDF-Datei.');
-    }
+    $pdf=cd_matchball_read_pdf($file);
     $db->exec('BEGIN IMMEDIATE');
     try{
         $q=$db->prepare('SELECT COUNT(*) FROM matchball_issues WHERE club=?');$q->execute([$club]);if(!$old&&(int)$q->fetchColumn()>=60)throw new InvalidArgumentException('Archivlimit von 60 Ausgaben erreicht.');
@@ -121,12 +144,20 @@ function cd_matchball_field(PDO $db,array $club,string $csrf,?string $scope):voi
     $slug=$club['slug'];$rows=cd_matchball_rows($db,$slug,$scope);$published=array_values(array_filter($rows,static fn($r)=>(int)$r['published']===1));
     ?><div class="matchball-admin"><h2>MATCHBALL – Newsletter</h2><p>PDF hochladen, Ausgabemonat auswählen und Original für die öffentliche Anzeige freigeben. Eine Lesefassung ist optional. Die neueste freigegebene Ausgabe erscheint unter Neuigkeiten; frühere Ausgaben im Archiv.</p>
     <div class="partner-admin-metrics"><div><strong><?=count($rows)?></strong><small>Ausgaben</small></div><div><strong><?=count($published)?></strong><small>Freigegeben</small></div><div><strong><?=cd_h($published[0]['month']??'–')?></strong><small>Aktuelle Ausgabe</small></div></div>
-    <details class="entry"><summary>+ Neue Ausgabe anlegen / PDF hochladen</summary><?php cd_matchball_editor($slug,$csrf)?></details>
+    <section class="entry"><h3>Original-PDF hochladen</h3><p>Wähle den Ausgabemonat. Ein fehlendes Original wird automatisch der vorhandenen Ausgabe hinzugefügt; für einen neuen Monat wird eine neue Ausgabe angelegt. Vorhandene Texte bleiben erhalten.</p>
+    <form method="post" enctype="multipart/form-data" class="profile"><input type="hidden" name="csrf" value="<?=cd_h($csrf)?>"><input type="hidden" name="action" value="matchball"><input type="hidden" name="club" value="<?=cd_h($slug)?>">
+    <label>Ausgabemonat<input type="month" name="month" required value="<?=cd_h(date('Y-m'))?>"></label>
+    <label>Original-PDF (max. 10 MB)<input type="file" name="newsletter_pdf" accept="application/pdf,.pdf" required></label>
+    <label class="check full"><input type="checkbox" name="replace_pdf" value="1"> Bereits gespeichertes Original bei Bedarf ersetzen.</label>
+    <p class="full">Nach dem Upload die Ausgabe im Archiv für die öffentliche PDF-Anzeige freigeben.</p><button name="intent" value="upload-pdf">PDF speichern</button></form></section>
+    <details class="entry"><summary>+ Neue Lesefassung ohne PDF anlegen</summary><?php cd_matchball_editor($slug,$csrf)?></details>
     <h3>Ausgabenarchiv</h3>
     <?php foreach($rows as $r):?><details class="entry"><summary><?=cd_h($r['month'].' · '.$r['headline'])?> <small><?=$r['published']?'Freigegeben':'Entwurf'?> · <?=$r['pdf_public']&&$r['published']?'Original öffentlich freigegeben':($r['has_pdf']?'PDF gespeichert':'Original fehlt')?></small></summary>
     <?php if($r['has_pdf']):?><p><a class="admin-action" href="?<?=$clubPortal?'portal=club&amp;'.($fixedClub?'verein=ntc93&amp;':''):''?>matchball_pdf=<?=rawurlencode($r['month'])?>&amp;club=<?=rawurlencode($slug)?>">Original-PDF herunterladen (geschützt)</a></p><?php endif?>
     <section class="matchball-admin-preview"><small>Vorschau der öffentlichen Lesefassung</small><h3><?=cd_h($r['headline'])?></h3><p><?=cd_h($r['teaser'])?></p><?php foreach($r['articles'] as $story):?><h4><?=cd_h($story[0])?></h4><p><?=nl2br(cd_h($story[1]))?></p><small><?=cd_h($story[2])?></small><?php endforeach?></section>
-    <details class="entry"><summary>Ausgabe bearbeiten / Original hinterlegen</summary><?php cd_matchball_editor($slug,$csrf,$r)?></details>
+    <form method="post" enctype="multipart/form-data" class="profile"><input type="hidden" name="csrf" value="<?=cd_h($csrf)?>"><input type="hidden" name="action" value="matchball"><input type="hidden" name="club" value="<?=cd_h($slug)?>"><input type="hidden" name="month" value="<?=cd_h($r['month'])?>">
+    <label class="full"><?=$r['has_pdf']?'Original-PDF ersetzen':'Original-PDF nachträglich hinterlegen'?><input type="file" name="newsletter_pdf" accept="application/pdf,.pdf" required></label><?php if($r['has_pdf']):?><label class="check full"><input type="checkbox" name="replace_pdf" value="1" required> Gespeichertes Original ersetzen.</label><?php endif?><button name="intent" value="upload-pdf">PDF speichern</button></form>
+    <details class="entry"><summary>Optionale Texte bearbeiten</summary><?php cd_matchball_editor($slug,$csrf,$r)?></details>
     <form method="post" class="profile"><input type="hidden" name="csrf" value="<?=cd_h($csrf)?>"><input type="hidden" name="action" value="matchball"><input type="hidden" name="club" value="<?=cd_h($slug)?>"><input type="hidden" name="month" value="<?=cd_h($r['month'])?>">
     <?php if(!$r['published']):?><label class="check full"><input type="checkbox" name="public_reviewed" value="1" required> Öffentliche Anzeige geprüft und freigegeben.</label><?php if($r['has_pdf']):?><label class="check full"><input type="checkbox" name="pdf_reviewed" value="1"> Vollständiges Original-PDF anzeigen. Mir ist bewusst, dass das Display und die PDF-URL öffentlich erreichbar sind; auch Fotos und personenbezogene Angaben müssen dafür freigegeben sein.</label><?php endif?><button name="intent" value="publish">Veröffentlichen</button><?php else:?><button name="intent" value="unpublish">Vom Display nehmen</button><?php endif?></form>
     <form method="post" class="profile"><input type="hidden" name="csrf" value="<?=cd_h($csrf)?>"><input type="hidden" name="action" value="matchball"><input type="hidden" name="club" value="<?=cd_h($slug)?>"><input type="hidden" name="month" value="<?=cd_h($r['month'])?>"><label class="check full"><input type="checkbox" name="delete_confirm" value="1" required> Ausgabe samt Original endgültig löschen</label><button class="danger" name="intent" value="delete">Löschen</button></form></details><?php endforeach?>

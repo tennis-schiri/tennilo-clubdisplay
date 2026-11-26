@@ -279,3 +279,6 @@ MATCHBALL: Original-PDF nach separater, ausdrücklicher öffentlicher Freigabe d
 
 ## 0.4.76
 Gesuche mit getrennten, beschrifteten Feldern auf Display, Smartphone und Player. Fehlende LK-/Altersangaben explizit sichtbar. Alte Spielstärke-/LK-Angaben werden nicht nachträglich als eigene oder gesuchte Spielstärke umgedeutet. Formulare erfordern eine bewusste Spielart-/Spielstärke-Auswahl; widersprüchliche flexible und konkrete Zeit-/Tagesauswahl wird verständlich zurückgewiesen statt konkrete Angaben zu verwerfen. Keine Änderung an bestehenden Gesuchsdaten.
+
+### MATCHBALL: Originale für vorhandene Ausgabemonate
+Eigenständiger PDF-Upload legt neue Monate an oder ergänzt vorhandene Ausgaben ohne Überschreiben der Lesefassung. Austausch eines bereits gespeicherten Originals erfordert Bestätigung; nach jedem Upload erfolgt die öffentliche Freigabe erneut. HTTP-Regression testet Nachtrag zur Oktober-Ausgabe, Ersetzen und Freigabe.

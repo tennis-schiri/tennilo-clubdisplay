@@ -155,6 +155,24 @@ get "$club" "$url" 200; t="$(csrf)"
 post "$club" "$url" 303 --data-urlencode "csrf=$t" -d 'action=community&club=ntc93&kind=youth&intent=hide'
 get "$other" "$base?matchball=feed&club=ntc93" 200
 php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if($v["communities"]!==[])exit(1);' "$tmp/body"
+# Upload an original to a previously seeded month: preserve editorial text and require new review.
+get "$club" "$url" 200; t="$(csrf)"
+post "$club" "$url" 303 -F "csrf=$t" -F action=matchball -F club=ntc93 -F intent=upload-pdf -F month=2026-10 -F "newsletter_pdf=@$tmp/newsletter.pdf;type=application/pdf"
+get "$club" "$url&matchball_pdf=2026-10&club=ntc93" 200
+cmp "$tmp/body" "$tmp/newsletter.pdf"
+get "$other" "$base?matchball-display-pdf=1&club=ntc93&month=2026-10" 404
+get "$club" "$url" 200; t="$(csrf)"
+grep -Fq 'Die Wintersaison hat begonnen' "$tmp/body"
+post "$club" "$url" 200 -F "csrf=$t" -F action=matchball -F club=ntc93 -F intent=upload-pdf -F month=2026-10 -F "newsletter_pdf=@$tmp/newsletter.pdf;type=application/pdf"
+grep -Fq 'Bitte Ersetzen ausdrücklich bestätigen' "$tmp/body"
+get "$club" "$url" 200; t="$(csrf)"
+post "$club" "$url" 303 --data-urlencode "csrf=$t" -d 'action=matchball&club=ntc93&month=2026-10&intent=publish&public_reviewed=1&pdf_reviewed=1'
+get "$other" "$base?matchball-display-pdf=1&club=ntc93&month=2026-10" 200
+cmp "$tmp/body" "$tmp/newsletter.pdf"
+get "$club" "$url" 200; t="$(csrf)"
+post "$club" "$url" 303 -F "csrf=$t" -F action=matchball -F club=ntc93 -F intent=upload-pdf -F month=2026-10 -F replace_pdf=1 -F "newsletter_pdf=@$tmp/newsletter.pdf;type=application/pdf"
+get "$other" "$base?matchball-display-pdf=1&club=ntc93&month=2026-10" 404
+echo "Existing-month PDF upload, protected replacement and renewed review OK"
 echo "MATCHBALL upload, private original, public release and community QR draft/publish/hide HTTP tests passed."
 
 # Neutral review link: fixture uses no actual email delivery.
