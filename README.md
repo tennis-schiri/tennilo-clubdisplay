@@ -255,3 +255,6 @@ Smartphone-Einstieg zeigt ausschließlich freigegebene anonyme Gesuche als Karte
 
 ### NTC Formular-POST (26.11.2026)
 Referrer-Policy strict-origin statt no-referrer, damit der Browser bei HTML-Formularen die eigene Origin beibehält, ohne persönliche URL-Token als Referrer zu übertragen. Alte offene Formulare mit Origin: null nur bei Sec-Fetch-Site: same-origin akzeptieren. Fremde Origins und Cross-Site-Fetch-Metadaten bleiben gesperrt. NTC-Deployment prüft echte POST-Routen mit absichtlich unvollständigen Formulardaten ohne E-Mail-Versand, inklusive negativem Cross-Site-Test. Browserregression prüft serverseitige Formularvalidierung.
+
+## 0.4.66
+NTC-ClubDisplay: jeder freigegebene Eintrag erhält einen lokal berechneten QR-Code (QR Model 2, Version 4-L) mit eigener öffentlicher Referenz und Direktlink zum passenden Interessenformular. Kein Klickziel, keine personenbezogenen Angaben im Code, keine Drittanbieter-Abfragen. Allgemeiner QR-Code zur anonymen Übersicht bleibt. Bei nicht mehr verfügbaren Referenzen erscheint die aktuelle Übersicht mit Hinweis. Fiktive Demo-Gesuche haben bewusst keine realen Kontaktlinks.
