@@ -121,3 +121,26 @@ assert.equal(run('headerSeasonEffect(weatherNow)'),'advent-1');
 assert.equal(run('headerSeasonEffect(Date.parse("2026-12-25T12:00:00+01:00"))'),'christmas');
 assert.equal(run('headerSeasonEffect(Date.parse("2026-12-27T12:00:00+01:00"))'),'');
 console.log('Advent and holiday dates, candle count, live weather decorations and stale data safeguards OK');
+
+// NTC anniversary is club-specific, repeats annually, and coexists with Advent.
+ctx.birthdayTime=Date.parse('2026-12-06T12:00:00+01:00');
+assert.equal(run('ntcBirthdayAge(birthdayTime)'),33);
+assert.equal(run('ntcBirthdayAge(Date.parse("2027-12-06T12:00:00+01:00"))'),34);
+assert.equal(run('ntcBirthdayAge(Date.parse("2026-12-05T23:59:59+01:00"))'),null);
+assert.equal(run('ntcBirthdayAge(Date.parse("2026-12-07T00:00:00+01:00"))'),null);
+assert.equal(run('ntcBirthdayAge(Date.parse("1992-12-06T12:00:00+01:00"))'),null);
+run('pilot=true');
+const birthdayRotation=run('smartRotation(fullBase,null,null,[],[],birthdayTime)');
+assert.ok(birthdayRotation.includes('holiday:ntc-birthday'));
+assert.ok(birthdayRotation.includes('holiday:advent:2'));
+assert.ok(birthdayRotation.indexOf('holiday:ntc-birthday')<birthdayRotation.indexOf('holiday:advent:2'));
+assert.equal(run('headerSeasonEffect(birthdayTime)'),'advent-2');
+run('pilot=false');
+assert.ok(!run('smartRotation(fullBase,null,null,[],[],birthdayTime)').includes('holiday:ntc-birthday'));
+run('pilot=true');
+const realDate=ctx.Date;
+ctx.Date=class extends Date{static now(){return ctx.birthdayTime;}};
+assert.match(run('smartHolidayView("holiday:ntc-birthday")'),/33 Jahre NTC 93/);
+assert.match(run('smartHolidayView("holiday:ntc-birthday")'),/6\. Dezember 1993/);
+ctx.Date=realDate;
+console.log('NTC birthday, yearly age, demo isolation and Advent coexistence OK');

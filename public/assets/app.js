@@ -122,6 +122,11 @@ function smartAdvent(now=Date.now()){
   }
   return 0;
 }
+// NTC only, using the Berlin calendar and the actual founding year.
+function ntcBirthdayAge(now=Date.now()){
+  const date=smartDate(now),year=Number(date.slice(0,4));
+  return date.slice(5)==='12-06'&&year>=1993?year-1993:null;
+}
 function smartHoliday(now=Date.now()){
   const day=smartDate(now).slice(5);
   if(day>='12-24'&&day<='12-26')return 'holiday:christmas';
@@ -185,7 +190,8 @@ function smartRotation(base,matches,events,matchKeys,eventKeys,now=Date.now()){
   const eventDay=events?.status!=='unavailable'&&(events?.events||[]).some(e=>e&&!e.cancelled&&String(e.status||'').toLowerCase()!=='cancelled'&&Number.isFinite(Date.parse(e.start))&&Date.parse(e.end)>Math.max(now,Date.parse(e.start))&&smartDate(e.start)<=today&&smartDate(e.end)>=today);
   const holiday=smartHoliday(now);
   const greetings=[...matchKeys,...eventKeys];
-  const out=[base[0],...greetings,...(holiday?[holiday]:[])];
+  const birthday=pilot&&ntcBirthdayAge(now)!==null;
+  const out=[base[0],...greetings,...(birthday?['holiday:ntc-birthday']:[]),...(holiday?[holiday]:[])];
   if(base.includes('calendar')&&base.includes('teams')&&base.includes('news')){
     const weekend=smartWeekend(matches,events,now);
     if(weekend?.rows.length)for(let i=0;i<Math.ceil(weekend.rows.length/5);i++)out.push('weekend:'+i);
@@ -209,6 +215,11 @@ function adventCandles(count){
   }).join('')+'</svg>';
 }
 function smartHolidayView(key){
+  if(key==='holiday:ntc-birthday'){
+    const age=ntcBirthdayAge();
+    if(!pilot||age===null)return '';
+    return '<div class="greeting-hero event-greeting-hero holiday-hero holiday-birthday"><div class="birthday-sparkles" aria-hidden="true">'+Array.from({length:24},(_,i)=>'<i style="--x:'+((i*37+7)%100)+'%;--y:'+((i*19+5)%100)+'%;--turn:'+(i*29%180)+'deg"></i>').join('')+'</div><img class="birthday-logo" src="assets/ntc93-logo.png" alt="NTC 93"><div class="birthday-kicker">'+tr('HEUTE FEIERN WIR','TODAY WE CELEBRATE')+'</div><h1 class="birthday-age">'+age+' '+tr(age===1?'Jahr':'Jahre',age===1?'year':'years')+' NTC 93</h1><h2 class="birthday-title">'+tr('Herzlichen Glückwunsch, NTC 93!','Happy birthday, NTC 93!')+'</h2><p class="birthday-founded">'+tr('Gegründet am 6. Dezember 1993','Founded on 6 December 1993')+'</p><p class="greeting-farewell">'+tr('Seit 1993 ein Zuhause für Tennis in Neuenhagen.','A home for tennis in Neuenhagen since 1993.')+'</p></div>';
+  }
   if(/^holiday:advent:[1-4]$/.test(key)){
     const n=Number(key.split(':')[2]);
     const heading=tr('Einen schönen '+n+'. Advent!','Happy '+['first','second','third','fourth'][n-1]+' Advent!');
@@ -607,6 +618,14 @@ function syncHeaderDecor(now=Date.now()){
   const header=document.querySelector('body > header'),layer=$('header-weather-effect'),season=$('header-season-effect');
   if(!header||!layer||!season)return;
   const effect=headerWeatherEffect(weatherData,now),festive=headerSeasonEffect(now);
+  const candles=$('header-advent-candles'),advent=festive.startsWith('advent-')?Number(festive.slice(-1)):0;
+  if(candles&&candles.dataset.count!==String(advent)){
+    candles.dataset.count=String(advent);
+    candles.hidden=!advent;
+    candles.innerHTML=advent?adventCandles(advent):'';
+    header.classList.toggle('has-advent-candles',!!advent);
+  }
+  header.dataset.birthday=pilot&&ntcBirthdayAge(now)!==null?'true':'false';
   if(header.dataset.weatherEffect!==effect){
     header.dataset.weatherEffect=effect;
     const count=({rain:22,sleet:20,snow:19,hail:17,storm:24,stars:14,wind:8})[effect]||0;

@@ -304,3 +304,7 @@ Alle fünf Minuten wird die veröffentlichte Git-Commit-ID über release.json oh
 
 ## 0.4.95 – Wetter und Advent
 Dezente, auf den Header begrenzte Wettereffekte verwenden den aktuellen Wetterzustand (nicht die Niederschlagswahrscheinlichkeit): Regen, Schnee, Schneeregen, Hagel, Gewitter ohne Blitze, Nebel, Wind, Sonne, Wolken und Sternenhimmel. Bei nicht aktuellen Daten keine Wetterdekoration; reduzierte Bewegung wird respektiert. Adventsamstag und -sonntag werden jährlich in Europe/Berlin berechnet, mit passender Kerzenzahl im Infomodus und festlichem Header. Weihnachten vom 24.–26.12. hat Vorrang. Silvester/Neujahr bleiben unverändert. Keine zusätzlichen Datenquellen und keine Änderung an Buchung, Navigation oder Kiosk-Update.
+
+
+## 0.4.96 – Adventskerzen im Header und NTC-Geburtstag
+Adventswochenenden zeigen vier Kerzen mit passender Anzahl leuchtender Flammen in einer eigenen Header-Spalte. NTC erhält am 6. Dezember eine separate jährliche Geburtstagseite mit Gründungsdatum 06.12.1993 und berechnetem Vereinsalter; die Adventsseite und Headerkerzen bleiben am selben Tag erhalten. Keine Geburtstagseite in der TENNILO-Demo. Wettereffekte bleiben unverändert.
