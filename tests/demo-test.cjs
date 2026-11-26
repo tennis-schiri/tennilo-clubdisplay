@@ -119,3 +119,16 @@ assert.match(source,/demoQrBase\+'\?ref='/);
 assert.match(source,/demoQrBase\+'\?pdf='/);
 assert.match(source,/function demoRestaurantView\(/);
 console.log('Demo parity: fictional partner requests, QR destinations, newsletter PDF and restaurant');
+
+const iconCtx=vm.createContext({});
+vm.runInContext(source.slice(source.indexOf('function sectionIcon(key){'),source.indexOf('function renderNav(){')),iconCtx);
+for(const key of ['home','courts','calendar','teams','weather','news','partners','info']){
+  const svg=vm.runInContext('sectionIcon('+JSON.stringify(key)+')',iconCtx);
+  assert.match(svg,/^<svg class="section-icon"/);
+  assert.match(svg,/aria-hidden="true"/);
+  assert.match(svg,/<\/svg>$/);
+}
+assert.equal(vm.runInContext('sectionIcon("unknown")',iconCtx),'');
+assert.match(vm.runInContext('whatsappLogo()',iconCtx),/class="whatsapp-logo"/);
+assert.ok(source.includes('sectionIcon(key)')&&source.includes('sectionIcon(k)'));
+console.log('Shared START and navigation icon markup OK');

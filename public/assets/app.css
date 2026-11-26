@@ -782,3 +782,18 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 .community-demo-qr{width:clamp(94px,15dvh,156px);aspect-ratio:1;flex:none;background:#fff;border-radius:5px;overflow:hidden;pointer-events:none;user-select:none}.community-demo-qr svg{display:block;width:100%;height:100%}
 
 .news-grid .matchball-card .news-card-title{color:#fff}.news-grid .matchball-card:hover,.news-grid .matchball-card:focus-visible{border-color:#f2c94c;background:linear-gradient(150deg,#935f20,#57350f);color:#fff}
+
+/* Consistent small navigation pictograms; lighter START typography. */
+.home-tile-label{display:flex;align-items:center;gap:clamp(.45rem,.7vw,.75rem);min-width:0}
+.home-tiles .home-tile-top strong{font-size:clamp(1.05rem,1.8vw,1.8rem);font-weight:650;letter-spacing:normal}
+.home-tile-label .section-icon{width:clamp(22px,2vw,32px);height:clamp(22px,2vw,32px);color:var(--cyan);flex:0 0 auto}
+.home-tile-top .home-tile-arrow{width:clamp(16px,1.35vw,22px);height:clamp(16px,1.35vw,22px)}
+#nav button{display:flex;align-items:center;justify-content:center;gap:clamp(4px,.45vw,8px)}
+#nav .section-icon{width:clamp(16px,1.35vw,23px);height:clamp(16px,1.35vw,23px);flex:0 0 auto}
+#nav .nav-label{min-width:0;line-height:1.12;overflow-wrap:normal}
+.community-start.panel{background:linear-gradient(125deg,#145a52,#10483f);border-color:#338477;color:#fff}
+.community-start-heading h2{display:flex;align-items:center;gap:.55rem;font-weight:650}
+.community-start-heading .whatsapp-logo{width:clamp(25px,2.4vw,39px);height:clamp(25px,2.4vw,39px);flex:0 0 auto;color:#55e48e}
+.community-start-heading p{color:#d2ede2}
+@media(max-width:700px){.home-tiles .home-tile-top strong{font-size:1rem}.home-tile-label .section-icon{width:18px;height:18px}.home-tile-top .home-tile-arrow{width:14px;height:14px}#nav button{gap:3px}#nav .section-icon{width:14px;height:14px}#nav .nav-label{overflow-wrap:anywhere}}
+@media(max-width:480px){#nav button{flex-direction:column;gap:1px;font-size:.62rem}#nav .section-icon{width:13px;height:13px}}

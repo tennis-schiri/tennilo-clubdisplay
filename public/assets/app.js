@@ -257,11 +257,27 @@ function partnerBoardView(active){
   const pager=active==='partners'&&pages>1?'<div class="actions"><button data-action="partners-prev" '+(page===0?'disabled':'')+'>‹</button><span>'+(page+1)+' / '+pages+'</span><button data-action="partners-next" '+(page>=pages-1?'disabled':'')+'>›</button></div>':pages>1?'<p class="match-source">'+(page+1)+' / '+pages+'</p>':'';
   return '<div class="smart-feature partner-board"><div class="match-heading"><h1>'+tr('Wer spielt mit? – Unsere Spielpartnerbörse','Find a playing partner – Our partner board')+'</h1></div><div class="partner-board-layout"><div class="partner-board-requests panel"><div class="partner-board-grid">'+(cards||'<div class="partner-board-empty">'+tr('Aktuell sind keine Gesuche veröffentlicht.','No published requests yet.')+'</div>')+'</div>'+('<p class="partner-board-scan-note">'+tr('Einzelnen QR-Code scannen, um direkt Interesse anzumelden.','Scan an individual QR code to register interest directly.')+'</p>')+'</div><aside class="partner-board-help">'+qr+'<div class="partner-board-qr-purpose"><strong>'+tr('Gesuch erstellen','Create a request')+'</strong><strong>'+tr('Alle Gesuche sehen','View all requests')+'</strong></div><small>'+tr('Gesuche und Kontaktanfragen werden vom Verein geprüft. Kontaktdaten bleiben privat.','Requests and contact enquiries are reviewed by the club. Contact details stay private.')+'</small><small>'+tr('Für alle Vereinsmitglieder · unter 18 mit zusätzlichem Schutz, unter 16 über Erziehungsberechtigte','For all club members · extra safeguards under 18, guardian participation under 16')+'</small>'+(pilot?'':'<small>'+tr('Demo · fiktive Gesuche, keine echten Kontaktanfragen','Demo · fictional requests, no real contact requests')+'</small>')+'</aside></div>'+pager+'</div>';
 }
+function sectionIcon(key){
+  const paths={
+    home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
+    courts:'<rect x="3" y="2.5" width="18" height="19" rx="1.5"/><path d="M7 2.5v19M17 2.5v19M3 12h18M7 7h10M7 17h10M12 7v10"/>',
+    calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18M7 14h2m4 0h3m-9 4h2"/>',
+    teams:'<path d="M7 3h10v7a5 5 0 0 1-10 0zM7 5H3v2a4 4 0 0 0 4 4m10-6h4v2a4 4 0 0 1-4 4M12 15v5m-5 1h10"/>',
+    weather:'<path d="M12 3V1m6.4 4.6 1.4-1.4M6.4 5.6 5 4.2M21 11h2M8 9a4 4 0 1 1 7.8 1.2M6 20h12a4 4 0 0 0 0-8 5 5 0 0 0-9-1 4.5 4.5 0 0 0-3 9z"/>',
+    news:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10M7 11h10M7 15h4m-4 3h4"/><rect x="14" y="15" width="3" height="3" rx=".4"/>',
+    partners:'<circle cx="8" cy="7" r="3"/><circle cx="17" cy="8" r="2.5"/><path d="M2 21v-3a6 6 0 0 1 12 0v3M16 14a5 5 0 0 1 6 5v2"/>',
+    info:'<rect x="3" y="3" width="18" height="14" rx="2"/><path d="m10 7 5 3-5 3zM12 17v4m-5 0h10"/>'
+  };
+  return paths[key]?'<svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+paths[key]+'</svg>':'';
+}
+function whatsappLogo(){
+  return '<svg class="whatsapp-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12.04 2a9.9 9.9 0 0 0-8.57 14.85L2 22l5.29-1.39A9.99 9.99 0 1 0 12.04 2zm0 1.8a8.2 8.2 0 1 1-4.18 15.26l-.3-.18-3.1.82.83-3.01-.2-.32A8.2 8.2 0 0 1 12.04 3.8z"/><path fill="currentColor" d="M8.2 6.9c-.35 0-.69.18-.96.5-.31.37-.85 1.05-.85 2.23s.86 2.33.98 2.49c.13.16 1.73 2.73 4.29 3.72 2.13.83 2.56.66 3.03.61.46-.04 1.5-.62 1.72-1.22.22-.61.22-1.13.15-1.23-.08-.11-.28-.18-.58-.33l-1.89-.89c-.27-.1-.46-.14-.66.15-.19.29-.74.91-.91 1.1-.17.2-.34.22-.64.07-.29-.14-1.23-.45-2.34-1.43-.87-.77-1.46-1.72-1.63-2.01-.17-.29-.02-.44.12-.59l.44-.51c.15-.17.2-.29.29-.49.1-.19.05-.36-.02-.51L9 7.35c-.2-.47-.39-.45-.8-.45z"/></svg>';
+}
 function renderNav(){
   const l=t(),items=[['home',l.home],['courts',l.courts],['calendar',l.calendar],['teams',l.teams],['weather',tr('Wetter','Weather')],['news',l.news]];
   if(partnerBoardData?.enabled)items.push(['partners',tr('Spielpartner','Playing partners')]);
   items.push(['info',l.back]);
-  $('nav').innerHTML=items.map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+v+'</button>').join('');
+  $('nav').innerHTML=items.map(([k,v])=>'<button data-action="'+k+'" aria-pressed="'+(view===k)+'">'+sectionIcon(k)+'<span class="nav-label">'+esc(v)+'</span></button>').join('');
 }
 async function refreshPartnerBoard(){
   if(partnerBusy)return;partnerBusy=true;
@@ -611,11 +627,11 @@ function matchballCard(){
 function communityStart(){
   if(!pilot){
     const demoCards=[['youth',tr('Jugend-Community','Junior community')],['adults',tr('Aktive / Senioren','Adults / seniors')]];
-    return '<section class="community-start panel"><div class="community-start-heading"><h2>WhatsApp-Communitys</h2><p>'+tr('Demo-QR-Codes · keine echten Einladungen','Demo QR codes · no real invitations')+'</p></div><div class="community-start-cards">'+demoCards.map(([kind,label])=>'<div class="community-start-card"><strong>'+esc(label)+'</strong><div class="community-demo-qr">'+partnerQrSvg(demoQrBase+'?community='+kind,label)+'</div></div>').join('')+'</div></section>';
+    return '<section class="community-start panel"><div class="community-start-heading"><h2>'+whatsappLogo()+'<span>WhatsApp-Communitys</span></h2><p>'+tr('Demo-QR-Codes · keine echten Einladungen','Demo QR codes · no real invitations')+'</p></div><div class="community-start-cards">'+demoCards.map(([kind,label])=>'<div class="community-start-card"><strong>'+esc(label)+'</strong><div class="community-demo-qr">'+partnerQrSvg(demoQrBase+'?community='+kind,label)+'</div></div>').join('')+'</div></section>';
   }
   if(!communityCodes.length)return '';
   const labels={youth:tr('NTC Jugend Community','NTC Junior Community'),adults:tr('NTC Community Aktive / Senioren','NTC Adult / Senior Community')};
-  return '<section class="community-start panel"><div class="community-start-heading"><h2>WhatsApp-Communitys</h2><p>'+tr('Für Vereinsmitglieder · QR-Code mit WhatsApp scannen','For club members · scan the QR code with WhatsApp')+'</p></div><div class="community-start-cards">'+communityCodes.map(c=>'<div class="community-start-card"><strong>'+esc(labels[c.kind])+'</strong><img src="data:image/png;base64,'+c.png+'" alt="'+esc(labels[c.kind])+' QR-Code" draggable="false"></div>').join('')+'</div></section>';
+  return '<section class="community-start panel"><div class="community-start-heading"><h2>'+whatsappLogo()+'<span>WhatsApp-Communitys</span></h2><p>'+tr('Für Vereinsmitglieder · QR-Code mit WhatsApp scannen','For club members · scan the QR code with WhatsApp')+'</p></div><div class="community-start-cards">'+communityCodes.map(c=>'<div class="community-start-card"><strong>'+esc(labels[c.kind])+'</strong><img src="data:image/png;base64,'+c.png+'" alt="'+esc(labels[c.kind])+' QR-Code" draggable="false"></div>').join('')+'</div></section>';
 }
 function matchballReader(index){
   const issue=matchballIssues[index];if(!issue)return null;
@@ -849,7 +865,7 @@ case 'home':{
     ['news',l.announcements,tr('Vereinsmeldungen, Hinweise und Informationen aus dem Club.','Read club announcements, notices and information.')]
   ];
   if(partnerBoardData?.enabled)tiles.push(['partners',tr('Spielpartner gesucht','Find a partner'),tr('Gesuch erstellen oder Spielpartner finden.','Create a request or find a partner.')]);
-  html='<div class="home-welcome"><h1>'+esc(l.welcome)+'</h1><p>'+esc(l.intro)+'</p></div><div class="home-tiles'+(tiles.length===6?' home-tiles-six':'')+'">'+tiles.map(([key,title,description])=>'<button type="button" class="tile home-tile" data-action="'+key+'"><span class="home-tile-top"><strong>'+esc(title)+'</strong><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="home-tile-description">'+esc(description)+'</span></button>').join('')+'</div>'+communityStart();
+  html='<div class="home-welcome"><h1>'+esc(l.welcome)+'</h1><p>'+esc(l.intro)+'</p></div><div class="home-tiles'+(tiles.length===6?' home-tiles-six':'')+'">'+tiles.map(([key,title,description])=>'<button type="button" class="tile home-tile" data-action="'+key+'"><span class="home-tile-top"><span class="home-tile-label">'+sectionIcon(key)+'<strong>'+esc(title)+'</strong></span><svg class="home-tile-arrow" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="home-tile-description">'+esc(description)+'</span></button>').join('')+'</div>'+communityStart();
   break;
 }
 case 'courts':if(pilot){html=ebusyView();break;}html='<h1>'+l.booking+'</h1><p>'+l.select+'</p>'+courtList();if(court!==null)html+='<div class="panel" style="margin-top:1rem"><h2>'+l.court+' '+court+'</h2><p>'+l.slot+'</p><div class="actions">'+button(l.confirm,'confirm','primary')+button(l.reset,'reset')+'</div><p role="status" class="message">'+message+'</p></div>';break;
