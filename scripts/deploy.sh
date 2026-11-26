@@ -5,6 +5,8 @@ set -euo pipefail
 case "$DOMAIN" in clubdisplay.tennilo.de|clubdisplay.ntc93.de) ;; *) exit 1;; esac
 [[ "$FTP_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'FTP host must be a hostname'; exit 1; }
 node --check public/assets/app.js
+node --check public/assets/auto-update.js
+node tests/auto-update-test.cjs
 node tests/info-countdown-test.cjs
 node tests/occupancy-test.cjs
 node tests/match-greeting-test.cjs
@@ -24,7 +26,7 @@ php tests/news-test.php
 php -l public/weather.php
 php -l public/demo.php
 php tests/weather-test.php
-files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/tennilo-footer-logo.png assets/app.css assets/app.js index.html)
+files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/tennilo-footer-logo.png assets/app.css assets/app.js assets/auto-update.js index.html)
 test -s public/nuliga.php
 test -s public/events.php
 for f in "${files[@]}"; do test -s "public/$f"; done
@@ -193,9 +195,20 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
     echo "::error::NTC partner gateway failed (HTTP $code)"; exit 1
   fi
 fi
+# Bake the checked Git commit into the HTML and cache-bust its script/style URLs.
+build="$(git rev-parse HEAD)"
+[[ "$build" =~ ^[0-9a-f]{40}$ ]] || exit 1
+sed -E "s/__CLUBDISPLAY_BUILD__/$build/g; s/\?v=[0-9]+/?v=$build/g" public/index.html > "$tmp/index.html"
+grep -Fq "name=\"clubdisplay-build\" content=\"$build\"" "$tmp/index.html"
 for f in "${files[@]}"; do
   echo "Deploy: $f"
-  upload "public/$f" "$f"
-  verify "public/$f" "$f"
+  src="public/$f"
+  if [[ "$f" == "index.html" ]]; then src="$tmp/index.html"; fi
+  upload "$src" "$f"
+  verify "$src" "$f"
 done
+# Only advertise after all files have passed HTTPS verification.
+printf '{"build":"%s"}\n' "$build" > "$tmp/release.json"
+upload "$tmp/release.json" release.json
+verify "$tmp/release.json" release.json
 echo "Release verified: $DOMAIN"
