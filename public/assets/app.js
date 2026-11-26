@@ -883,6 +883,18 @@ function fitActiveScreen(){
   const natural=content.getBoundingClientRect().height;
   if(natural>available&&natural>0){
     const scale=available/natural;
+    // A uniformly scaled partner board must still meet both screen edges.
+    // Keep its right-hand QR panel and title aligned with the navigation.
+    if(content.querySelector('.partner-board')){
+      content.style.width=(screen.clientWidth/scale)+'px';
+      const adjusted=content.getBoundingClientRect().height;
+      if(adjusted>natural){
+        const smaller=available/adjusted;
+        content.style.width=(screen.clientWidth/smaller)+'px';
+        content.style.transform='scale('+smaller+')';
+        return;
+      }
+    }
     content.style.transform='scale('+scale+')';
   }
 }

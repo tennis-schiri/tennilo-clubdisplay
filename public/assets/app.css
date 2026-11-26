@@ -737,3 +737,9 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
 /* Per-request QR codes: side by side with anonymous request details; never clickable. */
 .partner-board-card.has-request-qr{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:clamp(7px,1vw,14px)}
 .partner-card-copy{min-width:0;overflow-wrap:anywhere}.partner-request-code{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex-shrink:0;text-align:center}.partner-request-qr{width:clamp(92px,9vw,145px);aspect-ratio:1;background:#fff;border-radius:3px;overflow:hidden;pointer-events:none;user-select:none;cursor:default}.partner-request-qr svg{width:100%;height:100%;display:block}.partner-board-card .partner-request-code small{margin:0;font-size:clamp(.62rem,.9vw,.9rem);line-height:1.15}@media(max-width:1050px) and (min-width:700px){.partner-request-qr{width:90px}.partner-board-card.has-request-qr{padding:.65rem;gap:7px}}@media(max-width:699px){.partner-request-qr{width:108px}}
+
+/* Partner board: full-width alignment, prominent right-hand heading. */
+.partner-board .match-heading>span{font-weight:700;text-align:right;margin-left:auto;color:var(--muted)}
+.partner-board .partner-board-layout{width:100%;min-width:0;box-sizing:border-box}
+.partner-board .partner-board-help{justify-self:stretch;box-sizing:border-box;width:100%}
+.partner-board .partner-board-grid>.panel:only-child{grid-column:1/-1}
