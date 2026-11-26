@@ -84,7 +84,7 @@ html[data-club="ntc"] .fixture-date-block{background:#f7dc14;color:#073538}
 .fixture-time{font-size:clamp(1rem,1.5vw,1.6rem);font-weight:800}
 .fixture-content{display:grid;align-content:center;gap:.35rem;padding:.65rem 1rem;min-width:0}
 .fixture-top{display:flex;align-items:center;justify-content:space-between;gap:.45rem}
-.fixture-identity{font-size:clamp(1.05rem,1.55vw,1.6rem);font-weight:780;line-height:1.15;color:var(--ink)}
+.fixture-identity{font-size:clamp(1.05rem,1.55vw,1.6rem);font-weight:600;line-height:1.15;color:var(--ink)}
 .fixture-league{font-size:clamp(.95rem,1.25vw,1.25rem);font-weight:750;color:var(--cyan);white-space:nowrap}
 .fixture-pair{display:flex;justify-content:flex-start;align-items:baseline;gap:clamp(.35rem,1vw,1rem);font-size:clamp(1.2rem,2vw,2.2rem);font-weight:500;line-height:1.13;letter-spacing:-.02em;min-width:0}
 .fixture-team{min-width:0;overflow-wrap:anywhere;hyphens:auto;color:var(--ink);font-weight:500}
