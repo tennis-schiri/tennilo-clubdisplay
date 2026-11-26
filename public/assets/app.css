@@ -906,3 +906,22 @@ html[data-club="ntc"] body>header #fullscreen{display:none!important}
 body>header #language{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;white-space:nowrap;line-height:1}
 body>header #language .language-flag{display:block;width:24px;height:auto;aspect-ratio:5/3;flex:none;border-radius:2px;box-shadow:0 0 0 1px #ffffff38}
 @media(max-width:700px){body>header #language .language-flag{width:20px}}
+
+/* Richer atmospheric decoration only. Existing header layout and controls are untouched. */
+body>header .header-weather-effect{opacity:.83;background:none;animation:none}
+header[data-sky="day"] .header-weather-effect{background:linear-gradient(100deg,#67c4cf14,#83d4ee27 48%,#ffdc7e20)}
+header[data-sky="night"] .header-weather-effect{background:linear-gradient(105deg,#071426a6,#071a33c9 55%,#111f3d9c)}
+header[data-sky="dawn"] .header-weather-effect{background:linear-gradient(100deg,#bd8d6a35,#f5c27d58 50%,#8bc5c42b)}
+header[data-sky="dusk"] .header-weather-effect{background:linear-gradient(100deg,#293a664d,#e7a66e46 50%,#29254775)}
+.header-weather-effect .sky-celestial{position:absolute;left:45%;top:50%;width:clamp(48px,5.4vw,86px);height:auto;transform:translate(-50%,-50%);pointer-events:none;opacity:.72}
+.sky-celestial svg{display:block;width:100%;height:auto}
+.sky-sun{filter:drop-shadow(0 0 12px #ffd176a0)}
+.sky-moon{filter:drop-shadow(0 0 10px #dceaff70)}
+.sky-veiled{opacity:.35}
+header[data-weather-effect="cloud"] .header-weather-effect:after,header[data-weather-effect="fog"] .header-weather-effect:after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 32% 35%,#e0f0f043,transparent 55%),radial-gradient(ellipse at 80% 75%,#b4d2df50,transparent 65%);animation:cd-header-cloud 18s ease-in-out infinite alternate}
+header[data-weather-effect="fog"] .header-weather-effect:after{background:linear-gradient(3deg,#d7e4ea66,transparent 55%,#bbd2df39)}
+.header-weather-effect .drop{width:2px;height:24px;background:linear-gradient(transparent,#c2e8ff)}
+.header-weather-effect .flake{box-shadow:0 0 4px #effaffbf}
+.header-weather-effect .star{width:calc(var(--size)*.65);height:calc(var(--size)*.65);box-shadow:0 0 5px #f4edcf70}
+@media(max-width:700px){.header-weather-effect .sky-celestial{left:52%;width:48px;opacity:.5}}
+@media(prefers-reduced-motion:reduce){.header-weather-effect:after{animation:none!important}}

@@ -161,3 +161,18 @@ assert.match(birthdayCopy,/Danke an alle/);
 ctx.Date=realDate;
 assert.match(fs.readFileSync('public/index.html','utf8'),/id="header-birthday"[^>]*hidden/);
 console.log('Visible anniversary header and community birthday copy OK');
+
+// Sky follows today's sunrise/sunset and lunar phases are calculated independently.
+ctx.skyDate=Date.parse('2026-11-28T12:00:00+01:00');
+ctx.skyData={sun:{sunrise:Date.parse('2026-11-28T07:45:00+01:00')/1000,sunset:Date.parse('2026-11-28T15:58:00+01:00')/1000}};
+for(const [time,expected] of [['07:30','dawn'],['12:00','day'],['16:10','dusk'],['20:00','night']]){
+ ctx.skyTime=Date.parse('2026-11-28T'+time+':00+01:00');
+ assert.equal(run('headerSky(skyData,skyTime)'),expected);
+}
+assert.equal(run('headerSky(skyData,Date.parse("2026-11-29T12:00:00+01:00"))'),'');
+assert.ok(run('headerMoonPhase(Date.UTC(2000,0,6,18,14))')<.00001);
+assert.ok(Math.abs(run('headerMoonPhase(Date.UTC(2000,0,6,18,14)+29.530588853*86400000/2)')-.5)<.00001);
+assert.match(run('headerSkyMarkup("night","stars",.25)'),/sky-moon/);
+assert.match(run('headerSkyMarkup("day","sun",.25)'),/sky-sun/);
+assert.equal(run('headerSkyMarkup("night","rain",.25)'),'');
+console.log('Sunrise/sunset sky and approximate lunar phase decoration OK');

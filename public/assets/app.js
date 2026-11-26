@@ -610,6 +610,42 @@ function headerWeatherEffect(data,now=Date.now()){
   const effects={'rain':'rain','sleet':'sleet','snow':'snow','hail':'hail','thunderstorm':'storm','fog':'fog','wind':'wind','clear-day':'sun','clear-night':'stars','partly-cloudy-day':'cloud','partly-cloudy-night':'cloud','cloudy':'cloud'};
   return Object.prototype.hasOwnProperty.call(effects,c.icon)?effects[c.icon]:'';
 }
+// Local sunrise/sunset controls the decorative sky, independently of precipitation.
+function headerSky(data,now=Date.now()){
+  const today=smartDate(now),day=data?.daily?.find(d=>d.date===today);
+  const sun=day||data?.sun;
+  const rise=sun?.sunrise,set=sun?.sunset,seconds=now/1000;
+  if(Number.isFinite(rise)&&Number.isFinite(set)&&set>rise&&smartDate(rise*1000)===today&&smartDate(set*1000)===today){
+    if(Math.abs(seconds-rise)<1800)return 'dawn';
+    if(Math.abs(seconds-set)<1800)return 'dusk';
+    return seconds>=rise&&seconds<set?'day':'night';
+  }
+  const effect=headerWeatherEffect(data,now);
+  if(!effect)return '';
+  const icon=data.current.icon;
+  return icon.endsWith('-day')?'day':icon.endsWith('-night')?'night':'';
+}
+// Mean synodic cycle approximation; decorative phase, not moonrise or exact ephemeris.
+function headerMoonPhase(now=Date.now()){
+  const cycle=29.530588853*86400000;
+  return ((now-Date.UTC(2000,0,6,18,14))%cycle+cycle)%cycle/cycle;
+}
+function headerMoonMarkup(phase){
+  const angle=phase*2*Math.PI,cos=Math.cos(angle),waxing=phase<.5;
+  const radius=Math.abs(cos)*24,outer=waxing?1:0,inner=waxing?(cos>=0?0:1):(cos>=0?1:0);
+  const lit=(1-cos)/2;
+  const path=lit<.001?'':lit>.999?'<circle cx="32" cy="32" r="24" fill="#e8efff"/>':'<path d="M32 8 A24 24 0 0 '+outer+' 32 56 '+(radius<.01?'L32 8':'A'+radius.toFixed(3)+' 24 0 0 '+inner+' 32 8')+' Z" fill="#e8efff"/>';
+  return '<svg class="sky-moon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="24" fill="#192d47" stroke="#8ba6c2" stroke-width=".7"/>'+path+'</svg>';
+}
+function headerSkyMarkup(sky,effect,phase){
+  if(!sky)return '';
+  const visible=['sun','stars','cloud'].includes(effect);
+  if(!visible)return '';
+  const night=sky==='night';
+  const cloudy=effect==='cloud';
+  const celestial=night?headerMoonMarkup(phase):'<svg class="sky-sun" viewBox="0 0 80 80" aria-hidden="true"><g stroke="#ffdb83" stroke-width="2.5" stroke-linecap="round"><path d="M40 3v10m0 54v10M3 40h10m54 0h10M14 14l7 7m38 38 7 7M14 66l7-7m38-38 7-7"/></g><circle cx="40" cy="40" r="21" fill="#ffda82"/></svg>';
+  return '<div class="sky-celestial'+(cloudy?' sky-veiled':'')+'">'+celestial+'</div>';
+}
 function headerSeasonEffect(now=Date.now()){
   const key=smartHoliday(now);
   return key==='holiday:christmas'?'christmas':key.startsWith('holiday:advent:')?'advent-'+key.slice(-1):'';
@@ -640,13 +676,17 @@ function syncHeaderDecor(now=Date.now()){
       birthday.innerHTML=birthdayLabel?'<strong>'+esc(birthdayLabel)+'</strong><small>'+esc(birthdayGreeting)+'</small>':'';
     }
   }
-  if(header.dataset.weatherEffect!==effect){
+  const sky=headerSky(weatherData,now),phase=Math.round(headerMoonPhase(now)*96)/96;
+  const skyKey=effect+'|'+sky+'|'+(sky==='night'?phase:'');
+  header.dataset.sky=sky;
+  if(header.dataset.skyKey!==skyKey){
+    header.dataset.skyKey=skyKey;
     header.dataset.weatherEffect=effect;
-    const count=({rain:22,sleet:20,snow:19,hail:17,storm:24,stars:14,wind:8})[effect]||0;
-    layer.innerHTML=Array.from({length:count},(_,i)=>{
+    const count=({rain:38,sleet:32,snow:32,hail:25,storm:42,stars:36,wind:12})[effect]||0;
+    layer.innerHTML=headerSkyMarkup(sky,effect,phase)+Array.from({length:count},(_,i)=>{
       const snow=effect==='snow'||(effect==='sleet'&&i%2===0);
       const kind=snow?'flake':effect==='hail'?'pellet':effect==='stars'?'star':effect==='wind'?'gust':'drop';
-      return '<i class="'+kind+'" style="--x:'+((i*37+7)%100)+'%;--y:'+((i*19+5)%95)+'%;--delay:-'+((i*17)%90/10)+'s;--duration:'+(snow?4+i%5:effect==='stars'?5+i%4:1.6+i%4*.45)+'s;--size:'+(2+i%4)+'px"></i>';
+      return '<i class="'+kind+'" style="--x:'+((i*37+7)%100)+'%;--y:'+((i*19+5)%95)+'%;--delay:-'+((i*17)%90/10)+'s;--duration:'+(snow?4+i%5:effect==='stars'?5+i%4:1.6+i%4*.45)+'s;--size:'+(3+i%5)+'px"></i>';
     }).join('');
   }
   if(header.dataset.seasonEffect!==festive){
