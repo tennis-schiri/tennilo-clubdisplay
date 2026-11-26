@@ -719,7 +719,10 @@ function fitActiveScreen(){
         const panel=panels.radar;
         const overhead=panel.getBoundingClientRect().height-map.getBoundingClientRect().height;
         const chrome=content.getBoundingClientRect().height-layout.getBoundingClientRect().height;
-        map.style.width=Math.max(80,Math.min(map.clientWidth,available-chrome-overhead-8))+'px';
+        const left=layout.querySelector('.wx-left');
+        const overview=view==='info'||weatherPage==='all';
+        const leftHeight=screen.clientWidth>=920&&overview&&left&&[panels.now,panels.hours,panels.days].every(p=>p&&!p.hidden)?left.getBoundingClientRect().height:Infinity;
+        map.style.width=Math.max(80,Math.min(map.clientWidth,available-chrome-overhead-8,leftHeight-overhead))+'px';
       }
       // Keep the full dashboard whenever it fits. Otherwise expose full-sized pages.
       const needsPages=screen.clientWidth<920||content.getBoundingClientRect().height>available-2;

@@ -105,3 +105,7 @@ dateCtx.lang='en';assert.equal(statusAt(0),'In progress');assert.equal(statusAt(
 console.log('Fixture countdown, scheduled running status and result precedence OK');
 
 const style=fs.readFileSync('public/assets/app.css','utf8');assert.match(style,/\.event-meta-cell>strong\{[^}]*font-weight:600/);assert.match(style,/\.occupancy-roster-indoor \.occupancy-unknown\{[^}]*background:#284b69/);
+
+// Two-column weather overview uses equal-height cards; the single radar page is untouched.
+assert.match(style,/\.weather-screen #screen\[data-weather-layout="all"\] \.wx-layout\{align-items:stretch\}/);
+assert.match(source,/leftHeight-overhead/);
