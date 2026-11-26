@@ -946,3 +946,17 @@ html[data-personal-demo="true"] body>header.has-advent-candles .header-advent-ca
 #personal-demo-form{display:grid;gap:.65rem;font-size:1rem}
 #personal-demo-form input:not([type=checkbox]){width:100%;min-height:44px;background:#071a2c;color:#fff;border:1px solid #52758a;border-radius:8px;padding:.5rem}
 #personal-demo-form p{font-size:.85rem}#personal-demo-form .personal-check{font-size:.8rem}#personal-status{color:#ffd69c}
+
+/* NTC quiet hours: no rotating content or visible weather animation. */
+#night-screen[hidden]{display:none!important}
+body.night-mode{background:#000}
+body.night-mode>header,body.night-mode>main,body.night-mode>nav,body.night-mode>footer{visibility:hidden!important}
+body.night-mode .header-weather-effect *,body.night-mode .header-weather-particles:after{animation-play-state:paused!important}
+#night-screen{position:fixed;inset:0;z-index:1000;width:100%;height:100%;min-height:0;border:0;border-radius:0;padding:1rem;background:#000;color:#7e878d;display:grid;place-items:center;cursor:pointer;outline:none}
+#night-screen:focus-visible{outline:2px solid #667477;outline-offset:-4px}
+#night-content{display:grid;justify-items:center;gap:.45rem;transform:translate(var(--shift-x,0),var(--shift-y,0));text-align:center}
+#night-content img{width:clamp(44px,6vw,80px);height:auto;opacity:.24;filter:grayscale(1)}
+#night-clock{font:500 clamp(3rem,9vw,8rem)/1.1 system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#818a8e}
+#night-date{font-size:clamp(.85rem,1.8vw,1.4rem);color:#727d80}
+#night-label{margin-top:1rem;font-size:clamp(.72rem,1.1vw,1rem);color:#667177}
+#night-hint{font-size:clamp(.7rem,1vw,.9rem);color:#657074}

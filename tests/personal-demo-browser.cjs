@@ -13,7 +13,8 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
  await page.locator('#personal-demo-dialog[open]').waitFor();
  await page.locator('#personal-name').fill('TC Muster <&>');
  await page.locator('#personal-color').fill('#cc0044');
- await page.locator('#personal-logo').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a+XcAAAAASUVORK5CYII=','base64')});
+ const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=32;c.height=32;const x=c.getContext('2d');x.fillStyle='#cc0044';x.fillRect(0,0,32,32);return c.toDataURL('image/png').split(',')[1];});
+ await page.locator('#personal-logo').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
  await page.locator('#personal-submit').click();
  await page.waitForFunction(()=>document.documentElement.dataset.personalDemo==='true'||document.querySelector('#personal-status').textContent!=='');
  assert.equal(await page.locator('#personal-status').textContent(),'');

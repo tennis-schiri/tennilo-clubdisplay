@@ -7,6 +7,9 @@ let personalBrand=null;
 if(pilot){const logo=document.getElementById('brand-logo');logo.src='assets/ntc93-logo.png';logo.alt='Neuenhagener Tennisclub 93 e. V.';}
 let lang='de', view='info', slide=0, last=Date.now(), started=Date.now(), court=null, message='';
 const dwell=12000, idle=60000;
+const nightIdle=300000;
+let nightActive=false,nightLastMinute=-1;
+const nightHourFormat=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',hourCycle:'h23'});
 const infoPauseLimit=25000;
 let infoPaused=false,infoElapsed=0,infoPauseUntil=0;
 const dictionary={
@@ -497,8 +500,8 @@ async function refreshLeague(){
   }catch{leagueData=leagueData&&leagueData.status!=='unavailable'?{...leagueData,status:'stale'}:{status:'unavailable',matches:[]};}
   finally{fetching=false;syncMatchGreetings();if(view==='teams'||(view==='info'&&(smartScreenKey(screens[slide])==='teams'||smartScreenKey(screens[slide]).startsWith('weekend:'))))render();}
 }
-setInterval(refreshLeague,300000);
-setInterval(refreshFixtureStatuses,10000);
+setInterval(()=>{if(!nightActive)refreshLeague();},300000);
+setInterval(()=>{if(!nightActive)refreshFixtureStatuses();},10000);
 let eventData=null,eventPage=0,eventFetching=false;
 function eventView(){
   const info=view==='info',d=eventData,title='<div class="match-heading"><h1>'+t().upcoming+'</h1></div>';
@@ -542,7 +545,7 @@ async function refreshEvents(){
   catch{eventData=eventData&&eventData.status!=='unavailable'?{...eventData,status:'stale'}:{status:'unavailable',events:[]};}
   finally{eventFetching=false;syncMatchGreetings();if(view==='calendar'||(view==='info'&&(smartScreenKey(screens[slide])==='calendar'||smartScreenKey(screens[slide]).startsWith('weekend:'))))render();}
 }
-setInterval(refreshEvents,300000);
+setInterval(()=>{if(!nightActive)refreshEvents();},300000);
 
 function button(label,action,cls=''){return '<button type="button" class="'+cls+'" data-action="'+action+'">'+label+'</button>'}
 function line(a,b){return '<div class="line"><strong>'+a+'</strong><span class="muted">'+b+'</span></div>'}
@@ -1059,7 +1062,7 @@ function syncLanguageButton(){
   button.setAttribute('aria-label',label);
   button.title=label;
 }
-function render(){const l=t();document.documentElement.lang=lang;$('club').textContent=personalBrand?personalBrand.name:l.club;$('mode').textContent=view==='info'?l.info:'';$('mode').hidden=view!=='info';$('mode-dot').hidden=view!=='info';$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}syncLanguageButton();syncFullscreen();renderWeatherHeader();infoControls();
+function render(){if(nightActive)return;const l=t();document.documentElement.lang=lang;$('club').textContent=personalBrand?personalBrand.name:l.club;$('mode').textContent=view==='info'?l.info:'';$('mode').hidden=view!=='info';$('mode-dot').hidden=view!=='info';$('demo').textContent=pilot?tr('PILOT · TEILWEISE BEISPIELDATEN','PILOT · PARTIAL SAMPLE DATA'):tr('TENNILO · BEISPIELDATEN','TENNILO · SAMPLE DATA');$('notice').textContent=pilot?tr('Vereinsmeldungen von ntc93.com · Buchung über eBuSy.','Club news from ntc93.com · Booking via eBuSy.'):tr('Buchungen, Mannschaften, News und Sponsoren sind fiktiv.','Bookings, teams, news and sponsors are fictional.');$('credit-label').textContent=tr('Design & Entwicklung','Design & development');const productLink=$('product-link');if(productLink){productLink.hidden=location.hostname!=='clubdisplay.tennilo.de';productLink.textContent=tr('Zur Produktseite ↗','Product page ↗');productLink.href=lang==='de'?'https://tennilo.de/clubdisplay/':'https://tennilo.de/en/clubdisplay/';}syncLanguageButton();syncFullscreen();renderWeatherHeader();infoControls();
 renderNav();
 const active=view==='info'?smartScreenKey(screens[slide]):view;document.body.classList.toggle('match-screen',active==='teams');document.body.classList.toggle('weather-screen',active==='weather');document.body.classList.toggle('court-screen',active==='courts');document.body.classList.toggle('event-screen',active==='calendar');document.body.classList.toggle('weekend-screen',active.startsWith('weekend:'));document.body.classList.toggle('sponsor-screen',active==='partner');document.body.classList.toggle('occupancy-screen',active==='welcome');document.body.classList.toggle('greeting-screen',greetingMatches.has(active)||greetingEvents.has(active)||active.startsWith('holiday:'));document.body.classList.toggle('restaurant-screen',active==='restaurant');let html='';
 if(greetingMatches.has(active))html=matchGreetingView(active);else if(greetingEvents.has(active))html=eventGreetingView(active);else if(active.startsWith('holiday:'))html=smartHolidayView(active);else if(active.startsWith('weekend:'))html=smartWeekendView(active);else if(active==='open-countdown')html=smartCountdownView();else if(active==='partners'||active.startsWith('partners:'))html=partnerBoardView(active);else switch(active){
@@ -1200,10 +1203,50 @@ function scheduleScreenFit(){
   });
 }
 
+function nightWindow(now=Date.now()){
+  const hour=Number(nightHourFormat.format(new Date(now)));
+  return hour>=22||hour<10;
+}
+function nightShouldSleep(now,lastInput,initial,booking,modal){
+  return nightWindow(now)&&!booking&&!modal&&(initial||now-lastInput>=nightIdle);
+}
+function renderNightClock(now=Date.now()){
+  const minute=Math.floor(now/60000);if(minute===nightLastMinute)return;nightLastMinute=minute;
+  const locale=lang==='de'?'de-DE':'en-GB',date=new Date(now);
+  $('night-clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Europe/Berlin'}).format(date);
+  $('night-date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(date);
+  $('night-hint').textContent=tr('Bildschirm berühren zum Aufwecken','Touch the screen to wake');
+  $('night-label').textContent=tr('Nachtmodus · ab 10 Uhr wieder aktiv','Night mode · active again at 10 AM');
+  const shift=Math.floor(minute/10)%5; $('night-content').style.setProperty('--shift-x',((shift-2)*9)+'px');$('night-content').style.setProperty('--shift-y',((shift*3%5-2)*7)+'px');
+}
+function refreshDayData(){
+  refreshLeague();refreshEvents();refreshWeather();refreshNews();refreshMatchball();refreshPartnerBoard();if(pilot)refreshOccupancy();
+}
+function leaveNightMode(interactive=false){
+  if(!nightActive)return;
+  nightActive=false;document.body.classList.remove('night-mode');$('night-screen').hidden=true;
+  for(const el of document.querySelectorAll('body>header,body>main,body>nav,body>footer'))el.inert=false;
+  nightLastMinute=-1;go(interactive?'home':'info');clock();refreshDayData();
+}
+function syncNightMode(now=Date.now(),initial=false){
+  if(!pilot)return false;
+  if(nightActive){if(!nightWindow(now)){leaveNightMode();return false;}renderNightClock(now);return true;}
+  const booking=view==='courts'&&courtMode==='outdoor',modal=adminDialog.open||$('personal-demo-dialog')?.open;
+  if(!nightShouldSleep(now,last,initial,booking,modal))return false;
+  // Retain the normal info state for the existing idle-only software updater.
+  if(view!=='info'){view='info';slide=0;openedNews=null;court=null;message='';}
+  infoPaused=false;infoElapsed=0;infoPauseUntil=0;started=now;
+  if(initial)last=now-nightIdle;
+  nightActive=true;document.body.classList.add('night-mode');$('night-screen').hidden=false;
+  for(const el of document.querySelectorAll('body>header,body>main,body>nav,body>footer'))el.inert=true;
+  renderNightClock(now);return true;
+}
 function clock(){const now=new Date();const locale=lang==='de'?'de-DE':'en-GB';$('clock').textContent=new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).format(now);$('date').textContent=new Intl.DateTimeFormat(locale,{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Berlin'}).format(now);}
 function go(next){openedNews=null;if(next!=='courts'||view!=='courts')bookingExpanded=false;if(next==='weather'&&view!=='weather')weatherPage='all';if(pilot&&next==='courts'&&view!=='courts'){courtMode='outdoor';terminalStatus=null;checkTerminal();}if(next==='calendar')eventPage=0;if(next==='teams'){matchFilter='home';matchPage=0;}view=next;court=null;message='';last=started=Date.now();if(next==='info'){slide=0;infoPaused=false;infoElapsed=0;infoPauseUntil=0;}render();}
-document.addEventListener('click',e=>{infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a.startsWith('matchball-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);if(Number.isInteger(index)&&matchballIssues[index]){openedNews={matchballId:matchballIssues[index].id};view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a==='booking-expand'){toggleBookingExpansion();}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;bookingExpanded=false;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='partners-prev'&&view==='partners'){partnerPage=Math.max(0,partnerPage-1);render();}else if(a==='partners-next'&&view==='partners'){partnerPage++;render();}else if(a==='partners'&&partnerBoardData?.enabled){partnerPage=0;go('partners');}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
-for(const event of ['pointerdown','keydown','wheel','touchmove'])document.addEventListener(event,infoInput);
+document.addEventListener('click',e=>{if(nightActive)return;infoInput();const b=e.target.closest('[data-action]');if(!b){if(e.target.closest('a'))return;if(view==='info'&&e.target.closest('#screen'))go('home');return;}const a=b.dataset.action;if(a==='info-prev'){stepInfo(-1);}else if(a==='info-next'){stepInfo(1);}else if(a==='info-toggle'){toggleInfoPause();}else if(a.startsWith('news-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);const p=(pilot?newsData:demoNews())?.posts?.[index];if(p){openedNews=p;view='news';render();}}else if(a.startsWith('matchball-open:')&&(view==='news'||(view==='info'&&smartScreenKey(screens[slide])==='news'))){const index=Number(a.split(':')[1]);if(Number.isInteger(index)&&matchballIssues[index]){openedNews={matchballId:matchballIssues[index].id};view='news';render();}}else if(a==='news-back'){openedNews=null;go('news');}else if(a==='news-up'||a==='news-down'){const reader=$('news-article-scroll');if(reader)reader.scrollBy({top:(a==='news-up'?-1:1)*reader.clientHeight*.85,behavior:'smooth'});}else if(a.startsWith('weather-page:')&&weatherActive()){const next=a.split(':')[1];if(['all','now','hours','days','radar'].includes(next)){view='weather';weatherPage=next;render();}}else if(a==='booking-expand'){toggleBookingExpansion();}else if(a.startsWith('court-mode:')&&pilot&&view==='courts'){const next=a.split(':')[1];if(['outdoor','indoor'].includes(next)&&next!==courtMode){courtMode=next;bookingExpanded=false;if(next==='outdoor'){terminalStatus=null;checkTerminal();}render();}}else if(a==='hall-refresh'&&pilot&&view==='courts'&&courtMode==='indoor'){render();}else if(a==='terminal-retry'&&pilot&&view==='courts'){checkTerminal();}else if(a==='partners-prev'&&view==='partners'){partnerPage=Math.max(0,partnerPage-1);render();}else if(a==='partners-next'&&view==='partners'){partnerPage++;render();}else if(a==='partners'&&partnerBoardData?.enabled){partnerPage=0;go('partners');}else if(a==='event-prev'){eventPage=Math.max(0,eventPage-1);render();}else if(a==='event-next'){eventPage++;render();}else if(a.startsWith('match:')){matchFilter=a.split(':')[1];matchPage=0;render();}else if(a==='match-prev'){matchPage=Math.max(0,matchPage-1);render();}else if(a==='match-next'){matchPage++;render();}else if(a.startsWith('court:')){court=Number(a.split(':')[1]);message='';render();}else if(a==='confirm'&&court!==null){message=t().success;render();}else if(a==='reset'){court=null;message='';render();}else if(['info','home','courts','calendar','teams','news','weather'].includes(a))go(a);});
+for(const event of ['pointerdown','keydown','wheel','touchmove'])document.addEventListener(event,()=>{if(!nightActive)infoInput();});
+$('night-screen').addEventListener('click',e=>{e.stopPropagation();leaveNightMode(true);});
+document.addEventListener('keydown',e=>{if(nightActive&&(e.key==='Enter'||e.key===' ')){e.preventDefault();leaveNightMode(true);}});
 $('language').addEventListener('click',()=>{if(pilot&&view==='courts'&&courtMode==='outdoor')return;lang=lang==='de'?'en':'de';message='';render();});
 
 const adminDialog=$('admin-dialog'), adminForm=$('admin-form'), adminPin=$('admin-pin'), adminStatus=$('admin-status');
@@ -1248,7 +1291,7 @@ adminForm.addEventListener('submit',async e=>{
 });
 syncFullscreen();
 let lastSmartSecond=-1;
-setInterval(()=>{const now=Date.now();clock();const second=Math.floor(now/1000);if(second!==lastSmartSecond){lastSmartSecond=second;syncMatchGreetings(now);if(second%60===0)syncHeaderDecor(now);}if(adminDialog.open||$('personal-demo-dialog')?.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
+setInterval(()=>{const now=Date.now();if(syncNightMode(now))return;clock();const second=Math.floor(now/1000);if(second!==lastSmartSecond){lastSmartSecond=second;syncMatchGreetings(now);if(second%60===0)syncHeaderDecor(now);}if(adminDialog.open||$('personal-demo-dialog')?.open)return;if(view==='info'){tickInfo(now);refreshOccupancyHour(now);}else{if(!(pilot&&view==='courts'&&courtMode==='outdoor')&&now-last>=idle)go('info');$('progress').style.setProperty('--progress','0%');}},250);
 window.addEventListener('resize',scheduleScreenFit);
 document.addEventListener('fullscreenchange',scheduleScreenFit);
 if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
@@ -1293,4 +1336,4 @@ function initPersonalDemo(){
   });
   open();
 }
-if(!pilot)leagueData=demoLeague();syncMatchGreetings();render();initPersonalDemo();refreshLeague();refreshEvents();refreshWeather();refreshNews();refreshMatchball();refreshPartnerBoard();if(pilot){refreshOccupancy();setInterval(refreshOccupancy,60000);}setInterval(refreshMatchball,60000);setInterval(refreshPartnerBoard,60000);setInterval(refreshNews,900000);setInterval(refreshWeather,600000);setInterval(()=>{if(weatherActive())refreshRadar();},300000);
+if(!pilot)leagueData=demoLeague();syncMatchGreetings();render();initPersonalDemo();if(!syncNightMode(Date.now(),true))refreshDayData();if(pilot)setInterval(()=>{if(!nightActive)refreshOccupancy();},60000);setInterval(()=>{if(!nightActive)refreshMatchball();},60000);setInterval(()=>{if(!nightActive)refreshPartnerBoard();},60000);setInterval(()=>{if(!nightActive)refreshNews();},900000);setInterval(()=>{if(!nightActive)refreshWeather();},600000);setInterval(()=>{if(!nightActive&&weatherActive())refreshRadar();},300000);

@@ -36,6 +36,7 @@ jobs:
           bash tests/admin-http-test.sh
       - name: Bestehende Displays
         run: |
+          node tests/night-mode-test.cjs
           node tests/auto-update-test.cjs
           node tests/info-countdown-test.cjs
           node tests/occupancy-test.cjs
