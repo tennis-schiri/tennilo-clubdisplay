@@ -390,3 +390,13 @@ check(cd_community_png($monoPng)===$monoPng);
 try{cd_community_png(substr($monoPng,0,-4));throw new RuntimeException('Truncated PNG accepted');}catch(InvalidArgumentException $e){}
 try{cd_community_png($monoPng.'trailing');throw new RuntimeException('PNG trailing payload accepted');}catch(InvalidArgumentException $e){}
 echo "Community QR PNG: lossless 1-bit format and invalid structure checks OK\n";
+
+$rgbPng="\x89PNG\r\n\x1a\n".$chunk('IHDR',pack('NNCCCCC',574,574,8,2,0,0,0)).$chunk('IDAT',gzcompress(str_repeat("\0".str_repeat("\xff",574*3),574))).$chunk('IEND','');
+check(cd_community_png($rgbPng)===$rgbPng);
+$rectPng="\x89PNG\r\n\x1a\n".$chunk('IHDR',pack('NNCCCCC',574,575,1,0,0,0,0)).$chunk('IDAT',gzcompress(str_repeat("\0".str_repeat("\xff",72),575))).$chunk('IEND','');
+try{cd_community_png($rectPng);throw new RuntimeException('Non-square QR accepted');}catch(InvalidArgumentException $e){check(str_contains($e->getMessage(),'574 × 575'));}
+if(function_exists('imagejpeg')){
+    $im=imagecreatetruecolor(256,256);ob_start();imagejpeg($im);$jpg=ob_get_clean();imagedestroy($im);
+    check(str_starts_with(cd_community_png($jpg),"\x89PNG\r\n\x1a\n"));
+}
+echo "Community QR: RGB and monochrome PNG, JPEG conversion and precise dimensions OK\n";

@@ -288,3 +288,5 @@ Kompakte 2×2-Gesuchskarten mit zusammengefasster Alters-/Geschlechtszeile und k
 
 ### WhatsApp-QR-Upload
 Originale quadratische PNGs (einschließlich 1-Bit-Schwarzweiß) werden ohne GD-Konvertierung übernommen. PNG-Signatur, Maße, Chunk-Längen/CRC und Abschluss werden geprüft, Metadaten entfernt. NTC-Gateway leitet PNG und PDF mit passenden MIME-Typen und Dateiendungen weiter. HTTP-Test verwendet ein künstliches 574×574-1-Bit-PNG ohne Einladungsdaten.
+
+QR-Upload: PNG-Maße direkt aus IHDR gelesen, 128–2048 Pixel quadratisch, JPEG/WebP nach Möglichkeit serverseitig in PNG konvertiert. Fehlermeldungen enthalten erkanntes Bildformat und Abmessungen. QR-Inhalte bleiben außerhalb des Repositories.

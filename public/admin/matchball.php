@@ -173,8 +173,23 @@ function cd_community_public(PDO $db):array{
 }
 // Preserve QR modules exactly, including 1-bit PNGs; no GD dependency.
 function cd_community_png(string $bytes):string{
-    $length=strlen($bytes);$info=@getimagesizefromstring($bytes);
-    if($length>2000000||!$info||$info['mime']!=='image/png'||$info[0]!==$info[1]||$info[0]<200||$info[0]>1200||!str_starts_with($bytes,"\x89PNG\r\n\x1a\n"))throw new InvalidArgumentException('Bitte den quadratischen QR-Code als PNG (200–1200 Pixel, maximal 2 MB) wählen, nicht den gesamten WhatsApp-Screenshot.');
+    $length=strlen($bytes);
+    if($length>2000000)throw new InvalidArgumentException('Bilddatei größer als 2 MB.');
+    if(!str_starts_with($bytes,"\x89PNG\r\n\x1a\n")){
+        $info=@getimagesizefromstring($bytes);
+        if(!$info||!in_array($info['mime'],['image/jpeg','image/webp'],true))throw new InvalidArgumentException('Datei ist kein erkennbares PNG-, JPEG- oder WebP-Bild. Bitte die heruntergeladene Bilddatei auswählen.');
+        if($info[0]!==$info[1]||$info[0]<128||$info[0]>2048)throw new InvalidArgumentException('Erkannt: '.$info['mime'].' · '.$info[0].' × '.$info[1].' Pixel. Bitte nur den quadratischen QR-Code hochladen (128–2048 Pixel).');
+        if(!function_exists('imagecreatefromstring'))throw new InvalidArgumentException('Bild wurde als '.$info['mime'].' erkannt. Der Server unterstützt dafür keine Konvertierung. Bitte die PNG-Upload-Datei verwenden.');
+        $image=@imagecreatefromstring($bytes);
+        if(!$image)throw new InvalidArgumentException('Bild konnte nicht dekodiert werden.');
+        ob_start();$ok=imagepng($image);$converted=ob_get_clean();imagedestroy($image);
+        if(!$ok||!is_string($converted))throw new InvalidArgumentException('Bildkonvertierung fehlgeschlagen.');
+        return cd_community_png($converted);
+    }
+    // Read PNG dimensions directly from IHDR; do not depend on server image-type recognition.
+    if($length<33||substr($bytes,8,8)!=="\x00\x00\x00\x0dIHDR")throw new InvalidArgumentException('PNG-Datei beschädigt: Bildkopf fehlt.');
+    $size=unpack('Nwidth/Nheight',substr($bytes,16,8));
+    if($size['width']!==$size['height']||$size['width']<128||$size['width']>2048)throw new InvalidArgumentException('Erkannt: PNG · '.$size['width'].' × '.$size['height'].' Pixel. Bitte nur den quadratischen QR-Code hochladen (128–2048 Pixel).');
     $out=substr($bytes,0,8);$pos=8;$header=false;$data=false;$end=false;
     while($pos+12<=$length){
         $n=unpack('N',substr($bytes,$pos,4))[1];if($n>$length-$pos-12)break;
@@ -206,10 +221,10 @@ function cd_community_save(PDO $db,array $in,array $file,?string $scope):void{
     }
     if($intent!=='save')throw new InvalidArgumentException('Unbekannte Community-Aktion.');
     $uploadError=$file['error']??UPLOAD_ERR_NO_FILE;
-    if($uploadError===UPLOAD_ERR_NO_FILE)throw new InvalidArgumentException('Bitte eine PNG-Datei auswählen.');
+    if($uploadError===UPLOAD_ERR_NO_FILE)throw new InvalidArgumentException('Bitte eine QR-Code-Bilddatei auswählen.');
     if(in_array($uploadError,[UPLOAD_ERR_INI_SIZE,UPLOAD_ERR_FORM_SIZE],true))throw new InvalidArgumentException('Datei überschreitet das Uploadlimit des Servers.');
     if($uploadError!==UPLOAD_ERR_OK||!is_string($file['tmp_name']??null)||!is_uploaded_file($file['tmp_name']))throw new InvalidArgumentException('PNG-Upload fehlgeschlagen. Bitte Datei erneut auswählen.');
-    $size=filesize($file['tmp_name']);if(!$size||$size>2000000)throw new InvalidArgumentException('PNG-Datei darf maximal 2 MB groß sein.');
+    $size=filesize($file['tmp_name']);if(!$size||$size>2000000)throw new InvalidArgumentException('Bilddatei darf maximal 2 MB groß sein.');
     $bytes=file_get_contents($file['tmp_name']);if(!is_string($bytes))throw new InvalidArgumentException('PNG-Datei konnte nicht gelesen werden.');
     $png=cd_community_png($bytes);
     $q=$db->prepare('INSERT INTO ntc_community_qr(kind,png,published) VALUES (?,?,0) ON CONFLICT(kind) DO UPDATE SET png=excluded.png,published=0');$q->bindValue(1,$kind);$q->bindValue(2,$png,PDO::PARAM_LOB);$q->execute();
@@ -219,6 +234,6 @@ function cd_community_field(PDO $db,array $club,string $csrf,?string $scope):voi
     $rows=[];foreach($db->query('SELECT kind,published FROM ntc_community_qr')->fetchAll() as $r)$rows[$r['kind']]=$r;
     ?><div class="community-admin"><p>Die QR-Codes erscheinen auf START. Private Einladungslinks werden nicht in den Quellcode aufgenommen. Nur freigeben, wenn die Community-Admins Beitritte kontrollieren können. Die Anzeige ist auch für Gäste im Internet erreichbar.</p>
     <?php foreach(cd_community_labels() as $kind=>$label):$row=$rows[$kind]??null;?><section class="entry"><h3><?=cd_h($label)?></h3><p><?=$row?($row['published']?'Auf START sichtbar':'Gespeichert · nicht sichtbar'):'Noch kein QR-Code hinterlegt'?></p>
-    <form method="post" enctype="multipart/form-data" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="community"><input type="hidden" name="club" value="ntc93"><input type="hidden" name="kind" value="<?=cd_h($kind)?>"><label class="full">QR-Code als quadratische PNG-Datei<input type="file" name="image" accept="image/png" required></label><button name="intent" value="save">QR-Code speichern (Entwurf)</button></form>
+    <form method="post" enctype="multipart/form-data" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="community"><input type="hidden" name="club" value="ntc93"><input type="hidden" name="kind" value="<?=cd_h($kind)?>"><label class="full">QR-Code als Bild (PNG, JPEG, WebP)<input type="file" name="image" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" required></label><button name="intent" value="save">QR-Code speichern (Entwurf)</button></form>
     <?php if($row):?><form method="post" class="profile"><input type="hidden" name="csrf" value="<?=$csrf?>"><input type="hidden" name="action" value="community"><input type="hidden" name="club" value="ntc93"><input type="hidden" name="kind" value="<?=cd_h($kind)?>"><?php if($row['published']):?><button name="intent" value="hide">Ausblenden</button><?php else:?><label class="check full"><input type="checkbox" name="reviewed" value="1" required> Einladung für die öffentliche Anzeige geprüft; Zugang wird durch die Community-Admins kontrolliert.</label><button name="intent" value="publish">Auf START anzeigen</button><?php endif?><button class="danger" name="intent" value="delete" formnovalidate>QR-Code entfernen</button></form><?php endif?></section><?php endforeach?></div><?php
 }
