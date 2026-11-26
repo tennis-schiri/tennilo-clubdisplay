@@ -21,6 +21,8 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
  await page.locator('#premiere-next').click();await page.locator('#premiere-next').click();assert.ok(await overlay.isHidden());
  await page.locator('#nav button[data-action="home"]').click();await page.locator('[data-action="intro"]').click();assert.equal(await page.locator('#premiere-position').textContent(),'1 / 4');await page.keyboard.press('Escape');
  assert.ok(await overlay.isHidden());
+ await page.locator('#nav button[data-action="home"]').click();await page.locator('[data-action="feedback"]').click();assert.ok(await overlay.isVisible());
+ await page.clock.fastForward(301000);assert.ok(await overlay.isHidden(),'unattended feedback returns to normal');
  await page.goto('https://clubdisplay.tennilo.de/?premiere=1');assert.ok(await page.locator('#premiere-launch').isHidden());
  console.log('NTC premiere: manual launch, autoplay, pause, feedback QR, intro, exit and demo isolation');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

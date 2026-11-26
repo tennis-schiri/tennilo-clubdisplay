@@ -4,7 +4,7 @@ const $ = id => document.getElementById(id);
 const pilot = location.hostname === 'clubdisplay.ntc93.de';
 const personalDemo=!pilot&&location.hostname==='clubdisplay.tennilo.de'&&new URLSearchParams(location.search).get('customize')==='1';
 let personalBrand=null;
-let premiereActive=false,premiereIndex=0,premiereDeadline=0,premiereRemaining=0,premierePaused=false;
+let premiereActive=false,premiereIndex=0,premiereDeadline=0,premiereRemaining=0,premierePaused=false,premiereLastInput=0,premiereMode='full';
 const premiereDwell=18000,feedbackUrl='https://clubdisplay.ntc93.de/feedback.php';
 if(pilot){const logo=document.getElementById('brand-logo');logo.src='assets/ntc93-logo.png';logo.alt='Neuenhagener Tennisclub 93 e. V.';}
 let lang='de', view='info', slide=0, last=Date.now(), started=Date.now(), court=null, message='';
@@ -1230,7 +1230,7 @@ function premiereRender(){
   const [kind,title,sub,copy]=p;
   const icons={welcome:'home',touch:'home',courts:'courts',teams:'teams',info:'info',end:'home'};
   const art=kind==='birthday'?'<div class="premiere-confetti" aria-hidden="true">'+Array.from({length:36},(_,i)=>'<i style="--x:'+((i*37+7)%100)+'%;--delay:-'+(i%9*.6)+'s;--turn:'+(i*29%180)+'deg"></i>').join('')+'</div><img class="premiere-logo" src="assets/ntc93-logo.png" alt="NTC 93">':kind==='feedback'?'<div class="premiere-qr">'+partnerQrSvg(feedbackUrl,tr('QR-Code zum Feedback','Feedback QR code'))+'</div>':'<div class="premiere-icon">'+sectionIcon(icons[kind]||'home')+'</div>';
-  $('premiere-content').innerHTML='<article class="premiere-page premiere-'+kind+'">'+art+'<div class="premiere-copy"><p class="premiere-kicker">'+tr('NTC CLUBDISPLAY · VEREINSPREMIERE','NTC CLUBDISPLAY · CLUB PREMIERE')+'</p><h1>'+esc(title)+'</h1><h2>'+esc(sub)+'</h2><p>'+esc(copy)+'</p>'+(kind==='feedback'?'<a href="'+feedbackUrl+'" target="_blank" rel="noopener noreferrer">clubdisplay.ntc93.de/feedback.php</a>':'')+'</div></article>';
+  $('premiere-content').innerHTML='<article class="premiere-page premiere-'+kind+'">'+art+'<div class="premiere-copy"><p class="premiere-kicker">'+(premiereMode==='full'?tr('NTC CLUBDISPLAY · VEREINSPREMIERE','NTC CLUBDISPLAY · CLUB PREMIERE'):premiereMode==='intro'?tr('NTC CLUBDISPLAY · KURZANLEITUNG','NTC CLUBDISPLAY · QUICK GUIDE'):tr('NTC CLUBDISPLAY · FEEDBACK','NTC CLUBDISPLAY · FEEDBACK'))+'</p><h1>'+esc(title)+'</h1><h2>'+esc(sub)+'</h2><p>'+esc(copy)+'</p>'+(kind==='feedback'?'<a href="'+feedbackUrl+'" target="_blank" rel="noopener noreferrer">clubdisplay.ntc93.de/feedback.php</a>':'')+'</div></article>';
   $('premiere-position').textContent=(premiereIndex+1)+' / '+pages.length;
   $('premiere-prev').disabled=premiereIndex===0;
   $('premiere-pause').textContent=premierePaused?tr('Fortsetzen','Resume'):tr('Pause','Pause');
@@ -1240,7 +1240,7 @@ function premiereRender(){
 function startPremiere(mode='full'){
   if(!pilot||nightActive||premiereActive||adminDialog.open||(mode==='full'&&!premiereAvailable())||(view==='courts'&&courtMode==='outdoor'))return;
   const pages=premierePages();premiereSelection=mode==='intro'?pages.slice(2,6):mode==='feedback'?[pages[6]]:pages;
-  premiereIndex=0;premiereActive=true;premierePaused=mode==='feedback';premiereRemaining=premiereDwell;premiereDeadline=Date.now()+premiereDwell;
+  premiereIndex=0;premiereActive=true;premiereMode=mode;premiereLastInput=Date.now();premierePaused=mode==='feedback';premiereRemaining=premiereDwell;premiereDeadline=Date.now()+premiereDwell;
   $('premiere-overlay').hidden=false;document.body.classList.add('premiere-active');
   for(const el of document.querySelectorAll('body>header,body>main,body>nav,body>footer'))el.inert=true;
   premiereRender();$('premiere-stop').focus();
@@ -1260,6 +1260,7 @@ function premiereStep(delta,now=Date.now()){
 }
 function premiereTick(now=Date.now()){
   if(!premiereActive)return false;
+  if(now-premiereLastInput>=300000){stopPremiere();return false;}
   if(!premierePaused&&now>=premiereDeadline)premiereStep(1,now);
   return premiereActive;
 }
@@ -1364,6 +1365,7 @@ $('premiere-launch').addEventListener('click',()=>startPremiere());
 $('premiere-prev').addEventListener('click',()=>premiereStep(-1));
 $('premiere-next').addEventListener('click',()=>premiereStep(1));
 $('premiere-stop').addEventListener('click',stopPremiere);
+for(const type of ['pointerdown','keydown','touchmove'])$('premiere-overlay').addEventListener(type,()=>{if(premiereActive)premiereLastInput=Date.now();});
 $('premiere-pause').addEventListener('click',()=>{if(!premiereActive)return;const now=Date.now();if(premierePaused){premiereDeadline=now+premiereRemaining;premierePaused=false;}else{premiereRemaining=Math.max(0,premiereDeadline-now);premierePaused=true;}premiereRender();});
 document.addEventListener('keydown',e=>{if(!premiereActive)return;if(e.key==='Escape'){e.preventDefault();stopPremiere();}else if(e.key==='ArrowRight'){e.preventDefault();premiereStep(1);}else if(e.key==='ArrowLeft'){e.preventDefault();premiereStep(-1);}});
 let lastSmartSecond=-1;
