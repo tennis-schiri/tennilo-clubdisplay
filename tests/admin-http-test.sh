@@ -135,6 +135,22 @@ get "$other" "$base?matchball=feed&club=ntc93" 200
 php -r '$v=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if(count($v["issues"])!==2)exit(1);' "$tmp/body"
 echo "MATCHBALL upload, private original and public release HTTP tests passed."
 
+# Neutral review link: fixture uses no actual email delivery.
+review_token="$(php -r 'require "public/admin/lib.php";$db=cd_db($argv[1]);$now=time();cd_partner_mail_schema($db);$db->prepare("INSERT INTO partner_board VALUES (?,1) ON CONFLICT(club) DO UPDATE SET enabled=1")->execute(["ntc93"]);$db->prepare("INSERT INTO partner_posts VALUES (?,?,?,?,?,?,?, ?,?,?)")->execute(["ABCDEF1234","ntc93","singles","any","mon,fri","morning,evening","TEST-PRIVATE-CONTACT","pending",$now,$now+1209600]);$db->prepare("INSERT INTO partner_post_age VALUES (?,?)")->execute(["ABCDEF1234","adult"]);$db->prepare("INSERT INTO partner_post_preferences VALUES (?,?,?)")->execute(["ABCDEF1234","30-39","40-49,50-59"]);$db->prepare("INSERT INTO partner_post_meta(ref,email,lk) VALUES (?,?,?)")->execute(["ABCDEF1234","","11-15"]);$token=bin2hex(random_bytes(32));$db->prepare("INSERT INTO partner_mail_tokens VALUES (?,?,?,?)")->execute(["ABCDEF1234",hash("sha256",$token),$now+3600,"sent"]);echo $token;' "$tmp/www/clubdisplay-admin/clubdisplay-admin.sqlite")"
+review_url="$base?partner=moderate&club=ntc93&token=$review_token"
+get "$other" "$review_url" 200
+for marker in 'Gesuch freigeben' 'Gesuch ablehnen' 'TEST-PRIVATE-CONTACT' 'Gesuchte Altersgruppen' 'LK-Bereich' 'Montag, Freitag'; do grep -Fq "$marker" "$tmp/body"; done
+get "$other" "$review_url&decision=delete" 200
+grep -Fq 'Gesuch freigeben' "$tmp/body"
+grep -Fq 'Gesuch ablehnen' "$tmp/body"
+post "$other" "$base?partner=moderate&club=ntc93" 200 --data "token=$review_token&decision=publish"
+grep -Fq 'Bitte die gewählte Entscheidung bestätigen.' "$tmp/body"
+get "$other" "$review_url" 200
+post "$other" "$base?partner=moderate&club=ntc93" 200 --data "token=$review_token&decision=publish&confirmed=1"
+grep -Fq 'Gesuch freigegeben und für 14 Tage veröffentlicht.' "$tmp/body"
+get "$other" "$review_url" 410
+echo "Neutral review, legacy GET, confirmation and single-use token HTTP tests passed."
+
 get "$other" "$base?player=1" 200
 grep -Fq 'player.js' "$tmp/body"
 echo "HTTP login, CSRF, tenant isolation, real image upload, preview, pairing, revocation, backup passed."

@@ -270,3 +270,6 @@ NTC-Neuigkeiten enthalten zusätzlich eine eigene Matchball-Kachel, aktuelle Aus
 
 ## 0.4.74 · MATCHBALL Verwaltung
 Eigenständiger NTC-Bereich im geschützten Vereinsadmin: PDF-Originale bis 10 MB in der geschützten SQLite-Datenbank, maximal 60 Ausgaben/150 MB je Verein, Monatskennung, bis acht redaktionelle Themen, Vorschau, explizite Freigabe und Rücknahme. Änderungen speichern als Entwurf. Originale ausschließlich als authentifizierter Download; öffentlicher Feed enthält nur freigegebene Lesefassungen. Seed der September-/Oktober-Lesefassungen einmalig, ohne Originale. Display aktualisiert Feed jede Minute, keine alten statischen Fallbacks nach Rücknahme. Hosting muss PHP upload_max_filesize >=10 MB und post_max_size >=11 MB unterstützen. Kein automatischer PDF-Textimport. Ausschließlich NTC-Display integriert.
+
+### Spielpartnerbörse: neutrale Gesuchprüfung
+Benachrichtigungs-E-Mail enthält nur noch den Button „Gesuch ansehen“ (kein Entscheidungsschlüssel in der URL). Detailseite zeigt Spielwünsche, LK, Altersbereiche, private Kontaktdaten und E-Mail-Bestätigung sowie getrennte bestätigungspflichtige Freigabe-/Ablehnungsformulare. Alte Links öffnen ebenfalls neutral. Bestehende 48h-Einmal-Token und Jugendschutz bleiben erhalten.

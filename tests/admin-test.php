@@ -229,6 +229,8 @@ cd_partner_admin($db,['club'=>'ntc93','intent'=>'mail-settings','moderator_email
 $notice=cd_partner_mail_issue($db,'ntc93',$refs['MAIL-APPROVE'],$partnerNow);
 check($notice!==null&&$notice['email']==='moderator@example.invalid');
 $token=$notice['token'];
+$reviewMail=quoted_printable_decode(cd_partner_review_message($db,'ntc93',$refs['MAIL-APPROVE'],$notice)['body']);
+check(str_contains($reviewMail,'Gesuch ansehen')&&!str_contains($reviewMail,'decision=publish')&&!str_contains($reviewMail,'decision=delete')&&!str_contains($reviewMail,'MAIL-APPROVE'));
 check(cd_partner_mail_lookup($db,'ntc93',$token,$partnerNow)!==null);
 check(cd_partner_mail_lookup($db,'ntc93',$token,$partnerNow+172800)===null);
 check(!cd_partner_mail_decide($db,'tennilo-demo',$token,'publish',$partnerNow));

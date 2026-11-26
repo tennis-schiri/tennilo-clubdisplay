@@ -266,7 +266,7 @@ function cd_partner_action_page(PDO $db,string $club,string $action):never{
         try{$ok=$valid&&($in['confirmed']??'')==='1'&&($action==='verify'?cd_partner_confirm($db,$club,$token,time()):cd_partner_manage($db,$club,$token,$decision,time()));$message=$ok?($action==='verify'?'E-Mail bestätigt. Deine Anfrage wird jetzt geprüft.':'Änderung gespeichert.'): 'Dieser Link ist ungültig, abgelaufen oder bereits verwendet.';if(!$ok)http_response_code(410);}
         catch(InvalidArgumentException $e){$message=$e->getMessage();http_response_code(400);}catch(Throwable $e){$message='Anfrage derzeit nicht möglich.';http_response_code(503);}
     }
-    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=cd_h($title)?></title><link rel="stylesheet" href="admin.css?v=071"></head><body class="partner-page<?=$club==='ntc93'?' ntc-portal':''?>"><main><section class="panel"><?php if($club==='ntc93'):?><img class="portal-logo" src="../assets/ntc93-logo.png" alt="NTC 93"><?php endif?><h1><?=cd_h($title)?></h1><?php if($method==='POST'||!$valid):?><p><?=cd_h($message?:'Ungültiger Link.')?></p><?php else:?><form method="post" action="?partner=<?=cd_h($action)?>&amp;club=<?=rawurlencode($club)?>" class="profile"><input type="hidden" name="token" value="<?=cd_h($token)?>"><input type="hidden" name="decision" value="<?=cd_h($decision)?>"><label class="check full"><input type="checkbox" name="confirmed" value="1" required> Ich bestätige diese Aktion.</label><button><?=cd_h($title)?></button></form><?php endif?></section><footer class="portal-credit">Powered by TENNILO ClubDisplay</footer></main></body></html><?php
+    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=cd_h($title)?></title><link rel="stylesheet" href="admin.css?v=073"></head><body class="partner-page<?=$club==='ntc93'?' ntc-portal':''?>"><main><section class="panel"><?php if($club==='ntc93'):?><img class="portal-logo" src="../assets/ntc93-logo.png" alt="NTC 93"><?php endif?><h1><?=cd_h($title)?></h1><?php if($method==='POST'||!$valid):?><p><?=cd_h($message?:'Ungültiger Link.')?></p><?php else:?><form method="post" action="?partner=<?=cd_h($action)?>&amp;club=<?=rawurlencode($club)?>" class="profile"><input type="hidden" name="token" value="<?=cd_h($token)?>"><input type="hidden" name="decision" value="<?=cd_h($decision)?>"><label class="check full"><input type="checkbox" name="confirmed" value="1" required> Ich bestätige diese Aktion.</label><button><?=cd_h($title)?></button></form><?php endif?></section><footer class="portal-credit">Powered by TENNILO ClubDisplay</footer></main></body></html><?php
     exit;
 }
 
@@ -284,21 +284,24 @@ function cd_partner_mail_issue(PDO $db,string $club,string $ref,int $now):?array
     $q->execute([$ref,hash('sha256',$token),min((int)$row['expires'],$now+172800)]);
     return ['email'=>$email,'token'=>$token,'row'=>$row];
 }
+function cd_partner_review_message(PDO $db,string $club,string $ref,array $notice):array{
+    $choices=cd_partner_choices();$row=$notice['row'];$base=cd_partner_url($club,'moderate',$notice['token']);
+    $details=['Referenz'=>$ref];
+    foreach(['category'=>'Spielart','skill'=>'Spielstärke','availability'=>'Wochentage','period'=>'Tageszeiten'] as $key=>$label)$details[$label]=cd_partner_choice_label($choices[$key],$row[$key]);
+    $intro='Ein neues Gesuch wartet auf deine Prüfung. Öffne die Detailansicht, um alle Angaben einzusehen und anschließend über die Freigabe zu entscheiden.';
+    $note='Der persönliche Link ist höchstens 48 Stunden gültig und wird erst nach deiner Entscheidung ungültig. Keine privaten Kontaktdaten in dieser Nachricht. Bitte nicht weiterleiten.';
+    $body=$intro."\n\nVerein: ".cd_club($db,$club)['name']."\n";
+    foreach($details as $label=>$value)$body.=$label.': '.$value."\n";
+    $body.="\nGesuch ansehen:\n".$base."\n\n".$note."\n";
+    return cd_partner_mail_message($club,$body,'Neues Spielpartnergesuch',$intro,$details,[['label'=>'Gesuch ansehen','url'=>$base]],$note);
+}
 function cd_partner_mail_send(PDO $db,string $club,string $ref,int $now):void{
     try{
         $db->exec('BEGIN IMMEDIATE');
         try{$notice=cd_partner_mail_issue($db,$club,$ref,$now);$db->exec('COMMIT');}
         catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
         if(!$notice)return;
-        $choices=cd_partner_choices();$row=$notice['row'];
-        $base=($club==='ntc93'?'https://clubdisplay.ntc93.de/spielpartner/':'https://clubdisplay.tennilo.de/admin/').'?partner=moderate&club='.rawurlencode($club).'&token='.$notice['token'];
-        $body="Ein neues Spielpartnergesuch wartet auf Freigabe.\n\nVerein: ".cd_club($db,$club)['name']."\nReferenz: ".$ref."\n";
-        foreach($choices as $key=>$options){$body.=cd_partner_choice_label($options,$row[$key])."\n";}
-        $body.="\nGesuch freigeben (mit Bestätigung):\n".$base."&decision=publish\n\nGesuch ablehnen (mit Bestätigung):\n".$base."&decision=delete\n\nDie Links sind einmalig verwendbar und höchstens 48 Stunden gültig. Private Kontaktdaten stehen nur auf der Prüfseite. Bitte diese Nachricht nicht weiterleiten.\n";
-        $details=['Referenz'=>$ref];
-        foreach(['category'=>'Spielart','skill'=>'Spielstärke','availability'=>'Wochentage','period'=>'Tageszeiten'] as $key=>$label)$details[$label]=cd_partner_choice_label($choices[$key],$row[$key]);
-        $q=$db->prepare('SELECT lk FROM partner_post_meta WHERE ref=?');$q->execute([$ref]);$lk=(string)($q->fetchColumn()?:'');if($lk!==''){$details['LK-Bereich']=cd_partner_lk_choices()[$lk]??'';$body.="\nLK-Bereich: ".$details['LK-Bereich'];}
-        $message=cd_partner_mail_message($club,$body,'Neues Spielpartnergesuch','Ein neues Gesuch wartet auf deine Prüfung. Bitte prüfe Mitgliedschaft, Identität und gegebenenfalls den Jugendschutz vor der Freigabe.',$details,[['label'=>'Gesuch prüfen und freigeben','url'=>$base.'&decision=publish'],['label'=>'Gesuch prüfen und ablehnen','url'=>$base.'&decision=delete','secondary'=>true]],'Die Links sind einmalig verwendbar und höchstens 48 Stunden gültig. Die Entscheidung erfolgt erst auf der Prüfseite. Keine privaten Kontaktdaten in dieser Nachricht. Bitte nicht weiterleiten.');
+        $message=cd_partner_review_message($db,$club,$ref,$notice);
         $sent=false;
         try{$sent=@mail($notice['email'],cd_partner_mail_subject($club,'Neues Spielpartnergesuch'),$message['body'],$message['headers']);}catch(Throwable $e){}
         $q=$db->prepare('UPDATE partner_mail_tokens SET status=? WHERE ref=? AND hash=?');$q->execute([$sent?'sent':'failed',$ref,hash('sha256',$notice['token'])]);
@@ -333,22 +336,38 @@ function cd_partner_mail_page(PDO $db,string $club):never{
     $input=$method==='POST'?$_POST:$_GET;
     $token=is_string($input['token']??null)?$input['token']:'';
     $decision=is_string($input['decision']??null)?$input['decision']:'';
-    $row=null;$message='';$now=time();
+    $row=null;$message='';$error='';$now=time();
+    // Every GET is a neutral detail view, including previously sent decision links.
+    // Only a confirmed POST can consume the token or change the request.
     if($method==='POST'){
         if(!cd_partner_post_origin_allowed($_SERVER)){http_response_code(403);exit;}
         if((int)($_SERVER['CONTENT_LENGTH']??0)>4096){http_response_code(413);exit;}
-        if(($input['confirmed']??'')==='1'&&cd_partner_mail_decide($db,$club,$token,$decision,$now,($input['youth_reviewed']??'')==='1')){
-            $message=$decision==='publish'?'Gesuch freigegeben und für 14 Tage veröffentlicht.':'Gesuch abgelehnt und gelöscht.';
+        $row=cd_partner_mail_lookup($db,$club,$token,$now);
+        if($row){
+            if(!in_array($decision,['publish','delete'],true)||($input['confirmed']??'')!=='1')$error='Bitte die gewählte Entscheidung bestätigen.';
+            elseif($decision==='publish'&&cd_partner_post_age($db,$row['ref'])!=='adult'&&($input['youth_reviewed']??'')!=='1')$error='Bitte die zusätzliche Jugendschutzprüfung bestätigen.';
+            elseif(cd_partner_mail_decide($db,$club,$token,$decision,$now,($input['youth_reviewed']??'')==='1')){
+                $message=$decision==='publish'?'Gesuch freigegeben und für 14 Tage veröffentlicht.':'Gesuch abgelehnt und gelöscht.';$row=null;
+            }else{$row=null;}
         }
-    }elseif(in_array($decision,['publish','delete'],true)){$row=cd_partner_mail_lookup($db,$club,$token,$now);}
+    }else{$row=cd_partner_mail_lookup($db,$club,$token,$now);}
     if(!$row&&$message===''){http_response_code(410);$message='Dieser Freigabelink ist ungültig, abgelaufen oder wurde bereits verwendet. Bitte im Vereinsbackend prüfen.';}
-    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnergesuch prüfen</title><link rel="stylesheet" href="admin.css?v=071"></head><body class="partner-page<?=$club==='ntc93'?' ntc-portal':''?>"><main><section class="panel"><?php if($club==='ntc93'):?><img class="portal-logo" src="../assets/ntc93-logo.png" alt="NTC 93"><?php endif?><span class="member-brand"><?=$club==='ntc93'?'NTC 93':'TENNILO ClubDisplay'?></span><h1>Spielpartnergesuch prüfen</h1>
-    <?php if($row):$choices=cd_partner_choices();?><p><?=cd_h(cd_club($db,$club)['name'].' · '.$row['ref'])?></p><p><?=cd_h(implode(' · ',array_map(fn($key)=>cd_partner_choice_label($choices[$key],$row[$key]),array_keys($choices))))?></p><?php $prefs=cd_partner_preferences($db,$row['ref']);if($prefs['own_age_label']!==''):?><p>Alter Suchende: <?=cd_h($prefs['own_age_label'])?> · Gesuchtes Alter: <?=cd_h($prefs['wanted_age_label'])?></p><?php endif?><p>Privater Kontakt: <?=cd_h($row['contact'])?></p><p>Altersgruppe (privat): <?=cd_h(cd_partner_age_label(cd_partner_post_age($db,$row['ref'])))?></p>
-    <form method="post" action="?partner=moderate&amp;club=<?=rawurlencode($club)?>" class="profile"><input type="hidden" name="token" value="<?=cd_h($token)?>"><input type="hidden" name="decision" value="<?=cd_h($decision)?>"><label class="check full"><input type="checkbox" name="confirmed" value="1" required> <?= $decision==='publish'?'Vereinsmitgliedschaft, Gesuch und Einwilligung geprüft':'Ich möchte dieses Gesuch ablehnen und löschen' ?></label><?php if($decision==='publish'&&cd_partner_post_age($db,$row['ref'])!=='adult'):?><label class="check full"><input type="checkbox" name="youth_reviewed" value="1" required> Altersgruppe, Identität und Jugendschutz geprüft; bei unter 16 Jahren Erziehungsberechtigung und Zustimmung unabhängig bestätigt. Vermittlung ausschließlich über den Verein.</label><?php endif?><button class="<?=$decision==='delete'?'danger':''?>"><?=$decision==='publish'?'Jetzt freigeben':'Jetzt ablehnen'?></button></form>
-    <?php else:?><p><?=cd_h($message)?></p><?php endif?></section><?php if($club==='ntc93'):?><footer class="portal-credit">Powered by TENNILO ClubDisplay</footer><?php endif?></main></body></html><?php
+    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnergesuch prüfen</title><link rel="stylesheet" href="admin.css?v=073"></head><body class="partner-page<?=$club==='ntc93'?' ntc-portal':''?>"><main><section class="panel"><?php if($club==='ntc93'):?><img class="portal-logo" src="../assets/ntc93-logo.png" alt="NTC 93"><?php endif?><span class="member-brand"><?=$club==='ntc93'?'NTC 93':'TENNILO ClubDisplay'?></span><h1>Spielpartnergesuch prüfen</h1>
+    <?php if($row):
+        $choices=cd_partner_choices();$age=cd_partner_post_age($db,$row['ref']);$prefs=cd_partner_preferences($db,$row['ref']);
+        $q=$db->prepare('SELECT email,lk FROM partner_post_meta WHERE ref=?');$q->execute([$row['ref']]);$meta=$q->fetch()?:[];
+        $details=['Referenz'=>$row['ref'],'Spielart'=>cd_partner_choice_label($choices['category'],$row['category']),'Spielstärke'=>cd_partner_choice_label($choices['skill'],$row['skill']),'Wochentage'=>cd_partner_choice_label($choices['availability'],$row['availability']),'Tageszeiten'=>cd_partner_choice_label($choices['period'],$row['period']),'LK-Bereich'=>cd_partner_lk_choices()[$meta['lk']??'']??'Keine Angabe','Alter der Suchenden'=>$prefs['own_age_label']?:'Keine Angabe','Gesuchte Altersgruppen'=>$prefs['wanted_age_label']?:'Keine Angabe','Jugendschutz'=>cd_partner_age_label($age)];
+    ?><p>Prüfung ausstehend · <?=cd_h(cd_club($db,$club)['name'])?></p>
+    <?php if($error!==''):?><p role="alert"><?=cd_h($error)?></p><?php endif?>
+    <h2>Spielwünsche</h2><dl class="partner-review-details"><?php foreach($details as $label=>$value):?><div><dt><?=cd_h($label)?></dt><dd><?=cd_h($value)?></dd></div><?php endforeach?></dl>
+    <h2>Kontaktdaten (privat)</h2><div class="partner-review-contact"><p><?=nl2br(cd_h($row['contact']),false)?></p><p>E-Mail-Bestätigung: <?=!empty($meta['email'])?'Bestätigt':'Nicht nachgewiesen (Altgesuch)'?></p></div>
+    <p>Prüfe die Vereinsmitgliedschaft und Identität anhand der Vereinsunterlagen. Die Kontaktdaten werden nicht auf dem ClubDisplay veröffentlicht.</p>
+    <div class="partner-review-actions"><h2>Entscheidung</h2>
+    <form method="post" action="?partner=moderate&amp;club=<?=rawurlencode($club)?>" class="profile partner-review-form"><input type="hidden" name="token" value="<?=cd_h($token)?>"><input type="hidden" name="decision" value="publish"><label class="check full"><input type="checkbox" name="confirmed" value="1" required> Vereinsmitgliedschaft, Identität, Gesuch und Einwilligung geprüft.</label><?php if($age!=='adult'):?><label class="check full"><input type="checkbox" name="youth_reviewed" value="1" required> Altersgruppe, Identität und Jugendschutz geprüft; bei unter 16 Jahren Erziehungsberechtigung und Zustimmung unabhängig bestätigt. Vermittlung ausschließlich über den Verein.</label><?php endif?><button class="full">Gesuch freigeben · 14 Tage</button></form>
+    <form method="post" action="?partner=moderate&amp;club=<?=rawurlencode($club)?>" class="profile partner-review-form"><input type="hidden" name="token" value="<?=cd_h($token)?>"><input type="hidden" name="decision" value="delete"><label class="check full"><input type="checkbox" name="confirmed" value="1" required> Ich möchte dieses Gesuch ablehnen und endgültig löschen.</label><button class="danger full">Gesuch ablehnen</button></form></div>
+    <?php else:?><p><?=cd_h($message)?></p><?php endif?><p><a class="partner-back" href="<?=$club==='ntc93'?'https://clubdisplay.ntc93.de/admin/?partner_review=1':'https://clubdisplay.tennilo.de/admin/?portal=club&amp;partner_review=1'?>">Zum geschützten Vereinsbackend</a></p></section><?php if($club==='ntc93'):?><footer class="portal-credit">Powered by TENNILO ClubDisplay</footer><?php endif?></main></body></html><?php
     exit;
 }
-
 
 function cd_partner_interest_notify(PDO $db,string $club,string $ref):void{
     try{
@@ -539,7 +558,7 @@ function cd_partner_public(PDO $db):never{
     $selected=is_string($_POST['ref']??$_GET['ref']??null)?strtoupper($_POST['ref']??$_GET['ref']):'';
     $selectedPost=null;foreach($publicRows as $p){if($p['ref']===$selected){$selectedPost=$p;break;}}
     if(!$success&&$mode==='interest'&&!$selectedPost){$mode='browse';$error=$error?:($selected!==''?'Dieses Gesuch ist nicht mehr verfügbar. Hier findest du die aktuell freigegebenen Gesuche.':'Bitte wähle ein aktuelles Gesuch aus.');}
-    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnerbörse</title><link rel="stylesheet" href="admin.css?v=071"></head><body class="partner-page<?=$club==='ntc93'?' ntc-portal':''?>"><main><section class="panel"><?php if($club==='ntc93'):?><img class="portal-logo" src="../assets/ntc93-logo.png" alt="NTC 93"><?php endif?><span class="member-brand"><?=cd_h($club==='ntc93'?$c['name']:'TENNILO ClubDisplay · '.$c['name'])?></span><h1>Spielpartner gesucht</h1>
+    ?><!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Spielpartnerbörse</title><link rel="stylesheet" href="admin.css?v=073"></head><body class="partner-page<?=$club==='ntc93'?' ntc-portal':''?>"><main><section class="panel"><?php if($club==='ntc93'):?><img class="portal-logo" src="../assets/ntc93-logo.png" alt="NTC 93"><?php endif?><span class="member-brand"><?=cd_h($club==='ntc93'?$c['name']:'TENNILO ClubDisplay · '.$c['name'])?></span><h1>Spielpartner gesucht</h1>
     <?php if($success):?><p class="ok">Bitte bestätige deine E-Mail-Adresse über den Link in deinem Postfach. Erst danach wird deine Anfrage dem Verein zur Prüfung vorgelegt. Bitte auch den Spamordner prüfen.</p><a class="partner-back" href="<?=cd_h($boardUrl)?>">Zurück zu den aktuellen Gesuchen</a>
     <?php else:?><?php if($error):?><p class="error"><?=cd_h($error)?></p><?php endif?>
     <p class="form-hint">Für Vereinsmitglieder aller Altersgruppen. Gesuche und Kontaktanfragen werden geprüft. Kontaktdaten bleiben privat.</p>
