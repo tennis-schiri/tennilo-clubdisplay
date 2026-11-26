@@ -54,7 +54,7 @@ function eb_team(mixed $value):string{
 function eb_match_team(array $b):string{
     $label=$b['displayText']??'';$type=$b['bookingTypeName']??'';
     if(!is_string($label)||!is_string($type))return '';
-    if(!preg_match('/\b(?:Punktspiel|Heimspiel|Verbandsspiel|Mannschaftsspiel)\b/iu',$label.' '.$type))return '';
+    if(!preg_match('/\b(?:Punktspiel|Heimspiel|Verbandsspiel|Mannschaftsspiel)(?:e|en)?\b/iu',$label.' '.$type))return '';
     return eb_team($label);
 }
 // eBuSy exposes bookingTypeName, but no color field. Use only a fixed category palette.
