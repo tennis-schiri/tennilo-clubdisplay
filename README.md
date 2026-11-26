@@ -293,3 +293,6 @@ QR-Upload: PNG-Maße direkt aus IHDR gelesen, 128–2048 Pixel quadratisch, JPEG
 
 ## 0.4.78 · QR-Bildzuschnitte
 QR-Bilder mit bis zu 10 % Seitenabweichung werden akzeptiert (128–2048 Pixel pro Seite, 2 MB). Originalpixel bleiben erhalten; START zentriert die Bilder mit weißem Scanrand. Regression prüft synthetische RGB-PNGs in den Maßen 510×510 und 516×522, ohne private Einladungsdaten im Repository. Hochformatige Screenshots bleiben ausgeschlossen.
+
+## 0.4.80 · TENNILO-Demo
+Startseite mit sechs Kacheln und zwei Demo-Community-QRs, fünf fiktive Spielpartnergesuche mit Alter/Geschlecht/LK und individuellen QR-Zielen, Beispielnewsletter mit zwei PDF-Ausgaben und Archiv, fiktiver Gastro-Partner mit Website-QR. Öffentliche QR-Ziele auf demo.php sind zustandslose Vorschauen ohne E-Mail, Speicherung oder echte WhatsApp-Einladung. Kalender auf fiktive Daten umgestellt. NTC-Daten bleiben getrennt. Geschütztes Verwaltungsbackend ist nicht öffentlich in der Demo enthalten.

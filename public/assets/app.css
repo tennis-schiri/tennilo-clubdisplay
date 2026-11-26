@@ -777,3 +777,6 @@ body.fixed-screen.restaurant-screen #screen .fit-content{height:auto;min-height:
   .community-start-card img{width:clamp(104px,15dvh,156px);height:clamp(104px,15dvh,156px);padding:clamp(8px,1.1dvh,14px)}
 }
 @media(max-width:700px){.home-tiles.home-tiles-six>.home-tile:last-child{grid-column:span 1}}
+
+/* Demo codes use the same dimensions and quiet zone as real community uploads. */
+.community-demo-qr{width:clamp(94px,15dvh,156px);aspect-ratio:1;flex:none;background:#fff;border-radius:5px;overflow:hidden;pointer-events:none;user-select:none}.community-demo-qr svg{display:block;width:100%;height:100%}

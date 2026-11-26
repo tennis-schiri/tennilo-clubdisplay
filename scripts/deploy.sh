@@ -18,6 +18,7 @@ php tests/events-test.php
 php -l public/news.php
 php tests/news-test.php
 php -l public/weather.php
+php -l public/demo.php
 php tests/weather-test.php
 files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/tennilo-footer-logo.png assets/app.css assets/app.js index.html)
 test -s public/nuliga.php
@@ -57,6 +58,13 @@ php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!iss
 upload public/events.php events.php
 curl --fail --silent --show-error --max-time 50 --output "$tmp/events" "https://${DOMAIN}/events.php?release=${RELEASE_ID}"
 php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!isset($v["status"],$v["events"])||!is_array($v["events"])) exit(1); echo "Calendar feed: ".$v["status"]." / ".count($v["events"])." events / ".($v["from"]??"?")." to ".($v["to"]??"?")." / ".($v["method"]??"?")."\n"; foreach($v["events"] as $e) echo "Calendar event: ".json_encode(array_intersect_key($e,array_flip(["title","start","end","allDay"])),JSON_UNESCAPED_UNICODE|JSON_INVALID_UTF8_SUBSTITUTE)."\n";' "$tmp/events"
+if [[ "$DOMAIN" == "clubdisplay.tennilo.de" ]]; then
+  upload public/demo.php demo.php
+  curl --fail --silent --show-error --max-time 25 "https://${DOMAIN}/demo.php?board=1" -o "$tmp/demo-board"
+  grep -Fq 'Nur Beispieldaten' "$tmp/demo-board"
+  curl --fail --silent --show-error --max-time 25 "https://${DOMAIN}/demo.php?pdf=2026-11" -o "$tmp/demo-pdf"
+  head -c 8 "$tmp/demo-pdf" | grep -Fq '%PDF-1.4'
+fi
 upload public/weather.php weather.php
 curl --fail --silent --show-error --max-time 50 --output "$tmp/weather" "https://${DOMAIN}/weather.php"
 php -r '$v=json_decode(file_get_contents($argv[1]),true); if(!is_array($v)||!in_array($v["status"]??"",["ok","stale","unavailable"],true))exit(1); echo "Weather feed: ".$v["status"]."\n";' "$tmp/weather"

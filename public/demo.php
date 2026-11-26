@@ -1,0 +1,33 @@
+<?php
+declare(strict_types=1);
+// Public, stateless showcase. Never reads the live club database or sends messages.
+header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
+if(($_SERVER['REQUEST_METHOD']??'')!=='GET'){http_response_code(405);exit;}
+if(isset($_GET['pdf'])){
+    $id=$_GET['pdf'];if(!in_array($id,['2026-10','2026-11'],true)){http_response_code(404);exit;}
+    $month=$id==='2026-11'?'NOVEMBER 2026':'OKTOBER 2026';
+    $streams=[];
+    foreach([['CLUB-NEWS | '.$month,'TENNILO ClubDisplay - Beispielnewsletter','Willkommen im Demo-Club','Hallensaison und Clubturnier','Alle Inhalte sind frei erfunden.'],['CLUB-NEWS | SEITE 2','Vereinsleben im Demo-Club','Training, Turniere und gemeinsame Veranstaltungen','Dieses PDF dient nur zur Produktdemonstration.']] as $lines){
+        $s="0.03 0.23 0.28 rg 0 720 595 122 re f\nBT /F1 24 Tf 1 1 1 rg 48 770 Td (".$lines[0].") Tj ET\n";
+        $s.="BT /F1 16 Tf 0.03 0.23 0.28 rg 48 665 Td 38 TL ";
+        foreach(array_slice($lines,1) as $i=>$line)$s.=($i?'T* ':'').'('.str_replace(['\\','(',')'],['\\\\','\\(','\\)'],$line).") Tj ";
+        $streams[]=$s."ET\n";
+    }
+    $objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 7 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+    foreach($streams as $s)$objects[]="<< /Length ".strlen($s)." >>\nstream\n".$s."endstream";
+    $pdf="%PDF-1.4\n";$offsets=[];
+    foreach($objects as $i=>$o){$offsets[]=strlen($pdf);$pdf.=($i+1)." 0 obj\n".$o."\nendobj\n";}
+    $xref=strlen($pdf);$pdf.="xref\n0 8\n0000000000 65535 f \n";foreach($offsets as $off)$pdf.=sprintf("%010d 00000 n \n",$off);
+    $pdf.="trailer\n<< /Size 8 /Root 1 0 R >>\nstartxref\n".$xref."\n%%EOF\n";
+    header('Content-Type: application/pdf');header('Content-Disposition: inline; filename="TENNILO-Demo-Newsletter-'.$id.'.pdf"');echo $pdf;exit;
+}
+header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'");
+function h(string $s):string{return htmlspecialchars($s,ENT_QUOTES,'UTF-8');}
+$ref=is_string($_GET['ref']??null)?$_GET['ref']:'';
+$rows=['DE00000001'=>'Einzelpartner gesucht · 40–49 Jahre · LK 16–20','DE00000002'=>'Doppelpartner gesucht · 30–49 Jahre · LK 6–10','DE00000003'=>'Mixed-Partner gesucht · 50–59 Jahre','DE00000004'=>'Trainingspartner gesucht · 18–29 Jahre · LK 21–25','DE00000005'=>'Einzelpartner gesucht · 60–69 Jahre · LK 1–5'];
+$community=$_GET['community']??'';$restaurant=isset($_GET['restaurant']);$create=isset($_GET['create']);
+?><!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TENNILO · ClubDisplay Demo</title><style>body{font:16px system-ui;background:#0b2336;color:#f2f6f8;margin:0}main{max-width:640px;margin:auto;padding:24px}section{background:#14364a;border:1px solid #406078;border-radius:12px;padding:18px;margin:14px 0}a{color:#78e5e5}label{display:block;margin:12px 0}select,input{max-width:100%;font:inherit;padding:8px}small,p{color:#c1d5df}h1{font-size:1.7rem}</style><main><small>TENNILO CLUBDISPLAY · DEMO</small><h1><?=$restaurant?'Club Bistro':($community!==''?'WhatsApp-Communitys':'Spielpartnerbörse')?></h1><p>Nur Beispieldaten. Keine echten Anfragen, Buchungen, E-Mails oder WhatsApp-Einladungen.</p>
+<?php if($restaurant):?><section><h2>Gastronomie-Demo</h2><p>Beispiel für die Restaurant-Website, die im echten ClubDisplay über den QR-Code erreichbar wäre.</p></section>
+<?php elseif(in_array($community,['youth','adults'],true)):?><section><h2><?=$community==='youth'?'Jugend-Community':'Aktive / Senioren'?></h2><p>Im Live-Betrieb würde dieser QR-Code zur freigegebenen WhatsApp-Einladung des Vereins führen.</p></section>
+<?php elseif(isset($rows[$ref])||$create):?><section><h2><?=$create?'Eigenes Gesuch erstellen':h($rows[$ref])?></h2><p>Formularvorschau – es werden keine Daten übertragen.</p><label>Spielart <select><option>Einzel</option><option>Doppel</option><option>Mixed</option><option>Training</option></select></label><label>Geschlecht <select><option>Keine Angabe</option><option>Männlich</option><option>Weiblich</option><option>Divers</option></select></label><label>Gesucht <select><option>Egal</option><option>Männlich</option><option>Weiblich</option><option>Divers</option></select></label><p>Wochentage</p><?php foreach(['Mo','Di','Mi','Do','Fr','Sa','So'] as $day):?><label><input type="checkbox"> <?=$day?></label><?php endforeach?><p>Tageszeiten</p><?php foreach(['Vormittags','Nachmittags','Abends'] as $period):?><label><input type="checkbox"> <?=$period?></label><?php endforeach?><p>In der Demo ist kein Versand möglich.</p></section><a href="?board=1">Alle Gesuche ansehen</a>
+<?php else:?><a href="?create=1">Eigenes Gesuch erstellen (Demo)</a><?php foreach($rows as $id=>$label):?><section><strong><?=h($label)?></strong><p><a href="?ref=<?=h($id)?>">Interesse anmelden (Demo)</a></p></section><?php endforeach?><?php endif?><p><a href="/">Zurück zum ClubDisplay</a></p></main></html>

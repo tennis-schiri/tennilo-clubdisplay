@@ -109,3 +109,13 @@ const style=fs.readFileSync('public/assets/app.css','utf8');assert.match(style,/
 // Two-column weather overview uses equal-height cards; the single radar page is untouched.
 assert.match(style,/\.weather-screen #screen\[data-weather-layout="all"\] \.wx-layout\{align-items:stretch\}/);
 assert.match(source,/leftHeight-overhead/);
+
+const demoCtx=vm.createContext({Date,tr:(de,en)=>de});
+vm.runInContext(source.slice(source.indexOf('function demoPartnerRows(){'),source.indexOf('function partnerBoardView(active){')),demoCtx);
+assert.equal(vm.runInContext('demoPartnerRows().length',demoCtx),5);
+assert.ok(vm.runInContext('demoPartnerRows().every(r=>r.own_gender_label&&r.wanted_gender_label&&r.own_age_label)',demoCtx));
+assert.match(source,/demoQrBase\+'\?community='/);
+assert.match(source,/demoQrBase\+'\?ref='/);
+assert.match(source,/demoQrBase\+'\?pdf='/);
+assert.match(source,/function demoRestaurantView\(/);
+console.log('Demo parity: fictional partner requests, QR destinations, newsletter PDF and restaurant');
