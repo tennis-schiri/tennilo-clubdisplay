@@ -9,7 +9,7 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
   const u=new URL(route.request().url());
   if(u.hostname==='cd-ebusy.ntc93.de'){
    if(u.pathname==='/resources/js/ebusy.api.js'){if(!apiAvailable)return route.abort();return route.fulfill({contentType:'application/javascript',body:'window.ebusy={createBookingView(id,url,opts){window.widgetOptions=opts;const f=document.createElement("iframe");f.src=url;document.getElementById(id).append(f);}};'});}
-   if(u.pathname==='/embed/court-module/1731'){requested=true;return route.fulfill({contentType:'text/html',body:'<input id="example" value="mock booking only">'});}
+   if(u.pathname==='/embed/lite-module/1731'){requested=true;return route.fulfill({contentType:'text/html',body:'<input id="example" value="mock booking only">'});}
    return route.abort();
   }
   if(u.hostname==='clubdisplay.ntc93.de'||u.hostname==='clubdisplay.tennilo.de'){
@@ -31,7 +31,7 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
  await page.locator('#booking-expand').click();assert.ok(await page.locator('body').evaluate(e=>e.classList.contains('booking-expanded')));
  assert.equal(await input.inputValue(),'preserved session');
  await page.locator('#booking-expand').click();assert.equal(await input.inputValue(),'preserved session');
- await page.locator('[data-action="court-mode:indoor"]').click();assert.equal(await page.locator('iframe.hall-frame').getAttribute('inert'),'');
+ await page.locator('[data-action="court-mode:indoor"]').click();assert.equal(await page.locator('iframe.hall-frame').getAttribute('inert'),'');assert.equal(await page.locator('iframe.hall-frame').getAttribute('src'),'https://cd-ebusy.ntc93.de/embed/court-module/3076');
  await page.locator('[data-action="court-mode:outdoor"]').click();await page.locator('iframe[src="terminal.php"]').waitFor();
  apiAvailable=false;
  await page.locator('[data-action="court-mode:widget"]').click();await widget.locator('#booking-help').waitFor();

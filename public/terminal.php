@@ -14,5 +14,5 @@ if(isset($_GET['status'])){
 }
 if(!$configured){http_response_code(503);header('Content-Type: text/plain; charset=utf-8');echo 'eBuSy momentan nicht verfügbar.';exit;}
 // The NTC booking view opens directly; authentication of members is handled by eBuSy.
-header('Location: https://ntc93v8.ebusy.de/lite-module/1731?ebusy-client='.rawurlencode($client),true,302);
+header('Location: https://cd-ebusy.ntc93.de/lite-module/1731?ebusy-client='.rawurlencode($client),true,302);
 exit;

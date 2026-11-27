@@ -25,7 +25,7 @@ header("Content-Security-Policy: default-src 'self'; script-src 'nonce-".$nonce.
   const observer=new MutationObserver(()=>{if(container.querySelector('iframe')){status.hidden=true;observer.disconnect();}});
   observer.observe(container,{childList:true,subtree:true});
   // Vendor-documented createBookingView, regular eBuSy login; no terminal client parameter.
-  ebusy.createBookingView('booking-container','https://cd-ebusy.ntc93.de/embed/court-module/1731',{offset:0});
+  ebusy.createBookingView('booking-container','https://cd-ebusy.ntc93.de/embed/lite-module/1731',{offset:0});
   if(container.querySelector('iframe')){status.hidden=true;observer.disconnect();}
   setTimeout(()=>{if(!container.querySelector('iframe')){observer.disconnect();fail();}},12000);
  }catch(e){fail();}
