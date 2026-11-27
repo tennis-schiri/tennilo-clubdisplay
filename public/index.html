@@ -17,9 +17,9 @@
     document.getElementById('favicon').href = 'assets/ntc93-logo.png';
   }
 </script>
-<link rel="stylesheet" href="assets/app.css?v=0508">
-<script defer src="assets/app.js?v=0508"></script>
-<script defer src="assets/auto-update.js?v=0508"></script>
+<link rel="stylesheet" href="assets/app.css?v=0509">
+<script defer src="assets/app.js?v=0509"></script>
+<script defer src="assets/auto-update.js?v=0509"></script>
 </head>
 <body class="fixed-screen">
 <header>
@@ -44,9 +44,12 @@
   </div>
 </main>
 <nav id="nav" aria-label="Menü"></nav>
-<footer><span id="notice"></span><span class="footer-credit"><span id="credit-label">Design &amp; Entwicklung</span><img src="assets/tennilo-footer-logo.png" alt="TENNILO" width="184" height="34"><span class="footer-credit-domain">tennilo.de</span></span><span class="version">v0.5.8</span></footer>
+<footer><span id="notice"></span><span class="footer-credit"><span id="credit-label">Design &amp; Entwicklung</span><img src="assets/tennilo-footer-logo.png" alt="TENNILO" width="184" height="34"><span class="footer-credit-domain">tennilo.de</span></span><span class="version">v0.5.9</span></footer>
 <section id="premiere-overlay" hidden aria-label="ClubDisplay Präsentation"><div id="premiere-content"></div><div class="premiere-controls"><span id="premiere-position"></span><button id="premiere-prev" type="button">‹ Zurück</button><button id="premiere-pause" type="button">Pause</button><button id="premiere-next" type="button">Weiter ›</button><button id="premiere-stop" type="button">Beenden</button></div></section>
 <button id="night-screen" type="button" aria-label="Ruhemodus beenden / Wake display" hidden><span id="night-content"><img src="assets/ntc93-logo.png" alt="NTC 93"><strong id="night-clock">--:--</strong><span id="night-date"></span><span id="night-label"></span><span id="night-hint"></span></span></button>
+<dialog id="nuscore-demo-dialog" aria-labelledby="nuscore-demo-title">
+<div class="nuscore-demo-toolbar"><div><h2 id="nuscore-demo-title">nuScore 2.0 · Testzugang</h2><p id="nuscore-demo-note"></p></div><a id="nuscore-demo-external" target="_blank" rel="noopener noreferrer"></a><button type="button" id="nuscore-demo-end"></button><button type="button" id="nuscore-demo-back" class="primary"></button></div><div id="nuscore-demo-content"></div>
+</dialog>
 <dialog id="admin-dialog" aria-labelledby="admin-title">
   <form id="admin-form">
     <h2 id="admin-title">Admin-Freigabe</h2>

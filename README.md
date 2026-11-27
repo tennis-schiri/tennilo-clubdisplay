@@ -346,3 +346,7 @@ Laut eBuSy-Support ist das Außenplatz-Widget unter `https://cd-ebusy.ntc93.de/e
 
 ## 0.5.8 – eBuSy-Widget nutzt volle verfügbare Höhe
 Der eingebettete eBuSy-Frame wird in der regulären und vergrößerten Buchungsansicht auf 100 % der jeweiligen Wrapper-Viewporthöhe gesetzt, auch wenn das Anbieter-JavaScript eine kleinere Inline-Höhe setzt. Keine zusätzlichen Leerflächen durch den Wrapper; die eBuSy-interne Scrollfunktion bleibt erhalten. Der Größenwechsel ersetzt die laufende Buchungssitzung nicht. Browserregression simuliert eine 70%-Anbieterhöhe und prüft beide Größen sowie Rückkehr zur Normalansicht. PIN-Terminal und Hallenbelegung unverändert.
+
+
+## 0.5.9 – nuScore 2.0 Testzugang (NTC)
+Unter Punktspiele ist ein experimenteller Demo-Zugang verfügbar. Er nutzt ausschließlich die aus älteren DTB-Anleitungen bekannte Demo-Domain und den für 2.0 abgeleiteten, noch nicht extern verifizierten Pfad. Keine echten Gamecodes oder PINs verwenden. Einbettung in einem bildschirmfüllenden Dialog; separater Aufruf als Alternative. Zurück blendet das bestehende iframe aus und erhält es in derselben Seite. Automatische Updates sind bis zum ausdrücklichen Schließen der Testansicht blockiert; Informations- und Ruhemodus unterbrechen den offenen Dialog nicht. Keine Datenübernahme oder interne API; dauerhafte Speicherung und mehrere lokale Berichte sind in der echten Anbieteranwendung zu prüfen. Produktionsintegration noch nicht freigegeben.

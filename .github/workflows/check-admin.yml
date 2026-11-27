@@ -65,6 +65,8 @@ jobs:
         run: node tests/night-mode-browser.cjs
       - name: eBuSy-Widget und Buchungsansichten prüfen
         run: node tests/ebusy-widget-browser.cjs
+      - name: nuScore-Testzugang prüfen
+        run: node tests/nuscore-demo-browser.cjs
       - name: NTC-Premiere prüfen
         run: node tests/premiere-browser.cjs
       - name: Personalisierte Vereinsdemo prüfen
