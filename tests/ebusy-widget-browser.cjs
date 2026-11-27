@@ -7,7 +7,7 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
  let requested=false,apiAvailable=true;
  await page.route('**/*',async route=>{
   const u=new URL(route.request().url());
-  if(u.hostname==='ntc93v8.ebusy.de'){
+  if(u.hostname==='cd-ebusy.ntc93.de'){
    if(u.pathname==='/resources/js/ebusy.api.js'){if(!apiAvailable)return route.abort();return route.fulfill({contentType:'application/javascript',body:'window.ebusy={createBookingView(id,url,opts){window.widgetOptions=opts;const f=document.createElement("iframe");f.src=url;document.getElementById(id).append(f);}};'});}
    if(u.pathname==='/embed/court-module/1731'){requested=true;return route.fulfill({contentType:'text/html',body:'<input id="example" value="mock booking only">'});}
    return route.abort();

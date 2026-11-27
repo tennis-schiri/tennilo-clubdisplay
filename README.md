@@ -330,3 +330,7 @@ Am 06.12.2026 (Berliner Ortszeit) erscheint der manuelle Premiere-Button. Vorabt
 
 ## 0.5.3 – offizielles eBuSy-Buchungswidget (NTC)
 Unter Plätze zusätzlich „Außenplätze · Online“ (offizielle `ebusy.api.js` / `ebusy.createBookingView`, Modul 1731, Offset 0, da der Wrapper keinen festen Header besitzt). Das PIN-Terminal bleibt Standard, die Hallenansicht Modul 3076 bleibt schreibgeschützt. Reguläre Anmeldung und verbindliche Buchung ausschließlich bei eBuSy; keine Terminal-Client-ID im Widget. Volle Höhe und Nachtmodus erhalten die laufende iframe-Instanz. Bei nicht erreichbarer Widget-API Hinweis und erneutes Laden; der PIN-Buchungsweg bleibt separat verfügbar. Anbieterfreigabe für clubdisplay.ntc93.de wurde vom Support bestätigt; echte Buchung und Login im Zielbrowser sind vor Ort zu prüfen. Keine Änderung der Live-Belegungs-API oder der öffentlichen Produktdemo.
+
+
+## 0.5.4 – Widget-Domain (NTC)
+Testweise offizielle eBuSy-Widget-Integration auf der eigenen eBuSy-Subdomain `cd-ebusy.ntc93.de` mit unveränderter Freiplatz-Modul-ID 1731. JavaScript und Content-Security-Policy ebenfalls auf diese Domain abgestimmt. PIN-Terminal, Hallenbelegung und Live-Daten-API bleiben unverändert. Freischaltung des Außenplatz-Widgets muss im realen Betrieb bestätigt werden.

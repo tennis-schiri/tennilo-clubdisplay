@@ -136,7 +136,7 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   upload public/ntc/booking-widget.php booking-widget.php
   curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/booking-widget.php?release=$RELEASE_ID" -o "$tmp/booking-widget"
   grep -Fq 'ebusy.createBookingView' "$tmp/booking-widget"
-  grep -Fq 'https://ntc93v8.ebusy.de/embed/court-module/1731' "$tmp/booking-widget"
+  grep -Fq 'https://cd-ebusy.ntc93.de/embed/court-module/1731' "$tmp/booking-widget"
   php -l public/ntc/feedback.php
   upload public/ntc/feedback.php feedback.php
   curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/feedback.php?release=$RELEASE_ID" -o "$tmp/feedback-form"
