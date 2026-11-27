@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
  await page.route('**/*',async route=>{
   const u=new URL(route.request().url());
   if(u.hostname==='cd-ebusy.ntc93.de'){
-   if(u.pathname==='/resources/js/ebusy.api.js'){if(!apiAvailable)return route.abort();return route.fulfill({contentType:'application/javascript',body:'window.ebusy={createBookingView(id,url,opts){window.widgetOptions=opts;const f=document.createElement("iframe");f.src=url;document.getElementById(id).append(f);}};'});}
+   if(u.pathname==='/resources/js/ebusy.api.js'){if(!apiAvailable)return route.abort();return route.fulfill({contentType:'application/javascript',body:'window.ebusy={createBookingView(id,url,opts){window.widgetOptions=opts;const f=document.createElement("iframe");f.src=url;f.style.height="70vh";f.style.width="100%";document.getElementById(id).append(f);}};'});}
    if(u.pathname==='/embed/lite-module/1731'){requested=true;return route.fulfill({contentType:'text/html',body:'<input id="example" value="mock booking only">'});}
    return route.abort();
   }
@@ -28,9 +28,13 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
  await input.fill('preserved session');
  assert.equal(requested,true);
  assert.equal(await widget.locator('#booking-status').isHidden(),true);
+ const measure=()=>widget.locator('#booking-container iframe').evaluate(f=>({inner:f.getBoundingClientRect().height,available:f.ownerDocument.defaultView.innerHeight,scroll:f.ownerDocument.documentElement.scrollHeight}));
+ const assertFilled=async()=>{const m=await measure();assert.ok(Math.abs(m.inner-m.available)<=2,'Widget fills wrapper: '+JSON.stringify(m));assert.ok(m.scroll<=m.available+2,'No extra wrapper scroll');return m.available;};
+ const normal=await assertFilled();
  await page.locator('#booking-expand').click();assert.ok(await page.locator('body').evaluate(e=>e.classList.contains('booking-expanded')));
  assert.equal(await input.inputValue(),'preserved session');
- await page.locator('#booking-expand').click();assert.equal(await input.inputValue(),'preserved session');
+ const full=await assertFilled();assert.ok(full>normal,'Full height grows booking viewport');
+ await page.locator('#booking-expand').click();assert.equal(await input.inputValue(),'preserved session');assert.ok(Math.abs(await assertFilled()-normal)<=2,'Normal height restored');
  await page.locator('[data-action="court-mode:indoor"]').click();assert.equal(await page.locator('iframe.hall-frame').getAttribute('inert'),'');assert.equal(await page.locator('iframe.hall-frame').getAttribute('src'),'https://cd-ebusy.ntc93.de/embed/court-module/3076');
  await page.locator('[data-action="court-mode:outdoor"]').click();await page.locator('iframe[src="terminal.php"]').waitFor();
  apiAvailable=false;

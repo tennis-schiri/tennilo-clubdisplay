@@ -342,3 +342,7 @@ Ersetzt 22–10 Uhr durch aktive Zeiten: Gastro Di–Fr 14–22, Sa/So 12–22, 
 
 ## 0.5.7 – eBuSy-Modultyp und eigene Domain
 Laut eBuSy-Support ist das Außenplatz-Widget unter `https://cd-ebusy.ntc93.de/embed/lite-module/1731` ohne zusätzliche Freischaltung verfügbar. Hallenbelegung bleibt `embed/court-module/3076` und schreibgeschützt. Widget-JavaScript, PIN-Terminal und beide Einbettungen verwenden die eigene HTTPS-Subdomain, um Browser-Anmeldeprobleme zu vermeiden. Die serverseitige Belegungs-API bleibt unverändert. Tatsächliche Anmeldung und verbindliche Buchung im Vereinsbrowser prüfen.
+
+
+## 0.5.8 – eBuSy-Widget nutzt volle verfügbare Höhe
+Der eingebettete eBuSy-Frame wird in der regulären und vergrößerten Buchungsansicht auf 100 % der jeweiligen Wrapper-Viewporthöhe gesetzt, auch wenn das Anbieter-JavaScript eine kleinere Inline-Höhe setzt. Keine zusätzlichen Leerflächen durch den Wrapper; die eBuSy-interne Scrollfunktion bleibt erhalten. Der Größenwechsel ersetzt die laufende Buchungssitzung nicht. Browserregression simuliert eine 70%-Anbieterhöhe und prüft beide Größen sowie Rückkehr zur Normalansicht. PIN-Terminal und Hallenbelegung unverändert.
