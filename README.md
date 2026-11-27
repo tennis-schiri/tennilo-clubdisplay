@@ -362,3 +362,7 @@ Nach Admin-Freigabe differenzierte Diagnose für API-Fehler, fehlende Personen, 
 
 ## 0.5.14 – Klassifizierung von eBuSy-API-Fehlern
 Admin-PIN-Test unterscheidet feste Fehlerkategorien aus error/message, ohne Originaltexte, Codes oder personenbezogene Daten auszugeben. HTTP-200-Anwendungsfehler bleiben grundsätzlich gesperrt; auch leere, von null abweichende Fehlerwerte führen nicht zur Freigabe. Diagnose enthält nur Kategorie, Typ des Fehlerfelds, Vorhandensein des Antwortobjekts und UTC-Zeit für Support. Keine zusätzlichen API-Aufrufe.
+
+
+## 0.5.15 – Alternative Personenabfragen im PIN-Pilot
+Admin kann explizit Benutzername, Mitgliedsnummer oder Kundennummer wählen. Die dokumentierten nummernbasierten GET-Abfragen verlangen offset=0 und limit=2 und werden nur bei genau einem eindeutigen Treffer mit vollständigen benötigten Feldern zur PIN-Prüfung zugelassen. Kein Abruf von Mitgliederlisten, kein automatisches Durchprobieren von Kennungen, keine Ausgabe von Stammdaten. Mitgliedsstatus weiterhin nicht verifiziert; keine produktive Anmeldung.
