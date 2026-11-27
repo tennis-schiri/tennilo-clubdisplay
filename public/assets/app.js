@@ -902,7 +902,7 @@ const ntcSponsors=[
   },
   {
     "name": "B1",
-    "url": "https://ntc93.com/wp-content/uploads/2023/06/logob1.gif"
+    "url": "assets/b1-logo.webp"
   },
   {
     "name": "Leben retten",
@@ -910,7 +910,7 @@ const ntcSponsors=[
   }
 ];
 function sponsorView(){
-  const cards=pilot?ntcSponsors.map(s=>'<figure class="sponsor-logo'+(s.name==='Allianz Maxelon'?' sponsor-logo-allianz':'')+'"><img src="'+esc(s.url)+'" alt="'+esc(s.name)+'" decoding="async" referrerpolicy="no-referrer"></figure>').join(''):demoSponsorCards();
+  const cards=pilot?ntcSponsors.map(s=>'<figure class="sponsor-logo'+(s.name==='Allianz Maxelon'?' sponsor-logo-allianz':s.name==='B1'?' sponsor-logo-b1':'')+'"><img src="'+esc(s.url)+'" alt="'+esc(s.name)+'" decoding="async" referrerpolicy="no-referrer"></figure>').join(''):demoSponsorCards();
   return '<div class="match-heading sponsor-heading"><h1>'+tr('Partner & Sponsoren','Partners & sponsors')+'</h1><span class="news-origin">'+tr('Vielen Dank für die Unterstützung!','Thank you for your support!')+'</span></div><div class="sponsor-grid">'+cards+'</div><p class="match-source sponsor-source">'+(pilot?tr('Sponsoren und Partner des NTC 93 · Quelle: ntc93.com','NTC 93 sponsors and partners · Source: ntc93.com'):tr('Fiktive Logos · keine tatsächlichen Sponsoren','Fictional logos · not actual sponsors'))+'</p>';
 }
 // Court overview: only confirmed eBuSy data may mark a court free or occupied.

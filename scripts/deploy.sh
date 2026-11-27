@@ -28,6 +28,7 @@ php -l public/weather.php
 php -l public/demo.php
 php tests/weather-test.php
 files=(assets/clubdisplay.png assets/favicon.png assets/ntc93-logo.png assets/tennilo-footer-logo.png assets/app.css assets/app.js assets/auto-update.js index.html)
+if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then files+=(assets/b1-logo.webp); fi
 test -s public/nuliga.php
 test -s public/events.php
 for f in "${files[@]}"; do test -s "public/$f"; done

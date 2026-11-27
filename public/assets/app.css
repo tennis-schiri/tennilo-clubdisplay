@@ -992,3 +992,5 @@ body.night-mode .header-weather-effect *,body.night-mode .header-weather-particl
 html[data-club="ntc"] .court-screen .court-switch{grid-template-columns:repeat(3,minmax(0,1fr));max-width:860px;flex-basis:480px}
 html[data-club="ntc"] .court-screen .court-switch button{font-size:clamp(.72rem,1.05vw,1.1rem);padding:.35rem .45rem}
 @media(max-width:700px){html[data-club="ntc"] .court-screen .court-switch{flex-basis:100%;max-width:none}html[data-club="ntc"] .court-screen .court-switch button{font-size:.72rem;padding:.25rem .2rem}}
+
+.sponsor-logo-b1{background:#f2f1e9}
