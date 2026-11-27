@@ -1386,7 +1386,6 @@ function openNuscoreDemo(){
   $('nuscore-demo-note').textContent=tr('Nur Testdaten verwenden. Vor dem Verlassen in nuScore speichern. Die Demo-Adresse ist noch nicht bestätigt.','Use test data only. Save in nuScore before leaving. Demo address is not yet confirmed.');
   $('nuscore-demo-back').textContent=tr('Zurück zu ClubDisplay','Back to ClubDisplay');
   $('nuscore-demo-end').textContent=tr('Testansicht schließen','Close test view');
-  const external=$('nuscore-demo-external');external.href=nuscoreDemoUrl;external.textContent=tr('Demo separat öffnen ↗','Open demo separately ↗');
   if(!$('nuscore-demo-frame')){
     const frame=document.createElement('iframe');frame.id='nuscore-demo-frame';frame.title='nuScore 2.0 Demo';frame.setAttribute('sandbox','allow-scripts allow-forms allow-same-origin');frame.referrerPolicy='no-referrer';frame.src=nuscoreDemoUrl;$('nuscore-demo-content').append(frame);
   }
