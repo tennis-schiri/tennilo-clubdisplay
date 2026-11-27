@@ -370,3 +370,7 @@ Admin kann explizit Benutzername, Mitgliedsnummer oder Kundennummer wählen. Die
 
 ## 0.5.16 – Personen-ID im Admin-PIN-Pilot
 Voreinstellung Personen-ID (nicht Benutzer-ID) mit dokumentiertem GET `/general/person/by-id/{person_id}`. Nur positive numerische ID, Rückgabe-ID muss exakt übereinstimmen, bevor der PIN-Abgleich erfolgt. Keine zusätzlichen Abfragen, keine Lockerung von Admin-Freigabe, CSRF, Rate-Limit oder PIN-Prüfung. Produktive Mitgliederanmeldung weiterhin nicht aktiviert.
+
+
+## 0.5.17 – Name + PIN im geschützten Test
+Voreinstellung Vor- und Nachname. Die API dokumentiert keine direkte Namenssuche. Für den eigenen Admin-Test wird einmalig die eigene Personen-ID zusätzlich eingegeben, Name und PIN werden anhand der gelieferten Person geprüft. Nach Erfolg bleibt ausschließlich die bestätigte Name-ID-Zuordnung für 30 Minuten in der privaten PHP-Sitzung, danach erfordert der Test erneut die Zuordnung. Kein PIN, keine Stammdaten-Rohantwort und keine Mitgliederliste gespeichert. Produktionslösung benötigt eine geeignete autorisierte, PIN-freie Namenszuordnung oder offizielle Namenssuche; Mehrdeutigkeiten und Mitgliedschaft sind noch nicht gelöst.
