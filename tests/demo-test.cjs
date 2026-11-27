@@ -134,7 +134,7 @@ assert.ok(source.includes('sectionIcon(key)')&&source.includes('sectionIcon(k)')
 console.log('Shared START and navigation icon markup OK');
 
 const expandClasses=new Set(),expandAttrs={},expandLabel={textContent:''},expandButton={setAttribute(k,v){expandAttrs[k]=v},querySelector(){return expandLabel}};
-const expandCtx=vm.createContext({pilot:true,view:'courts',tr:(de,en)=>de,esc:s=>String(s),button:()=>'<button>Zurück</button>',$:id=>id==='booking-expand'?expandButton:null,document:{body:{classList:{toggle(k,v){v?expandClasses.add(k):expandClasses.delete(k)}}}}});
+const expandCtx=vm.createContext({pilot:true,view:'courts',lang:'de',tr:(de,en)=>de,esc:s=>String(s),button:()=>'<button>Zurück</button>',$:id=>id==='booking-expand'?expandButton:null,document:{body:{classList:{toggle(k,v){v?expandClasses.add(k):expandClasses.delete(k)}}}}});
 vm.runInContext(source.slice(source.indexOf("let terminalStatus=null"),source.indexOf("function courtList()")),expandCtx);
 const expandRun=s=>vm.runInContext(s,expandCtx);
 expandRun("terminalStatus='ready'");
@@ -148,7 +148,13 @@ expandRun("toggleBookingExpansion();view='home';syncBookingExpansion()");
 assert.ok(!expandClasses.has('booking-expanded'));assert.equal(expandRun('bookingExpanded'),false);
 expandRun("view='courts';courtMode='indoor';toggleBookingExpansion()");
 assert.ok(!expandClasses.has('booking-expanded'));assert.doesNotMatch(expandRun('ebusyView()'),/data-action="booking-expand"/);
-console.log('Booking terminal expansion toggle, in-place resize and reset OK');
+expandRun("courtMode='widget';terminalStatus=null");
+assert.match(expandRun('ebusyView()'),/src="booking-widget.php\?lang=de"/);
+assert.match(expandRun('ebusyView()'),/data-action="booking-expand"/);
+expandRun('toggleBookingExpansion()');assert.ok(expandClasses.has('booking-expanded'));
+expandRun("courtMode='indoor';syncBookingExpansion()");assert.ok(!expandClasses.has('booking-expanded'));
+assert.match(expandRun('ebusyView()'),/credentialless inert/);
+console.log('Booking terminal and official widget expansion, read-only hall isolation OK');
 
  
 // Weekend rotation uses exactly the same fixture and event cards as their own views.

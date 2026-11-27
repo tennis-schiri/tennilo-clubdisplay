@@ -987,3 +987,8 @@ body.night-mode .header-weather-effect *,body.night-mode .header-weather-particl
 #premiere-next{background:#f7dc14;color:#073538;font-weight:800}
 @media(max-width:700px){.premiere-page{grid-template-columns:1fr;grid-template-rows:minmax(0,.7fr) auto;gap:.55rem;text-align:center;padding:12px}.premiere-logo,.premiere-icon,.premiere-qr{max-height:25vh;width:auto;max-width:45vw}.premiere-icon{height:20vh}.premiere-qr{height:23vh}.premiere-copy h1{font-size:clamp(1.5rem,6vw,2.7rem);margin:.3rem 0}.premiere-copy h2{font-size:1.05rem}.premiere-copy p{font-size:.85rem}.premiere-controls{gap:.3rem}.premiere-controls button{min-height:34px;padding:.3rem .5rem}}
 @media(prefers-reduced-motion:reduce){.premiere-confetti i{animation:none;top:calc(var(--x)*.8)}}
+
+/* Regular eBuSy online booking alongside the existing PIN terminal. */
+html[data-club="ntc"] .court-screen .court-switch{grid-template-columns:repeat(3,minmax(0,1fr));max-width:860px;flex-basis:480px}
+html[data-club="ntc"] .court-screen .court-switch button{font-size:clamp(.72rem,1.05vw,1.1rem);padding:.35rem .45rem}
+@media(max-width:700px){html[data-club="ntc"] .court-screen .court-switch{flex-basis:100%;max-width:none}html[data-club="ntc"] .court-screen .court-switch button{font-size:.72rem;padding:.25rem .2rem}}
