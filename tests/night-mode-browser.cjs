@@ -1,12 +1,13 @@
 'use strict';
 const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{const browser=await chromium.launch();try{
- const page=await browser.newPage({viewport:{width:1440,height:900}});
+ const page=await browser.newPage({viewport:{width:1440,height:900}});let calendarPolls=0;
  await page.clock.install({time:new Date('2026-11-26T21:59:50+01:00')});
  await page.route('**/*',async route=>{
   const u=new URL(route.request().url());
   if(['clubdisplay.tennilo.de','clubdisplay.ntc93.de'].includes(u.hostname)){
    if(u.pathname==='/terminal.php'&&!u.search)return route.fulfill({contentType:'text/html',body:'<input id="booking" value="keep me">'});
+   if(u.pathname==='/events.php'){calendarPolls++;return route.fulfill({contentType:'application/json',body:JSON.stringify({status:'ok',events:[{title:'NTC-Geburtstag',venue:'Clubhaus NTC 93',start:'2026-12-06T11:00:00+01:00',end:'2026-12-06T15:00:00+01:00'}]})});}
    if(u.pathname.endsWith('.php'))return route.fulfill({contentType:'application/json',body:JSON.stringify({status:'unavailable',ready:true,configured:true,matches:[],events:[],posts:[]})});
    const file=path.join(process.cwd(),'public',u.pathname==='/'?'index.html':u.pathname.slice(1));if(fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});
   }return route.abort();
@@ -36,11 +37,15 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
  assert.equal(await page.frameLocator('#screen iframe.booking-frame').locator('#booking').inputValue(),'test session');
  await page.clock.fastForward(301000);
  assert.ok(await screen.isVisible());
- await page.clock.setSystemTime(new Date('2026-11-27T10:00:00+01:00'));
+ await page.clock.setSystemTime(new Date('2026-11-27T14:00:00+01:00'));
  await page.clock.fastForward(1000);
- assert.ok(await screen.isHidden(),'10:00 automatic wake');
+ assert.ok(await screen.isHidden(),'14:00 automatic wake');
  await page.clock.setSystemTime(new Date('2026-11-27T23:00:00+01:00'));
  await page.reload();assert.ok(await screen.isVisible(),'night startup');
+ await page.waitForFunction(()=>eventData?.status==='ok');
+ const before=calendarPolls;await page.clock.fastForward(301000);await page.waitForFunction(()=>!eventFetching);assert.ok(calendarPolls>before,'calendar polled in rest mode');
+ await page.clock.setSystemTime(new Date('2026-12-06T10:29:00+01:00'));await page.clock.fastForward(1000);assert.ok(await screen.isVisible());
+ await page.clock.fastForward(60000);assert.ok(await screen.isHidden(),'birthday wakes 30 minutes early');
  await page.goto('https://clubdisplay.tennilo.de/');assert.ok(await screen.isHidden(),'public demo stays active');
- console.log('Night browser: 22:00 transition, wake, inactivity, preserved iframe, 10:00 wake, night startup, demo isolation');
+ console.log('Night browser: 22:00 transition, wake, inactivity, preserved iframe, 14:00 wake, night startup, demo isolation');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

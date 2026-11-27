@@ -334,3 +334,7 @@ Unter Plätze zusätzlich „Außenplätze · Online“ (offizielle `ebusy.api.j
 
 ## 0.5.4 – Widget-Domain (NTC)
 Testweise offizielle eBuSy-Widget-Integration auf der eigenen eBuSy-Subdomain `cd-ebusy.ntc93.de` mit unveränderter Freiplatz-Modul-ID 1731. JavaScript und Content-Security-Policy ebenfalls auf diese Domain abgestimmt. PIN-Terminal, Hallenbelegung und Live-Daten-API bleiben unverändert. Freischaltung des Außenplatz-Widgets muss im realen Betrieb bestätigt werden.
+
+
+## 0.5.5 – Intelligenter Ruhemodus (NTC)
+Ersetzt 22–10 Uhr durch aktive Zeiten: Gastro Di–Fr 14–22, Sa/So 12–22, Mo geschlossen, Sonderzeiten 06.12.2026 (öffentliche Gastro ab 16), 24.12. geschlossen, 25./26.12. 12–22, 31.12./01.01. 14–22. Gemeinsame Zeitdefinition mit Gastroanzeige; Änderungen an Öffnungszeiten müssen dort gepflegt werden. Termine mit Clubhaus/Klubhaus/Vereinsheim/Clubhouse als Veranstaltungsort starten 30 Minuten vorher und enden zum hinterlegten Ende. Für den bestätigten NTC-Geburtstag wird die geschlossene Gastroveranstaltung bis etwa 16 berücksichtigt; bei nicht verfügbarem Kalender ist der bestätigte Beginn 11 Uhr als Ausfallreserve enthalten. Bei gültigem Kalender ohne Geburtstag wird kein Termin erfunden. Der Kalender wird beim Start und alle fünf Minuten auch im Ruhemodus abgefragt; übrige Datenabfragen bleiben pausiert, AutoUpdate bleibt aktiv. Anzeige nennt den nächsten geplanten Start. Touch, Fünf-Minuten-Rückkehr und Schutz bestehender Buchungsframes bleiben erhalten. Nur NTC, Zeitzone Europe/Berlin. Kein physisches Abschalten des Monitors.
