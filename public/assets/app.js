@@ -424,7 +424,7 @@ function matchView(){
   const d=leagueData, info=view==='info', filter=info?'home':matchFilter;
   const headings={home:tr('Nächste Heimspiele','Upcoming home matches'),away:tr('Nächste Auswärtsspiele','Upcoming away matches'),all:tr('Alle kommenden Spiele','All upcoming matches'),results:tr('Letzte Ergebnisse','Recent results')};
   const tabs=info?'':'<div class="tabs">'+Object.keys(headings).map(k=>'<button data-action="match:'+k+'" aria-pressed="'+(k===filter)+'">'+({home:tr('Heim','Home'),away:tr('Auswärts','Away'),all:tr('Alle','All'),results:tr('Ergebnisse','Results')}[k])+'</button>').join('')+'</div>';
-  const title='<div class="match-heading"><h1>'+headings[filter]+'</h1>'+tabs+(pilot&&!info?button(tr('nuScore 2.0 · Demo','nuScore 2.0 · Demo'),'nuscore-demo','primary'):'')+'</div>';
+  const title='<div class="match-heading"><h1>'+headings[filter]+'</h1>'+tabs+(pilot&&!info?'<button type="button" class="primary" data-action="nuscore-demo">nuScore 2.0 · Demo</button>':'')+'</div>';
   if(!d)return title+'<div class="panel"><p>'+tr('nuLiga-Daten werden geladen …','Loading nuLiga data …')+'</p></div>';
   const source='<p class="match-source">'+(pilot?tr('Quelle: nuLiga · TVBB','Source: nuLiga · TVBB'):tr('Fiktive Begegnungen · TENNILO-Demo','Fictional fixtures · TENNILO demo'))+(d.fetchedAt?' · '+tr('Stand ','Updated ')+esc(new Date(d.fetchedAt*1000).toLocaleString(lang==='de'?'de-DE':'en-GB',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'})):'')+''+'</p>';
   if(d.status==='unavailable')return title+'<div class="panel"><p>'+tr('nuLiga momentan nicht verfügbar.','nuLiga currently unavailable.')+'</p></div>'+source;

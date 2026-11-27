@@ -32,7 +32,11 @@ assert.deepEqual(dates('eventView()'),['04.03.2027','31.12.2026','01.01.2027']);
 assert.match(vm.runInContext('eventView()',dateCtx),/01\.01\.2027/);
 dateCtx.lang='en';assert.deepEqual(dates('matchView()'),['01/01/2027']);assert.deepEqual(dates('eventView()'),['04/03/2027','31/12/2026','01/01/2027']);
 dateCtx.view='teams';dateCtx.matchFilter='results';dateCtx.leagueData.matches[0].score='6:3';assert.deepEqual(dates('matchView()'),['01/01/2027']);
-console.log('Fixture and event year labels in DE/EN, results and cross-year dates OK');
+assert.match(vm.runInContext('matchView()',dateCtx),/data-action="nuscore-demo"/);
+dateCtx.pilot=false;assert.doesNotMatch(vm.runInContext('matchView()',dateCtx),/data-action="nuscore-demo"/);
+dateCtx.pilot=true;dateCtx.view='info';assert.doesNotMatch(vm.runInContext('matchView()',dateCtx),/data-action="nuscore-demo"/);
+dateCtx.view='teams';
+console.log('Fixture and event year labels in DE/EN, results, cross-year dates and NTC-only nuScore button OK');
 
 const managedSource=fs.readFileSync('public/admin/player.js','utf8');
 const managedCtx=vm.createContext({Date,Intl,s:{modules:['calendar'],feeds:{calendar:{status:'ok',rows:[{title:'Workshop',start:'2027-03-04T19:00:00+01:00',end:'2027-03-04T21:00:00+01:00'},{title:'Unvollständig',start:'2027-03-04T19:00:00+01:00'}]}}},start:Date.parse('2027-03-04T19:00:00+01:00')});
