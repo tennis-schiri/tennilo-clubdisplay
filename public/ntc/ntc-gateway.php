@@ -103,6 +103,6 @@ foreach(['content-type','content-security-policy','content-disposition'] as $nam
     if(isset($responseHeaders[$name][0])&&!preg_match('/[\r\n]/',$responseHeaders[$name][0]))header($name.': '.$responseHeaders[$name][0],true);
 }
 if(!$partner&&$status===200&&str_contains($body,'<h1>Vereinsbackend</h1>')){
-    $body=str_replace('<h1>Vereinsbackend</h1>','<h1>Vereinsbackend</h1><p><a href="/devices.php?manage=1">Gerätefreigaben · Live-Belegung</a></p>',$body);
+    $body=str_replace('<h1>Vereinsbackend</h1>','<h1>Vereinsbackend</h1><p><a href="/devices.php?manage=1">Gerätefreigaben · Live-Belegung</a> · <a href="/spielpartner/pin-test.php">eBuSy-PIN testen (Admin)</a></p>',$body);
 }
 echo $body;

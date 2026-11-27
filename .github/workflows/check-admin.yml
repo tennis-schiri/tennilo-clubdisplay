@@ -33,6 +33,7 @@ jobs:
       - name: Admin und Geräte
         run: |
           php tests/admin-test.php
+          php tests/pin-test.php
           bash tests/admin-http-test.sh
       - name: Bestehende Displays
         run: |
