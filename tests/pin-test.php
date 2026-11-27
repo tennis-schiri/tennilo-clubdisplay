@@ -8,7 +8,15 @@ check(cd_pin_result($p,'00123')===['status'=>'matched','age'=>'adult']);
 check(cd_pin_result($p,'123')===['status'=>'pin_mismatch']);
 check(cd_pin_result($p,'99999')===['status'=>'pin_mismatch']);
 $p['response']['archived']=true;check(cd_pin_result($p,'00123')===['status'=>'archived']);
-check(cd_pin_result(['error'=>'fictional error','response'=>null],'00123')===['status'=>'api_error']);
+
+check(cd_pin_result(['error'=>'fictional error','response'=>null],'00123')===['status'=>'api_error','category'=>'unknown','type'=>'Text','has_response'=>false]);
+check(cd_pin_api_error(['error'=>'ACCESS_DENIED','message'=>'private identifier 12345'])['category']==='permission');
+check(cd_pin_api_error(['error'=>['code'=>'NO_PERMISSION','message'=>'private']])['category']==='permission');
+check(cd_pin_api_error(['error'=>true,'message'=>'Person nicht gefunden'])['category']==='not_found');
+check(cd_pin_api_error(['error'=>false,'response'=>['code'=>'12345']])===['status'=>'api_error','category'=>'empty_marker','type'=>'Boolean','has_response'=>true]);
+check(cd_pin_api_error(['error'=>['code'=>400]])['category']==='invalid');
+check(cd_pin_api_error(['error'=>['status'=>429]])['category']==='limited');
+check(cd_pin_api_error(['error'=>'InternalServerError'])['category']==='upstream');
 check(cd_pin_result(['response'=>null],'00123')===['status'=>'not_found']);
 check(cd_pin_result([],'00123')===['status'=>'unexpected_envelope']);
 check(cd_pin_result(['response'=>[['id'=>1]]],'00123')===['status'=>'unexpected_person']);

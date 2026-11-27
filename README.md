@@ -358,3 +358,7 @@ Admin-geschützter Test unter `/spielpartner/pin-test.php`, auch im NTC-Vereinsb
 
 ## 0.5.13 – PIN-Pilot Diagnose
 Nach Admin-Freigabe differenzierte Diagnose für API-Fehler, fehlende Personen, Antwortformat, Archivstatus, fehlenden/leeren Code und exakten PIN-Abgleich. Keine Rohdaten, PIN-Werte oder API-Fehlertexte werden ausgegeben. Kein gelockerter Vergleich, keine zusätzliche Personenabfrage, unveränderte Rate-Limits und Zugriffsprüfung.
+
+
+## 0.5.14 – Klassifizierung von eBuSy-API-Fehlern
+Admin-PIN-Test unterscheidet feste Fehlerkategorien aus error/message, ohne Originaltexte, Codes oder personenbezogene Daten auszugeben. HTTP-200-Anwendungsfehler bleiben grundsätzlich gesperrt; auch leere, von null abweichende Fehlerwerte führen nicht zur Freigabe. Diagnose enthält nur Kategorie, Typ des Fehlerfelds, Vorhandensein des Antwortobjekts und UTC-Zeit für Support. Keine zusätzlichen API-Aufrufe.
