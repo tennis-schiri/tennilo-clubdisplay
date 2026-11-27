@@ -42,7 +42,7 @@ function cd_save_contract(PDO $db,array $in,?string $scope):void{
     $club=cd_text($in['club']??'',50,true);cd_club($db,$club);
     $limit=filter_var($in['screen_limit']??null,FILTER_VALIDATE_INT);
     $state=$in['state']??'';$cycle=$in['cycle']??'';
-    if($limit===false||$limit<1||$limit>100||!in_array($state,['pilot','active','paused'],true)||!in_array($cycle,['none','monthly','yearly'],true))throw new InvalidArgumentException('Ungültige Vertragsdaten.');
+    if($limit===false||$limit<1||$limit>100||!in_array($state,['pilot','active','paused'],true)||!in_array($cycle,['none','monthly','yearly','once'],true))throw new InvalidArgumentException('Ungültige Vertragsdaten.');
     $renewal=cd_date($in['renewal']??'');$note=cd_text($in['note']??'',1000);
     $db->exec('BEGIN IMMEDIATE');
     try{
@@ -180,7 +180,7 @@ function cd_save_billing(PDO $db,array $in,?string $scope):void{
 }
 function cd_csv_text(string $v):string{return preg_match('/^[\s]*[=+\-@]/u',$v)||preg_match('/^[\t\r\n]/',$v)?"'".$v:$v;}
 function cd_billing_csv(PDO $db,$out):void{
-    fputcsv($out,['Verein','Vereinskennung','Lizenz','Gerätekontingent','Vertrag','Intervall','Verlängerung','Betrag je Intervall EUR','Einrichtung EUR','Preisbasis','Rechnungsreferenz','Zahlungsstatus'],';','"','');
+    fputcsv($out,['Verein','Vereinskennung','Lizenz','Gerätekontingent','Vertrag','Intervall','Verlängerung / Serviceende','Betrag je Intervall / einmalig EUR','Einrichtung EUR','Preisbasis','Rechnungsreferenz','Zahlungsstatus'],';','"','');
     foreach($db->query('SELECT slug,name,plan FROM clubs ORDER BY name') as $c){
         $a=cd_contract($db,$c['slug']);$b=cd_billing($db,$c['slug']);
         $row=[$c['name'],$c['slug'],cd_plan_label($c['plan']),(string)$a['screen_limit'],$a['state'],$a['cycle'],$a['renewal'],cd_amount_text($b['recurring_cents']===null?null:(int)$b['recurring_cents']),cd_amount_text($b['setup_cents']===null?null:(int)$b['setup_cents']),$b['basis'],$b['invoice_ref'],$b['payment_state']];

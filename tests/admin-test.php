@@ -134,6 +134,9 @@ check(cd_amount('19,90')===1990&&cd_amount('0')===0&&cd_amount('')===null&&cd_am
 try{cd_amount('1.000,00');throw new LogicException('Invalid amount accepted');}catch(InvalidArgumentException $e){}
 $bill=['club'=>'ntc93','recurring'=>'390,00','setup'=>'299','basis'=>'net','invoice_ref'=>'=FORMULA()','payment_state'=>'open'];
 cd_save_billing($db,$bill,null);check((int)cd_billing($db,'ntc93')['recurring_cents']===39000);
+$purchaseContract=$contract;$purchaseContract['cycle']='once';$purchaseContract['renewal']='2028-11-27';cd_save_contract($db,$purchaseContract,null);check(cd_contract($db,'ntc93')['cycle']==='once'&&cd_contract($db,'ntc93')['renewal']==='2028-11-27');
+$purchaseBill=$bill;$purchaseBill['recurring']='1399';$purchaseBill['setup']='0';cd_save_billing($db,$purchaseBill,null);check((int)cd_billing($db,'ntc93')['recurring_cents']===139900&&(int)cd_billing($db,'ntc93')['setup_cents']===0);
+cd_save_contract($db,$contract,null);cd_save_billing($db,$bill,null);
 try{cd_save_billing($db,$bill,'ntc93');throw new LogicException('Club changed billing');}catch(InvalidArgumentException $e){}
 $out=fopen('php://temp','w+');cd_billing_csv($db,$out);rewind($out);$csv=stream_get_contents($out);fclose($out);check(str_contains($csv,"'=FORMULA()")&&str_contains($csv,'390,00'));
 cd_audit($db,null,'contract','ntc93','managed-one');cd_audit($db,'test-club','content','ntc93',123);
