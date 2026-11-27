@@ -354,3 +354,7 @@ Unter Punktspiele ist ein experimenteller Demo-Zugang verfügbar. Er nutzt aussc
 
 ## 0.5.12 – NTC eBuSy-PIN-Pilot
 Admin-geschützter Test unter `/spielpartner/pin-test.php`, auch im NTC-Vereinsbackend verlinkt. Nur eigener Benutzername/PIN, Admin-PIN pro Test, CSRF, global zehn Versuche pro 15 Minuten, HTTPS, exakte Code-Prüfung mit führenden Nullen, archivierte Konten ausgeschlossen. Nur der dokumentierte GET `/general/person/by-username/{username}`; PINs niemals in URL, Rohantwort und personenbezogene Felder nicht gespeichert oder ausgegeben. Altersgruppe nur nach erfolgreichem Abgleich; Mitgliedsstatus und Freigabe zur Authentifizierung noch zu klären. Keine Änderung der bestehenden öffentlichen Spielpartnerbörse. Tests mit fiktiven Daten; echte API-Berechtigung erst durch autorisierten eigenen Test prüfen.
+
+
+## 0.5.13 – PIN-Pilot Diagnose
+Nach Admin-Freigabe differenzierte Diagnose für API-Fehler, fehlende Personen, Antwortformat, Archivstatus, fehlenden/leeren Code und exakten PIN-Abgleich. Keine Rohdaten, PIN-Werte oder API-Fehlertexte werden ausgegeben. Kein gelockerter Vergleich, keine zusätzliche Personenabfrage, unveränderte Rate-Limits und Zugriffsprüfung.

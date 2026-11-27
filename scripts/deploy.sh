@@ -164,6 +164,7 @@ if [[ "$DOMAIN" == "clubdisplay.ntc93.de" ]]; then
   upload public/ntc/spielpartner/pin-test.php spielpartner/pin-test.php
   curl --fail --silent --show-error --max-time 25 "https://$DOMAIN/spielpartner/pin-test.php" -o "$tmp/pin-pilot"
   grep -Fq 'PIN-Abgleich testen' "$tmp/pin-pilot"
+  grep -Fq 'Diagnoseversion 0.5.13' "$tmp/pin-pilot"
   code="$(curl --silent --show-error --max-time 25 -o /dev/null -w '%{http_code}' --data 'action=test' "https://$DOMAIN/spielpartner/pin-test.php")"
   [[ "$code" == 403 ]] || { echo 'PIN pilot missing CSRF protection'; exit 1; }
   code="$(curl --silent --show-error --max-time 25 -o /dev/null -w '%{http_code}' "https://$DOMAIN/devices-private/pin-test.sqlite")"

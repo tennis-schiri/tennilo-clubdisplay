@@ -2,9 +2,19 @@
 declare(strict_types=1);
 // Admin-only pilot. Never return or persist a personal code or raw API response.
 function cd_pin_result(array $payload,string $pin):array{
-    if(($payload['error']??null)!==null||!is_array($payload['response']??null))return ['status'=>'denied'];
+    // These diagnostic categories are only rendered after Admin-PIN verification.
+    // Never print raw API messages, identifiers, codes, lengths or other person data.
+    if(($payload['error']??null)!==null)return ['status'=>'api_error'];
+    if(!array_key_exists('response',$payload))return ['status'=>'unexpected_envelope'];
+    if($payload['response']===null||$payload['response']===[])return ['status'=>'not_found'];
+    if(!is_array($payload['response'])||array_is_list($payload['response']))return ['status'=>'unexpected_person'];
     $p=$payload['response'];
-    if(($p['archived']??null)!==false||!is_string($p['code']??null)||$p['code']===''||!hash_equals($p['code'],$pin))return ['status'=>'denied'];
+    if(($p['archived']??null)===true)return ['status'=>'archived'];
+    if(($p['archived']??null)!==false)return ['status'=>'archive_unknown'];
+    if(!array_key_exists('code',$p))return ['status'=>'code_missing'];
+    if($p['code']===null||$p['code']==='')return ['status'=>'code_empty'];
+    if(!is_string($p['code']))return ['status'=>'code_type'];
+    if(!hash_equals($p['code'],$pin))return ['status'=>'pin_mismatch'];
     $age='unknown';
     $birthday=$p['birthday']??null;
     if(is_string($birthday)&&preg_match('/^\d{4}-\d{2}-\d{2}$/D',$birthday)){
@@ -21,14 +31,14 @@ function cd_pin_result(array $payload,string $pin):array{
 function cd_pin_lookup(array $cfg,string $username,string $pin):array{
     if(!is_string($cfg['user']??null)||$cfg['user']===''||!is_string($cfg['password']??null)||$cfg['password']===''||!function_exists('curl_init'))return ['status'=>'unconfigured'];
     // Restrict path segment. No bulk enumeration or writes. Never put a PIN in a URL.
-    if(!preg_match('/^[\p{L}\p{M}\p{N}_.@+ -]{1,100}$/uD',$username)||in_array($username,['.','..'],true)||!preg_match('/^[0-9]{1,20}$/D',$pin))return ['status'=>'denied'];
+    if(!preg_match('/^[\p{L}\p{M}\p{N}_.@+ -]{1,100}$/uD',$username)||in_array($username,['.','..'],true)||!preg_match('/^[0-9]{1,20}$/D',$pin))return ['status'=>'input_format'];
     $body='';$ch=curl_init('https://ntc93v8.ebusy.de/api/general/person/by-username/'.rawurlencode($username));
     if($ch===false)return ['status'=>'unavailable'];
     curl_setopt_array($ch,[CURLOPT_HTTPAUTH=>CURLAUTH_BASIC,CURLOPT_USERPWD=>$cfg['user'].':'.$cfg['password'],CURLOPT_HTTPHEADER=>['Accept: application/json'],CURLOPT_FOLLOWLOCATION=>false,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>12,CURLOPT_WRITEFUNCTION=>static function($c,string $s)use(&$body):int{if(strlen($body)+strlen($s)>1000000)return 0;$body.=$s;return strlen($s);}]);
     $ok=curl_exec($ch);$status=(int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE);curl_close($ch);
     if(in_array($status,[401,403],true))return ['status'=>'permission'];
     if($status===429)return ['status'=>'limited'];
-    if($status===404)return ['status'=>'denied'];
+    if($status===404)return ['status'=>'not_found'];
     if(!$ok||$status!==200)return ['status'=>'unavailable'];
     try{$payload=json_decode($body,true,64,JSON_THROW_ON_ERROR);return is_array($payload)?cd_pin_result($payload,$pin):['status'=>'unavailable'];}catch(Throwable){return ['status'=>'unavailable'];}
 }
@@ -88,7 +98,18 @@ try{
                 'limited'=>'eBuSy meldet ein Anfragelimit. Bitte später erneut versuchen.',
                 'unconfigured'=>'eBuSy-API nicht eingerichtet.',
                 'unavailable'=>'Personenabfrage derzeit nicht verfügbar oder unerwartete API-Antwort.',
-                default=>'Benutzername oder PIN nicht korrekt, Code nicht verfügbar oder Konto archiviert.'
+                'api_error'=>'eBuSy liefert eine API-Fehlermeldung im Antwortobjekt. Keine PIN-Prüfung möglich.',
+                'unexpected_envelope'=>'API erreichbar, aber das dokumentierte Antwortfeld response fehlt.',
+                'not_found'=>'Keine Person zum eingegebenen eBuSy-Benutzernamen gefunden.',
+                'unexpected_person'=>'API erreichbar, aber das Personenobjekt hat ein unerwartetes Format.',
+                'archived'=>'Person gefunden, Konto laut eBuSy archiviert.',
+                'archive_unknown'=>'Person gefunden, Archivstatus fehlt oder hat ein unerwartetes Format.',
+                'code_missing'=>'Person gefunden und nicht archiviert, aber das Feld code fehlt in der API-Antwort.',
+                'code_empty'=>'Person gefunden und nicht archiviert, aber das Feld code ist leer.',
+                'code_type'=>'Person gefunden und nicht archiviert, aber code ist nicht wie dokumentiert als Zeichenfolge verfügbar.',
+                'pin_mismatch'=>'Person gefunden, nicht archiviert und code verfügbar. Der eingegebene PIN stimmt nicht exakt überein.',
+                'input_format'=>'Benutzername oder PIN entspricht nicht dem erlaubten Eingabeformat.',
+                default=>'PIN-Prüfung nicht möglich.'
             };
             $age=match($result['age']??'unknown'){'adult'=>'18 Jahre oder älter','teen'=>'16–17 Jahre','child'=>'Unter 16 Jahren',default=>'Nicht sicher bestimmbar'};
         }
@@ -103,4 +124,4 @@ try{
 <p>Geschützter technischer Test. Bitte ausschließlich dein eigenes eBuSy-Konto verwenden. Die Spielpartnerbörse bleibt unverändert. PINs und Personenstammdaten werden von ClubDisplay nicht gespeichert.</p>
 <?php if($msg!==''):?><section role="status" class="<?=$success?'success':'notice'?>"><h2><?=cd_pin_h($msg)?></h2><?php if($success):?><p>Altersgruppe: <?=cd_pin_h($age)?></p><p>Vereinsmitgliedschaft: noch nicht geprüft. Keine Freischaltung von Mitgliederfunktionen.</p><?php endif;?></section><?php endif;?>
 <form method="post" action="/spielpartner/pin-test.php" autocomplete="off"><input type="hidden" name="csrf" value="<?=$csrf?>"><label for="admin_pin">ClubDisplay Admin-PIN</label><input id="admin_pin" name="admin_pin" type="password" inputmode="numeric" pattern="[0-9]{6,20}" maxlength="20" required autocomplete="off"><label for="username">eBuSy-Benutzername</label><input id="username" name="username" maxlength="100" required autocomplete="off" autocapitalize="none" spellcheck="false"><label for="member_pin">Persönlicher eBuSy-PIN</label><input id="member_pin" name="member_pin" type="password" inputmode="numeric" pattern="[0-9]{1,20}" maxlength="20" required autocomplete="off"><label class="check"><input name="own_account" type="checkbox" value="yes" required> Ich teste nur mein eigenes eBuSy-Konto.</label><button type="submit">PIN-Abgleich testen</button></form>
-<p><a href="/spielpartner/">Zurück zur Spielpartnerbörse</a> · <a href="/admin/">Vereinsbackend</a></p><small>Nur lesende Einzelabfrage. Keine Buchung, keine Änderungen an eBuSy. Keine Weitergabe der PINs an das zentrale TENNILO-Backend.</small></main></body></html>
+<p><a href="/spielpartner/">Zurück zur Spielpartnerbörse</a> · <a href="/admin/">Vereinsbackend</a></p><small>Diagnoseversion 0.5.13 · Nur lesende Einzelabfrage. Keine Buchung, keine Änderungen an eBuSy. Keine Weitergabe der PINs an das zentrale TENNILO-Backend.</small></main></body></html>
