@@ -366,3 +366,7 @@ Admin-PIN-Test unterscheidet feste Fehlerkategorien aus error/message, ohne Orig
 
 ## 0.5.15 – Alternative Personenabfragen im PIN-Pilot
 Admin kann explizit Benutzername, Mitgliedsnummer oder Kundennummer wählen. Die dokumentierten nummernbasierten GET-Abfragen verlangen offset=0 und limit=2 und werden nur bei genau einem eindeutigen Treffer mit vollständigen benötigten Feldern zur PIN-Prüfung zugelassen. Kein Abruf von Mitgliederlisten, kein automatisches Durchprobieren von Kennungen, keine Ausgabe von Stammdaten. Mitgliedsstatus weiterhin nicht verifiziert; keine produktive Anmeldung.
+
+
+## 0.5.16 – Personen-ID im Admin-PIN-Pilot
+Voreinstellung Personen-ID (nicht Benutzer-ID) mit dokumentiertem GET `/general/person/by-id/{person_id}`. Nur positive numerische ID, Rückgabe-ID muss exakt übereinstimmen, bevor der PIN-Abgleich erfolgt. Keine zusätzlichen Abfragen, keine Lockerung von Admin-Freigabe, CSRF, Rate-Limit oder PIN-Prüfung. Produktive Mitgliederanmeldung weiterhin nicht aktiviert.

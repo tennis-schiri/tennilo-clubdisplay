@@ -53,10 +53,12 @@ function cd_pin_result(array $payload,string $pin):array{
 }
 // Only explicitly selected documented lookups. No list scan or automatic fallback.
 function cd_pin_path(string $kind,string $identifier):?string{
+    if($kind==='person_id'&&!preg_match('/^[1-9][0-9]{0,18}$/D',$identifier))return null;
     if(!preg_match('/^[\p{L}\p{M}\p{N}_.@+ -]{1,100}$/uD',$identifier)||in_array($identifier,['.','..'],true))return null;
     $value=rawurlencode($identifier);
     return match($kind){
         'username'=>'general/person/by-username/'.$value,
+        'person_id'=>'general/person/by-id/'.$value,
         'membership'=>'general/persons/by-membership-number/'.$value.'?offset=0&limit=2',
         'customer'=>'general/persons/by-customer-id/'.$value.'?offset=0&limit=2',
         default=>null
@@ -73,6 +75,15 @@ function cd_pin_page_result(array $payload,string $pin):array{
     if($total!==1||count($page['content'])!==1||!is_array($page['content'][0]))return ['status'=>'unexpected_page'];
     return cd_pin_result(['error'=>null,'response'=>$page['content'][0]],$pin);
 }
+function cd_pin_id_result(array $payload,string $pin,string $id):array{
+    if(($payload['error']??null)!==null)return cd_pin_api_error($payload);
+    $p=$payload['response']??null;
+    if(is_array($p)&&$p!==[]&&!array_is_list($p)){
+        $actual=$p['id']??null;
+        if((!is_int($actual)&&!is_string($actual))||(string)$actual!==$id)return ['status'=>'id_mismatch'];
+    }
+    return cd_pin_result($payload,$pin);
+}
 function cd_pin_lookup(array $cfg,string $username,string $pin,string $kind='username'):array{
     if(!is_string($cfg['user']??null)||$cfg['user']===''||!is_string($cfg['password']??null)||$cfg['password']===''||!function_exists('curl_init'))return ['status'=>'unconfigured'];
     // Restrict path segment. No bulk enumeration or writes. Never put a PIN in a URL.
@@ -86,7 +97,7 @@ function cd_pin_lookup(array $cfg,string $username,string $pin,string $kind='use
     if($status===429)return ['status'=>'limited'];
     if($status===404)return ['status'=>'not_found'];
     if(!$ok||$status!==200)return ['status'=>'unavailable'];
-    try{$payload=json_decode($body,true,64,JSON_THROW_ON_ERROR);return is_array($payload)?($kind==='username'?cd_pin_result($payload,$pin):cd_pin_page_result($payload,$pin)):['status'=>'unavailable'];}catch(Throwable){return ['status'=>'unavailable'];}
+    try{$payload=json_decode($body,true,64,JSON_THROW_ON_ERROR);return is_array($payload)?(match($kind){'username'=>cd_pin_result($payload,$pin),'person_id'=>cd_pin_id_result($payload,$pin,$username),default=>cd_pin_page_result($payload,$pin)}):['status'=>'unavailable'];}catch(Throwable){return ['status'=>'unavailable'];}
 }
 function cd_pin_attempt(PDO $db,int $now):bool{
     $db->exec('CREATE TABLE IF NOT EXISTS attempts (at INTEGER NOT NULL)');
@@ -111,7 +122,7 @@ header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; 
 if(($_SERVER['HTTP_HOST']??'')!=='clubdisplay.ntc93.de'||empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off'){http_response_code(404);exit('Nicht verfügbar.');}
 $method=$_SERVER['REQUEST_METHOD']??'';
 if(!in_array($method,['GET','POST'],true)){http_response_code(405);exit('Nicht verfügbar.');}
-$msg='';$success=false;$age='';$diagnosis='';$lookupKind='username';$endpoint='';
+$msg='';$success=false;$age='';$diagnosis='';$lookupKind='person_id';$endpoint='';
 function cd_pin_field(string $k):string{return is_string($_POST[$k]??null)?$_POST[$k]:'';}
 function cd_pin_h(string $s):string{return htmlspecialchars($s,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}
 try{
@@ -136,8 +147,8 @@ try{
         elseif(!preg_match('/^\d{6,20}$/D',cd_pin_field('admin_pin'))||!password_verify(cd_pin_field('admin_pin'),$admin['hash'])){$msg='Admin-Freigabe fehlgeschlagen.';http_response_code(403);}
         elseif(cd_pin_field('own_account')!=='yes'){$msg='Bitte bestätige, dass du ausschließlich dein eigenes Konto testest.';}
         else{
-            $lookupKind=cd_pin_field('lookup_kind')?:'username';
-            $endpoint=match($lookupKind){'username'=>'/general/person/by-username/{username}','membership'=>'/general/persons/by-membership-number/{membership_number}','customer'=>'/general/persons/by-customer-id/{customer_id}',default=>''};
+            $lookupKind=cd_pin_field('lookup_kind')?:'person_id';
+            $endpoint=match($lookupKind){'person_id'=>'/general/person/by-id/{person_id}','username'=>'/general/person/by-username/{username}','membership'=>'/general/persons/by-membership-number/{membership_number}','customer'=>'/general/persons/by-customer-id/{customer_id}',default=>''};
             $result=cd_pin_lookup($cfg,trim(cd_pin_field('username')),cd_pin_field('member_pin'),$lookupKind);
             $success=$result['status']==='matched';
             $msg=match($result['status']){
@@ -150,6 +161,7 @@ try{
                 'unexpected_envelope'=>'API erreichbar, aber das dokumentierte Antwortfeld response fehlt.',
                 'not_found'=>'Keine Person zur eingegebenen Kennung gefunden.',
                 'ambiguous'=>'Mehrere Personen zur Kennung gefunden. Keine PIN-Prüfung möglich.',
+                'id_mismatch'=>'Die gelieferte Personen-ID stimmt nicht mit der eingegebenen ID überein. Keine PIN-Prüfung möglich.',
                 'unexpected_page'=>'Die API liefert keine eindeutig auswertbare Trefferliste.',
                 'unexpected_person'=>'API erreichbar, aber das Personenobjekt hat ein unerwartetes Format.',
                 'archived'=>'Person gefunden, Konto laut eBuSy archiviert.',
@@ -185,5 +197,5 @@ try{
 </style></head><body><main><header><img src="/assets/ntc93-logo.png" alt="NTC 93"><div><small>CLUBDISPLAY · SPIELPARTNERBÖRSE</small><h1>eBuSy-PIN · Admin-Test</h1></div></header>
 <p>Geschützter technischer Test. Bitte ausschließlich dein eigenes eBuSy-Konto verwenden. Die Spielpartnerbörse bleibt unverändert. PINs und Personenstammdaten werden von ClubDisplay nicht gespeichert.</p>
 <?php if($msg!==''):?><section role="status" class="<?=$success?'success':'notice'?>"><h2><?=cd_pin_h($msg)?></h2><?php if($diagnosis!==''):?><p><?=cd_pin_h($diagnosis)?></p><p><small>HTTP 200 · GET <?=cd_pin_h($endpoint)?> · <?=cd_pin_h(gmdate('Y-m-d H:i:s').' UTC')?></small></p><?php endif;?><?php if($success):?><p>Altersgruppe: <?=cd_pin_h($age)?></p><p>Vereinsmitgliedschaft: noch nicht geprüft. Keine Freischaltung von Mitgliederfunktionen.</p><?php endif;?></section><?php endif;?>
-<form method="post" action="/spielpartner/pin-test.php" autocomplete="off"><input type="hidden" name="csrf" value="<?=$csrf?>"><label for="admin_pin">ClubDisplay Admin-PIN</label><input id="admin_pin" name="admin_pin" type="password" inputmode="numeric" pattern="[0-9]{6,20}" maxlength="20" required autocomplete="off"><label for="lookup_kind">Person suchen über</label><select id="lookup_kind" name="lookup_kind"><option value="username" <?=$lookupKind==='username'?'selected':''?>>eBuSy-Benutzername</option><option value="membership" <?=$lookupKind==='membership'?'selected':''?>>Mitgliedsnummer</option><option value="customer" <?=$lookupKind==='customer'?'selected':''?>>eBuSy-Kundennummer</option></select><label for="username">Kennung (entsprechend der Auswahl)</label><input id="username" name="username" maxlength="100" required autocomplete="off" autocapitalize="none" spellcheck="false"><label for="member_pin">Persönlicher eBuSy-PIN</label><input id="member_pin" name="member_pin" type="password" inputmode="numeric" pattern="[0-9]{1,20}" maxlength="20" required autocomplete="off"><label class="check"><input name="own_account" type="checkbox" value="yes" required> Ich teste nur mein eigenes eBuSy-Konto.</label><button type="submit">PIN-Abgleich testen</button></form>
-<p><a href="/spielpartner/">Zurück zur Spielpartnerbörse</a> · <a href="/admin/">Vereinsbackend</a></p><small>Diagnoseversion 0.5.15 · Nur lesende Einzelabfrage. Keine Buchung, keine Änderungen an eBuSy. Keine Weitergabe der PINs an das zentrale TENNILO-Backend.</small></main></body></html>
+<form method="post" action="/spielpartner/pin-test.php" autocomplete="off"><input type="hidden" name="csrf" value="<?=$csrf?>"><label for="admin_pin">ClubDisplay Admin-PIN</label><input id="admin_pin" name="admin_pin" type="password" inputmode="numeric" pattern="[0-9]{6,20}" maxlength="20" required autocomplete="off"><label for="lookup_kind">Person suchen über</label><select id="lookup_kind" name="lookup_kind"><option value="person_id" <?=$lookupKind==='person_id'?'selected':''?>>eBuSy-Personen-ID (nicht Benutzer-ID)</option><option value="username" <?=$lookupKind==='username'?'selected':''?>>eBuSy-Benutzername</option><option value="membership" <?=$lookupKind==='membership'?'selected':''?>>Mitgliedsnummer</option><option value="customer" <?=$lookupKind==='customer'?'selected':''?>>eBuSy-Kundennummer</option></select><label for="username">Kennung (entsprechend der Auswahl)</label><input id="username" name="username" maxlength="100" required autocomplete="off" autocapitalize="none" spellcheck="false"><label for="member_pin">Persönlicher eBuSy-PIN</label><input id="member_pin" name="member_pin" type="password" inputmode="numeric" pattern="[0-9]{1,20}" maxlength="20" required autocomplete="off"><label class="check"><input name="own_account" type="checkbox" value="yes" required> Ich teste nur mein eigenes eBuSy-Konto.</label><button type="submit">PIN-Abgleich testen</button></form>
+<p><a href="/spielpartner/">Zurück zur Spielpartnerbörse</a> · <a href="/admin/">Vereinsbackend</a></p><small>Diagnoseversion 0.5.16 · Nur lesende Einzelabfrage. Keine Buchung, keine Änderungen an eBuSy. Keine Weitergabe der PINs an das zentrale TENNILO-Backend.</small></main></body></html>
