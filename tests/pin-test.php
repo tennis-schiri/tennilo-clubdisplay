@@ -62,6 +62,26 @@ $namePayload=['error'=>null,'response'=>['id'=>123,'firstname'=>'Max','lastname'
 check(cd_pin_id_result($namePayload,'00123','123','max mustermann')===['status'=>'matched','age'=>'adult']);
 check(cd_pin_id_result($namePayload,'00123','123','Max Musterfrau')===['status'=>'name_mismatch']);
 check(cd_pin_id_result($namePayload,'99999','123','Max Mustermann')===['status'=>'pin_mismatch']);
+$directory=new PDO('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+check(cd_pin_directory_find($directory,'Max Mustermann',10000)===['status'=>'directory_missing']);
+check(cd_pin_directory_import($directory,"Personen-ID;Vorname;Nachname\n123;Jörg;Müller\n124;Max;Mustermann\n125;Max;Mustermann",10000)===3);
+check(cd_pin_directory_find($directory,'JÖRG MÜLLER',10001)===['status'=>'found','id'=>'123']);
+check(cd_pin_directory_find($directory,'Max Mustermann',10001)===['status'=>'ambiguous']);
+check(cd_pin_directory_find($directory,'Nicht Vorhanden',10001)===['status'=>'not_found']);
+check(cd_pin_directory_find($directory,'Jörg Müller',10000+7*86400+1)===['status'=>'directory_stale']);
+try{cd_pin_directory_import($directory,"Personen-ID;Vorname;Nachname;PIN\n123;Jörg;Müller;0000",10001);check(false);}catch(InvalidArgumentException){}
+check(cd_pin_directory_find($directory,'Jörg Müller',10001)===['status'=>'found','id'=>'123']);
+check(cd_pin_directory_import($directory,"Personen-ID;Vorname;Nachname\n126;Lisa;Test",10002)===1);
+check(cd_pin_directory_find($directory,'Jörg Müller',10003)===['status'=>'not_found']);
+$membership=['error'=>null,'response'=>['last'=>true,'totalElements'=>1,'content'=>[['personId'=>123,'archived'=>false,'status'=>'ACTIVE','consideredActive'=>true,'begin'=>'2020-01-01','end'=>null]]]];
+check(cd_pin_membership_result($membership,'123','2026-11-27')==='active');
+check(cd_pin_membership_result($membership,'124','2026-11-27')==='unknown');
+$membership['response']['content'][0]['end']='2026-11-26';
+check(cd_pin_membership_result($membership,'123','2026-11-27')==='not_active');
+$membership['response']['last']=false;
+check(cd_pin_membership_result($membership,'123','2026-11-27')==='unknown');
+$membership['response']['last']=true;$membership['response']['content'][0]['end']=null;$membership['response']['content'][0]['consideredActive']=false;
+check(cd_pin_membership_result($membership,'123','2026-11-27')==='not_active');
 $db=new PDO('sqlite::memory:');
 for($i=0;$i<10;$i++)check(cd_pin_attempt($db,10000));
 check(!cd_pin_attempt($db,10000));check(cd_pin_attempt($db,10900));
