@@ -158,7 +158,7 @@ function smartSeason(now=Date.now()){
   return day>='05-01'&&day<'10-01'?'summer':'winter';
 }
 // Fourth Advent is the Sunday strictly before Christmas Day, even when Christmas is a Sunday.
-// Saturday and Sunday of each Advent weekend use the same local calendar date calculation.
+// Advent decorations and greetings appear only on Advent Sundays (Europe/Berlin).
 function smartAdvent(now=Date.now()){
   const date=smartDate(now);
   if(!date)return 0;
@@ -167,7 +167,7 @@ function smartAdvent(now=Date.now()){
   const fourth=christmas-(new Date(christmas*86400000).getUTCDay()||7);
   for(let n=1;n<=4;n++){
     const sunday=fourth-(4-n)*7;
-    if(today===sunday-1||today===sunday)return n;
+    if(today===sunday)return n;
   }
   return 0;
 }
@@ -272,7 +272,7 @@ function smartHolidayView(key){
   if(/^holiday:advent:[1-4]$/.test(key)){
     const n=Number(key.split(':')[2]);
     const heading=tr('Einen schönen '+n+'. Advent!','Happy '+['first','second','third','fourth'][n-1]+' Advent!');
-    return '<div class="greeting-hero event-greeting-hero holiday-hero holiday-advent"><div class="holiday-art advent-art" aria-hidden="true">'+adventCandles(n)+'</div><h1 class="event-greeting-title">'+esc(heading)+'</h1><p class="greeting-farewell">'+tr('Wir wünschen euch ein gemütliches Adventswochenende.','Wishing you a lovely Advent weekend.')+'</p></div>';
+    return '<div class="greeting-hero event-greeting-hero holiday-hero holiday-advent"><div class="holiday-art advent-art" aria-hidden="true">'+adventCandles(n)+'</div><h1 class="event-greeting-title">'+esc(heading)+'</h1><p class="greeting-farewell">'+tr('Wir wünschen euch einen gemütlichen Adventssonntag.','Wishing you a lovely Advent Sunday.')+'</p></div>';
   }
   const copy=key==='holiday:christmas'?[tr('Frohe Weihnachten!','Merry Christmas!'),tr('Wir wünschen euch und euren Familien schöne Feiertage.','Wishing you and your families a wonderful holiday.')]:key==='holiday:eve'?[tr('Guten Rutsch!','Happy New Year’s Eve!'),tr('Kommt gut ins neue Jahr.','Have a wonderful start to the new year.')]:[tr('Frohes neues Jahr!','Happy New Year!'),tr('Wir wünschen euch Gesundheit, Glück und viel Freude auf dem Tennisplatz.','Wishing you health, happiness and plenty of joy on the tennis court.')];
   return '<div class="greeting-hero event-greeting-hero holiday-hero '+(key==='holiday:christmas'?'holiday-christmas':'holiday-newyear')+'"><div class="holiday-art" aria-hidden="true">'+(key==='holiday:christmas'?'<svg viewBox="0 0 160 110"><path d="M80 8 53 43h15L38 75h26L28 99h104L96 75h26L92 43h15Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M80 0v12m-6-6h12" stroke="currentColor" stroke-width="2"/><circle cx="80" cy="52" r="3" fill="currentColor"/><circle cx="60" cy="80" r="3" fill="currentColor"/><circle cx="100" cy="80" r="3" fill="currentColor"/></svg>':'<svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M80 12v26m0 24v26M42 50h26m24 0h26M53 23l18 18m18 18 18 18M53 77l18-18m18-18 18-18M24 5v20m-10-10h20m102 65v20m-10-10h20"/><circle cx="80" cy="50" r="5"/></svg>')+'</div><h1 class="event-greeting-title">'+esc(copy[0])+'</h1><p class="greeting-farewell">'+esc(copy[1])+'</p></div>';

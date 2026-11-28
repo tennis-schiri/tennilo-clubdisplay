@@ -92,12 +92,12 @@ console.log('Weekend preview and individual 100-calendar-day countdowns OK');
 
 ctx.boardTime=Date.parse('2027-06-15T12:00:00+02:00');run('partnerBoardData={enabled:true,rows:[{ref:"ABCDEF1234",category:"mixed",skill:"any",availability:"weekend",period:"morning",expires:boardTime/1000+60,contact:"SECRET"},{ref:"INVALID",category:"mixed",skill:"any",availability:"weekend",period:"morning",expires:boardTime/1000+60}]}');assert.equal(run('partnerBoardRows(boardTime).length'),1);assert.equal(run('partnerBoardScreens(boardTime)[0]'),'partners:0');assert.equal(run('partnerBoardScreens(boardTime+60000).length'),1);run('partnerBoardData=null');assert.equal(run('partnerBoardScreens(boardTime).length'),0);console.log('Partner board display filtering and expiration OK');
 
-// Advent weekends: local Berlin day, all four candles, Christmas priority and year boundaries.
+// Advent Sundays only: local Berlin day, all four candles, Christmas priority and year boundaries.
 for(const [date,expected] of [
- ['2026-11-27T23:59:59+01:00',''],['2026-11-28T00:00:00+01:00','holiday:advent:1'],
+ ['2026-11-27T23:59:59+01:00',''],['2026-11-28T00:00:00+01:00',''],['2026-11-28T23:59:59+01:00',''],['2026-11-29T00:00:00+01:00','holiday:advent:1'],
  ['2026-11-29T23:59:59+01:00','holiday:advent:1'],['2026-11-30T00:00:00+01:00',''],
- ['2026-12-05T12:00:00+01:00','holiday:advent:2'],['2026-12-13T12:00:00+01:00','holiday:advent:3'],
- ['2026-12-20T12:00:00+01:00','holiday:advent:4'],['2026-12-24T00:00:00+01:00','holiday:christmas'],
+ ['2026-12-05T12:00:00+01:00',''],['2026-12-06T12:00:00+01:00','holiday:advent:2'],['2026-12-12T12:00:00+01:00',''],['2026-12-13T12:00:00+01:00','holiday:advent:3'],
+ ['2026-12-19T12:00:00+01:00',''],['2026-12-20T12:00:00+01:00','holiday:advent:4'],['2026-12-21T00:00:00+01:00',''],['2026-12-24T00:00:00+01:00','holiday:christmas'],
  ['2027-12-24T12:00:00+01:00','holiday:christmas'],['2028-12-24T12:00:00+01:00','holiday:christmas'],
  ['2022-12-18T12:00:00+01:00','holiday:advent:4'],['2022-12-25T12:00:00+01:00','holiday:christmas']]){
   ctx.checkTime=Date.parse(date);assert.equal(run('smartHoliday(checkTime)'),expected,date);
@@ -117,7 +117,9 @@ ctx.weatherTest={status:'stale',fetchedAt:ctx.weatherNow/1000,current:{time:ctx.
 assert.equal(run('headerWeatherEffect(weatherTest,weatherNow)'),'');
 ctx.weatherTest.status='ok';ctx.weatherTest.fetchedAt-=1801;
 assert.equal(run('headerWeatherEffect(weatherTest,weatherNow)'),'');
-assert.equal(run('headerSeasonEffect(weatherNow)'),'advent-1');
+assert.equal(run('headerSeasonEffect(weatherNow)'),'');
+assert.equal(run('headerSeasonEffect(Date.parse("2026-11-29T00:00:00+01:00"))'),'advent-1');
+assert.equal(run('headerSeasonEffect(Date.parse("2026-11-30T00:00:00+01:00"))'),'');
 assert.equal(run('headerSeasonEffect(Date.parse("2026-12-25T12:00:00+01:00"))'),'christmas');
 assert.equal(run('headerSeasonEffect(Date.parse("2026-12-27T12:00:00+01:00"))'),'');
 console.log('Advent and holiday dates, candle count, live weather decorations and stale data safeguards OK');
