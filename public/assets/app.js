@@ -462,7 +462,8 @@ function fixtureCourtNumbers(raw){
   }
   return [...new Set(numbers)];
 }
-function matchView(passiveFilter){
+function matchView(){
+  const passiveFilter=arguments[0];
   const d=leagueData, info=view==='info', filter=passiveFilter||(info?'home':matchFilter);
   const headings={home:tr('Nächste Heimspiele','Upcoming home matches'),away:tr('Nächste Auswärtsspiele','Upcoming away matches'),all:tr('Alle kommenden Spiele','All upcoming matches'),results:tr('Letzte Ergebnisse','Recent results')};
   const tabs=info?'':'<div class="tabs">'+Object.keys(headings).map(k=>'<button data-action="match:'+k+'" aria-pressed="'+(k===filter)+'">'+({home:tr('Heim','Home'),away:tr('Auswärts','Away'),all:tr('Alle','All'),results:tr('Ergebnisse','Results')}[k])+'</button>').join('')+'</div>';
@@ -875,7 +876,8 @@ function newsArticleView(p){
   const warning=!p.complete?'<p class="news-article-warning">'+tr('Der vollständige Beitrag ist momentan nicht über die Schnittstelle verfügbar. Angezeigt wird der vorhandene Inhalt.','The complete article is currently unavailable through the feed. Available content is shown.')+'</p>':'';
   return '<div class="news-reader-head"><div><time class="news-date" datetime="'+esc(p.date)+'">'+esc(newsDate(p))+'</time>'+source+'<h1>'+esc(p.title)+'</h1></div>'+button(tr('Zurück zu den Meldungen','Back to news'),'news-back','primary')+'</div><div id="news-article-scroll" class="panel news-article-scroll" tabindex="0" aria-label="'+tr('Artikelinhalt','Article content')+'">'+warning+image+(p.article||'<p>'+esc(p.excerpt)+'</p>')+'</div><div class="news-reader-foot"><span>'+(pilot?tr('Quelle: ntc93.com · Originaltext','Source: ntc93.com · Original text'):tr('Fiktiver Inhalt · TENNILO-Demo','Fictional content · TENNILO demo'))+'</span><div><button data-action="news-up" aria-label="'+tr('Nach oben','Scroll up')+'">↑</button><button data-action="news-down" aria-label="'+tr('Weiterlesen','Read further')+'">↓</button></div></div>';
 }
-function newsView(passive=false){
+function newsView(){
+  const passive=arguments[0]===true;
   if(view==='news'&&openedNews)return newsArticleView(openedNews);
   const title='<div class="match-heading"><h1>'+t().announcements+'</h1><span class="news-origin">'+(pilot?tr('Aktuelle Meldungen von ','Latest news from ')+'ntc93.com':tr('Fiktive Vereinsmeldungen','Fictional club news'))+'</span></div>';
   const d=pilot?newsData:demoNews();
@@ -1031,7 +1033,8 @@ function refreshOccupancyHour(now){
   if(view==='info'&&smartScreenKey(screens[slide])==='welcome'&&occupancyHours(now)[0].start!==occupancyHourKey)render();
 }
 // NTC-only restaurant slide. Official Due Fratelli assets and published regular hours.
-function demoRestaurantView(passive=false){
+function demoRestaurantView(){
+  const passive=arguments[0]===true;
   const row=(a,b)=>'<div class="df-info-row"><span>'+esc(a)+'</span><strong>'+esc(b)+'</strong></div>';
   if(passive)return '<article class="df-simple-display"><header class="df-simple-header"><div class="df-simple-logo"><h1>CLUB BISTRO</h1><small>'+tr('Fiktiver Gastro-Partner','Fictional restaurant partner')+'</small></div></header><div class="df-simple-panels basic-gastro"><section class="df-info-panel"><h2>'+tr('Reguläre Öffnungszeiten','Regular opening hours')+'</h2>'+row(tr('Montag','Monday'),tr('Geschlossen','Closed'))+row(tr('Dienstag – Freitag','Tuesday – Friday'),'14:00–22:00')+row(tr('Samstag – Sonntag','Saturday – Sunday'),'12:00–22:00')+'</section></div></article>';
   return '<article class="df-simple-display"><header class="df-simple-header"><div class="df-simple-logo"><h1>CLUB BISTRO</h1><small>'+tr('Fiktiver Gastro-Partner','Fictional restaurant partner')+'</small></div><div class="df-simple-phone"><span>'+tr('Tischreservierung','Table reservations')+'</span><strong>DEMO</strong><span>'+tr('Vor Ort · telefonisch · online','In person · by phone · online')+'</span></div><div class="df-website-block"><strong class="df-website-address">clubdisplay.tennilo.de</strong><div class="df-website-qr">'+partnerQrSvg(demoQrBase+'?restaurant=1',tr('Gastronomie-Demo','Restaurant demo'))+'</div></div></header><div class="df-simple-panels"><section class="df-info-panel"><h2>'+tr('Wochenangebote','Weekly offers')+'</h2>'+row('Pizza Margherita','9,50 €')+row('Pasta al Pomodoro','10,50 €')+'<p>'+tr('Beispielpreise','Sample prices')+'</p></section><section class="df-info-panel"><h2>'+tr('Öffnungszeiten','Opening hours')+'</h2>'+row(tr('Montag','Monday'),tr('Geschlossen','Closed'))+row(tr('Dienstag – Freitag','Tuesday – Friday'),'14:00–22:00')+row(tr('Samstag – Sonntag','Saturday – Sunday'),'12:00–22:00')+'</section><section class="df-info-panel"><h2>'+tr('Sonderöffnungszeiten','Special opening hours')+'</h2>'+row('24.12.',tr('Geschlossen','Closed'))+row('25. / 26.12.','12:00–22:00')+'<p>'+tr('Nur Beispieldaten · keine echten Reservierungen','Sample data only · no real reservations')+'</p></section></div></article>';
